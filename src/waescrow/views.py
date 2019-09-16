@@ -1,4 +1,6 @@
+from django.core.serializers.json import DjangoJSONEncoder
 from jsonrpc import jsonrpc_method
+from jsonrpc.site import JsonRpcSite
 
 from wacryptolib import key_generation
 
@@ -13,7 +15,15 @@ site.loads = loads
 assert site.dumps
 site.dumps = dumps
 
+class ExtendedDjangoJSONEncoder(DjangoJSONEncoder):
+    def default(self, o):
+        try:
+            return super().default(o)
+        except TypeError:
+            return "<BROKEN JSON OBJECT FOR %s>" % o  # Just to please jsonrpc _response_dict() method...
 
+
+extended_jsonrpc_site = JsonRpcSite(json_encoder=ExtendedDjangoJSONEncoder)
 """
 
 @jsonrpc_method("waescrow.sayhelloworld")
@@ -28,23 +38,23 @@ def get_public_key(request, algo):
 
 """
 
+@jsonrpc_method("get_public_key", site=extended_jsonrpc_site)
+def get_public_key(request, keychain_uid, key_type):
+    del request
+    return escrow_api.get_public_key(keychain_uid=keychain_uid, key_type=key_type)
 
-@jsonrpc_method
-def get_public_key(uid, key_type):
-    return escrow_api.get_public_key(uid=uid, key_type=key_type)
-
-
-@jsonrpc_method
-def get_message_signature(uid, message, key_type, signature_algo):
+@jsonrpc_method("get_message_signature", site=extended_jsonrpc_site)
+def get_message_signature(request, keychain_uid, message, key_type, signature_algo):
+    del request
     return escrow_api.get_message_signature(
-        uid=uid, message=message, key_type=key_type, signature_algo=signature_algo
+            keychain_uid=keychain_uid, message=message, key_type=key_type, signature_algo=signature_algo
     )
 
-
-@jsonrpc_method
-def decrypt_with_private_key(uid, key_type, encryption_algo, cipherdict):
+@jsonrpc_method("decrypt_with_private_key", site=extended_jsonrpc_site)
+def decrypt_with_private_key(request, keychain_uid, key_type, encryption_algo, cipherdict):
+    del request
     return escrow_api.decrypt_with_private_key(
-        uid=uid,
+            keychain_uid=keychain_uid,
         key_type=key_type,
         encryption_algo=encryption_algo,
         cipherdict=cipherdict,

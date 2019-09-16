@@ -16,18 +16,18 @@ Including another URLconf
 
 import jsonrpc.views
 from django.conf.urls import url
-from jsonrpc import jsonrpc_site
 
+from waescrow.views import extended_jsonrpc_site
 from . import views  # Register methods
 
 del views
 
 urlpatterns = [
     url(r"^json/browse/", jsonrpc.views.browse, name="jsonrpc_browser"),
-    url(r"^json/", jsonrpc_site.dispatch, name="jsonrpc_mountpoint"),
+    url(r"^json/", extended_jsonrpc_site.dispatch, name="jsonrpc_mountpoint"),
     url(
         r"^json/(?P<method>[a-zA-Z0-9.]+)$",
-        jsonrpc_site.dispatch,
+            extended_jsonrpc_site.dispatch,
         name="jsonrpc_getter_mountpoint",
     ),
 ]
