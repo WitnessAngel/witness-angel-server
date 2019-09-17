@@ -5,7 +5,7 @@ from wacryptolib.key_generation import generate_asymmetric_keypair, load_asymmet
 from wacryptolib.signature import sign_message
 
 
-_CACHED_KEYS = {}  # DIRTY process-local caching for tests
+_CACHED_KEYS = {}  # FIXME REPLACE BY REAL DB ASAP!!!!
 
 
 def _fetch_pem_keypair_with_caching(keychain_uid, key_type):  # FIXME - hack to turn into DB lookup
