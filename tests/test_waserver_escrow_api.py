@@ -2,6 +2,7 @@ import uuid
 
 import pytest
 from Crypto.Random import get_random_bytes
+from django.db import IntegrityError
 from django.test import Client
 from jsonrpc.proxy import TestingServiceProxy
 
@@ -12,6 +13,7 @@ from jsonrpc import proxy
 from wacryptolib.encryption import _encrypt_via_rsa_oaep
 from wacryptolib.key_generation import load_asymmetric_key_from_pem_bytestring
 from wacryptolib.signature import verify_signature
+from waescrow.escrow_api import SqlKeyStorage
 
 assert proxy.loads
 proxy.loads = loads
@@ -25,7 +27,31 @@ def _get_jsonrpc_result(response_dict):
     return response_dict["result"]
 
 
-def test_waescrow_escrow_api_workflow():
+def test_sql_key_storage(db):
+
+    storage = SqlKeyStorage()
+
+    keychain_uid1 = uuid.uuid4()
+    keychain_uid2 = uuid.uuid4()
+    keychain_uid_unexisting = uuid.uuid4()
+
+    storage.set_keypair(keychain_uid=keychain_uid1, key_type="RSA", keypair=dict(a=2))
+    storage.set_keypair(keychain_uid=keychain_uid2, key_type="RSA", keypair=dict(B="xyz"))
+    storage.set_keypair(keychain_uid=keychain_uid1, key_type="DSA", keypair=dict(c=b"99"))
+    storage.set_keypair(keychain_uid=keychain_uid2, key_type="DSA", keypair=dict(D=1.0))
+
+    assert storage.get_keypair(keychain_uid=keychain_uid1, key_type="RSA") == dict(a=2)
+    assert storage.get_keypair(keychain_uid=keychain_uid2, key_type="RSA") == dict(B="xyz")
+    assert storage.get_keypair(keychain_uid=keychain_uid1, key_type="DSA") == dict(c=b"99")
+    assert storage.get_keypair(keychain_uid=keychain_uid2, key_type="DSA") == dict(D=1.0)
+
+    assert storage.get_keypair(keychain_uid=keychain_uid_unexisting, key_type="RSA") == None
+
+    with pytest.raises(IntegrityError):  # Final tests, since it breaks current DB transaction
+        storage.set_keypair(keychain_uid=keychain_uid1, key_type="RSA", keypair=dict(a=3))
+
+
+def test_waescrow_escrow_api_workflow(db):
 
     escrow_proxy = TestingServiceProxy(
         client=Client(), service_url="/json/", version="2.0"

@@ -16,6 +16,6 @@ class EscrowKeypair(models.Model):
 
     keychain_uid = models.UUIDField(_("Keychain uid"))
     key_type = models.CharField(_("Key type"), max_length=20)
-    key_pair = encrypt(models.TextField(_("Key pair")))
+    keypair = encrypt(models.TextField(_("Key pair")))
 
 

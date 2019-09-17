@@ -1,12 +1,40 @@
 import uuid
 
 from wacryptolib.encryption import _decrypt_via_rsa_oaep
+from wacryptolib.escrow import KeyStorageBase, EscrowApi
 from wacryptolib.key_generation import generate_asymmetric_keypair, load_asymmetric_key_from_pem_bytestring
 from wacryptolib.signature import sign_message
-
+from wacryptolib.utilities import load_from_json_str, dump_to_json_str
+from waescrow.models import EscrowKeypair
 
 _CACHED_KEYS = {}  # FIXME REPLACE BY REAL DB ASAP!!!!
 
+
+class SqlKeyStorage(KeyStorageBase):
+
+    # TODO - add layer of protection with own asymmetric key of Escrow!
+
+    def get_keypair(self, keychain_uid: uuid.UUID, key_type: str) -> dict:
+        try:
+            keypair_obj = EscrowKeypair.objects.get(keychain_uid=keychain_uid, key_type=key_type)
+            keypair_serialized = keypair_obj.keypair
+            assert isinstance(keypair_serialized, str), repr(keypair_serialized)
+            keypair = load_from_json_str(keypair_serialized)
+            return keypair
+        except EscrowKeypair.DoesNotExist:
+            return None
+
+    def set_keypair(self, keychain_uid: uuid.UUID, key_type: str, keypair: dict):
+        keypair_serialized = dump_to_json_str(keypair)
+        assert isinstance(keypair_serialized, str), repr(keypair_serialized)
+        # Raises IntegrityError if this ID already exists
+        EscrowKeypair.objects.create(keychain_uid=keychain_uid, key_type=key_type, keypair=keypair_serialized)
+
+
+SQL_ESCROW_API = EscrowApi(storage=SqlKeyStorage())
+
+
+'''
 
 def _fetch_pem_keypair_with_caching(keychain_uid, key_type):  # FIXME - hack to turn into DB lookup
     existing_keypair = _CACHED_KEYS.get((keychain_uid, key_type))
@@ -61,3 +89,4 @@ def decrypt_with_private_key(
 
     secret = _decrypt_via_rsa_oaep(cipherdict=cipherdict, key=private_key)
     return secret
+'''

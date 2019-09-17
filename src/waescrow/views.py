@@ -2,7 +2,7 @@ from django.core.serializers.json import DjangoJSONEncoder
 from jsonrpc import jsonrpc_method
 from jsonrpc.site import JsonRpcSite
 
-from wacryptolib import key_generation
+from waescrow.escrow_api import SQL_ESCROW_API
 
 from . import escrow_api
 
@@ -41,19 +41,19 @@ def get_public_key(request, algo):
 @jsonrpc_method("get_public_key", site=extended_jsonrpc_site)
 def get_public_key(request, keychain_uid, key_type):
     del request
-    return escrow_api.get_public_key(keychain_uid=keychain_uid, key_type=key_type)
+    return SQL_ESCROW_API.get_public_key(keychain_uid=keychain_uid, key_type=key_type)
 
 @jsonrpc_method("get_message_signature", site=extended_jsonrpc_site)
 def get_message_signature(request, keychain_uid, message, key_type, signature_algo):
     del request
-    return escrow_api.get_message_signature(
+    return SQL_ESCROW_API.get_message_signature(
             keychain_uid=keychain_uid, message=message, key_type=key_type, signature_algo=signature_algo
     )
 
 @jsonrpc_method("decrypt_with_private_key", site=extended_jsonrpc_site)
 def decrypt_with_private_key(request, keychain_uid, key_type, encryption_algo, cipherdict):
     del request
-    return escrow_api.decrypt_with_private_key(
+    return SQL_ESCROW_API.decrypt_with_private_key(
             keychain_uid=keychain_uid,
         key_type=key_type,
         encryption_algo=encryption_algo,
