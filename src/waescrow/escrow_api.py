@@ -28,7 +28,7 @@ class SqlKeyStorage(KeyStorageBase):
         keypair_serialized = dump_to_json_str(keypair)
         assert isinstance(keypair_serialized, str), repr(keypair_serialized)
         # Raises IntegrityError if this ID already exists
-        EscrowKeypair.objects.create(keychain_uid=keychain_uid, key_type=key_type, keypair=keypair_serialized)
+        EscrowKeypair.objects.create(keychain_uid=keychain_uid, key_type=key_type.upper(), keypair=keypair_serialized)
 
 
 SQL_ESCROW_API = EscrowApi(storage=SqlKeyStorage())

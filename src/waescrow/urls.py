@@ -16,10 +16,11 @@ Including another URLconf
 
 import jsonrpc.views
 from django.conf.urls import url
+from django.contrib import admin
 
 from waescrow.views import extended_jsonrpc_site
-from . import views  # Register methods
 
+from . import views  # Register methods
 del views
 
 urlpatterns = [
@@ -30,4 +31,5 @@ urlpatterns = [
             extended_jsonrpc_site.dispatch,
         name="jsonrpc_getter_mountpoint",
     ),
+    url(r"^admin/", admin.site.urls),
 ]

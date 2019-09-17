@@ -14,6 +14,8 @@ class EscrowKeypair(models.Model):
         verbose_name_plural = _("escrow key pairs")
         unique_together = [('keychain_uid', 'key_type')]
 
+    created_at = models.DateTimeField(auto_now_add=True)
+
     keychain_uid = models.UUIDField(_("Keychain uid"))
     key_type = models.CharField(_("Key type"), max_length=20)
     keypair = encrypt(models.TextField(_("Key pair")))
