@@ -30,10 +30,12 @@ exclude = ["_build"]
 [tool.poetry.dependencies]
 python = ">=3.6"
 
+# Witness Angel system
+wacryptolib = "^0.2.0"
+
 # Django & Bson
 Django = "^2.2"
 json-rpc-django = "^1.0"
-pymongo = "^3.9"
 schema = "^0.7.0"
 django_cryptography = "^0.3.0"
 
