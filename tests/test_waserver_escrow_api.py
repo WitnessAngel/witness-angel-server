@@ -15,7 +15,7 @@ from jsonrpc import proxy
 
 from wacryptolib.encryption import _encrypt_via_rsa_oaep
 from wacryptolib.key_generation import load_asymmetric_key_from_pem_bytestring
-from wacryptolib.signature import verify_signature
+from wacryptolib.signature import verify_message_signature
 from waescrow import escrow_api
 from waescrow.escrow_api import SqlKeyStorage
 from waescrow.models import EscrowKeypair
@@ -34,26 +34,26 @@ def _get_jsonrpc_result(response_dict):
 
 def test_sql_key_storage(db):
 
-    storage = SqlKeyStorage()
+    key_storage = SqlKeyStorage()
 
     keychain_uid1 = uuid.uuid4()
     keychain_uid2 = uuid.uuid4()
     keychain_uid_unexisting = uuid.uuid4()
 
-    storage.set_keypair(keychain_uid=keychain_uid1, key_type="RSA", keypair=dict(a=2))
-    storage.set_keypair(keychain_uid=keychain_uid2, key_type="RSA", keypair=dict(B="xyz"))
-    storage.set_keypair(keychain_uid=keychain_uid1, key_type="DSA", keypair=dict(c=b"99"))
-    storage.set_keypair(keychain_uid=keychain_uid2, key_type="DSA", keypair=dict(D=1.0))
+    key_storage.set_keypair(keychain_uid=keychain_uid1, key_type="RSA", keypair=dict(a=2))
+    key_storage.set_keypair(keychain_uid=keychain_uid2, key_type="RSA", keypair=dict(B="xyz"))
+    key_storage.set_keypair(keychain_uid=keychain_uid1, key_type="DSA", keypair=dict(c=b"99"))
+    key_storage.set_keypair(keychain_uid=keychain_uid2, key_type="DSA", keypair=dict(D=1.0))
 
-    assert storage.get_keypair(keychain_uid=keychain_uid1, key_type="RSA") == dict(a=2)
-    assert storage.get_keypair(keychain_uid=keychain_uid2, key_type="RSA") == dict(B="xyz")
-    assert storage.get_keypair(keychain_uid=keychain_uid1, key_type="DSA") == dict(c=b"99")
-    assert storage.get_keypair(keychain_uid=keychain_uid2, key_type="DSA") == dict(D=1.0)
+    assert key_storage.get_keypair(keychain_uid=keychain_uid1, key_type="RSA") == dict(a=2)
+    assert key_storage.get_keypair(keychain_uid=keychain_uid2, key_type="RSA") == dict(B="xyz")
+    assert key_storage.get_keypair(keychain_uid=keychain_uid1, key_type="DSA") == dict(c=b"99")
+    assert key_storage.get_keypair(keychain_uid=keychain_uid2, key_type="DSA") == dict(D=1.0)
 
-    assert storage.get_keypair(keychain_uid=keychain_uid_unexisting, key_type="RSA") == None
+    assert key_storage.get_keypair(keychain_uid=keychain_uid_unexisting, key_type="RSA") == None
 
     with pytest.raises(IntegrityError):  # Final tests, since it breaks current DB transaction
-        storage.set_keypair(keychain_uid=keychain_uid1, key_type="RSA", keypair=dict(a=3))
+        key_storage.set_keypair(keychain_uid=keychain_uid1, key_type="RSA", keypair=dict(a=3))
 
 
 def test_waescrow_escrow_api_workflow(db):
@@ -74,13 +74,13 @@ def test_waescrow_escrow_api_workflow(db):
     signature = _get_jsonrpc_result(escrow_proxy.get_message_signature(
             keychain_uid=keychain_uid, message=secret, key_type=key_type, signature_algo="PSS"
     ))
-    verify_signature(
+    verify_message_signature(
         message=secret, signature=signature, key=public_key, signature_algo="PSS"
     )
 
     signature["digest"] += b"xyz"
     with pytest.raises(ValueError, match="Incorrect signature"):
-        verify_signature(
+        verify_message_signature(
             message=secret, signature=signature, key=public_key, signature_algo="PSS"
         )
 

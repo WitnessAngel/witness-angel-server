@@ -57,7 +57,7 @@ class SqlEscrowApi(EscrowApi):
         return super().decrypt_with_private_key(keychain_uid=keychain_uid, key_type=key_type,encryption_algo=encryption_algo, cipherdict=cipherdict)
 
 
-SQL_ESCROW_API = SqlEscrowApi(storage=SqlKeyStorage())
+SQL_ESCROW_API = SqlEscrowApi(key_storage=SqlKeyStorage())
 
 
 '''
