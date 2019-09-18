@@ -8,6 +8,7 @@ class EscrowKeypairAdmin(admin.ModelAdmin):
         "created_at",
         "keychain_uid",
         "key_type",
+        "decryption_authorized_at",
     )
 
     ordering = ["-id"]

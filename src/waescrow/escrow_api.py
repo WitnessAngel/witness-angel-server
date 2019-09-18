@@ -1,11 +1,14 @@
 import uuid
+from datetime import timedelta
+
+from django.utils import timezone
 
 from wacryptolib.encryption import _decrypt_via_rsa_oaep
 from wacryptolib.escrow import KeyStorageBase, EscrowApi
 from wacryptolib.key_generation import generate_asymmetric_keypair, load_asymmetric_key_from_pem_bytestring
 from wacryptolib.signature import sign_message
 from wacryptolib.utilities import load_from_json_str, dump_to_json_str
-from waescrow.models import EscrowKeypair
+from waescrow.models import EscrowKeypair, DECRYPTION_AUTHORIZATION_LIFESPAN_H
 
 _CACHED_KEYS = {}  # FIXME REPLACE BY REAL DB ASAP!!!!
 
@@ -31,7 +34,30 @@ class SqlKeyStorage(KeyStorageBase):
         EscrowKeypair.objects.create(keychain_uid=keychain_uid, key_type=key_type.upper(), keypair=keypair_serialized)
 
 
-SQL_ESCROW_API = EscrowApi(storage=SqlKeyStorage())
+
+class SqlEscrowApi(EscrowApi):
+    def decrypt_with_private_key(self,
+            keychain_uid,
+            key_type,
+            encryption_algo,
+            cipherdict):
+
+        # TODO - a redesign of the API could prevent the double DB lookup here, but not sure if it's useful on the long term...
+        keypair_obj = EscrowKeypair.objects.get(keychain_uid=keychain_uid, key_type=key_type)
+
+        decryption_authorized_at = keypair_obj.decryption_authorized_at
+
+        if not decryption_authorized_at:
+            raise RuntimeError("Decryption not authorized")  # TODO better exception class
+
+        now = timezone.now()
+        if not (decryption_authorized_at < now < decryption_authorized_at + timedelta(hours=DECRYPTION_AUTHORIZATION_LIFESPAN_H)):
+            raise RuntimeError("Decryption authorization is not currently active")  # TODO better exception class
+
+        return super().decrypt_with_private_key(keychain_uid=keychain_uid, key_type=key_type,encryption_algo=encryption_algo, cipherdict=cipherdict)
+
+
+SQL_ESCROW_API = SqlEscrowApi(storage=SqlKeyStorage())
 
 
 '''

@@ -5,6 +5,7 @@ from django.utils.translation import ugettext_lazy as _
 from django_cryptography.fields import encrypt
 
 
+DECRYPTION_AUTHORIZATION_LIFESPAN_H = 24  # Access remains only authorized for that duration
 
 
 class EscrowKeypair(models.Model):
@@ -19,5 +20,8 @@ class EscrowKeypair(models.Model):
     keychain_uid = models.UUIDField(_("Keychain uid"))
     key_type = models.CharField(_("Key type"), max_length=20)
     keypair = encrypt(models.TextField(_("Key pair")))
+
+    # When set, the private key can be accessed for DECRYPTION_AUTHORIZATION_LIFESPAN_H hours after this datetime
+    decryption_authorized_at = models.DateTimeField(blank=True, null=True)  # FIXME TYPO!!!
 
 
