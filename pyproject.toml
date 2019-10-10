@@ -54,7 +54,6 @@ freezegun = "^0.3.12"
 # Linters and formatters
 black = {version = "^18.3-alpha.0",allows-prereleases = true}
 pylint = "^2.3"
-pylint-quotes = "^0.2.1"
 safety = "^1.8"
 yamllint = "^1.15"
 xenon = "^0.5"
