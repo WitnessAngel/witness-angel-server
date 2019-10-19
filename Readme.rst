@@ -19,7 +19,7 @@ Use `pip install poetry` to install poetry (or follow its official docs to insta
 
 Use `poetry install` to install python dependencies.
 
-Use `pytest` to launch unit-tests (its default arguments are in `setup.cfg`)
+Use `pytest` to launch unit-tests (its default arguments are in `setup.cfg`); you might need to add the "src/" directory of this repository to your pythonpath, until a better way to early-setup python paths is found.
 
 Use `bash ci.sh` to do a full checkup before committing or pushing your changes.
 
