@@ -19,7 +19,8 @@ class EscrowKeypair(models.Model):
 
     keychain_uid = models.UUIDField(_("Keychain uid"))
     key_type = models.CharField(_("Key type"), max_length=20)
-    keypair = encrypt(models.TextField(_("Key pair")))
+    public_key = encrypt(models.BinaryField(_("Public key (PEM format)")))
+    private_key = encrypt(models.BinaryField(_("Private key (PEM format)")))
 
     # When set, the private key can be accessed for DECRYPTION_AUTHORIZATION_LIFESPAN_H hours after this datetime
     decryption_authorized_at = models.DateTimeField(blank=True, null=True)  # FIXME TYPO!!!

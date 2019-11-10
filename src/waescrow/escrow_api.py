@@ -17,22 +17,24 @@ class SqlKeyStorage(KeyStorageBase):
 
     # TODO - add layer of protection with own asymmetric key of Escrow!
 
-    def get_keypair(self, keychain_uid: uuid.UUID, key_type: str) -> dict:
+    def set_keys(self, *, keychain_uid: uuid.UUID, key_type: str, public_key: bytes, private_key: bytes):
+        # Raises IntegrityError if this ID already exists
+        EscrowKeypair.objects.create(keychain_uid=keychain_uid, key_type=key_type.upper(),
+                                     public_key=public_key, private_key=private_key)
+
+    def _fetch_key_object_or_none(self, keychain_uid: uuid.UUID, key_type: str) -> EscrowKeypair:
         try:
-            keypair_obj = EscrowKeypair.objects.get(keychain_uid=keychain_uid, key_type=key_type)
-            keypair_serialized = keypair_obj.keypair
-            assert isinstance(keypair_serialized, str), repr(keypair_serialized)
-            keypair = load_from_json_str(keypair_serialized)
-            return keypair
+            return EscrowKeypair.objects.get(keychain_uid=keychain_uid, key_type=key_type)
         except EscrowKeypair.DoesNotExist:
             return None
 
-    def set_keypair(self, keychain_uid: uuid.UUID, key_type: str, keypair: dict):
-        keypair_serialized = dump_to_json_str(keypair)
-        assert isinstance(keypair_serialized, str), repr(keypair_serialized)
-        # Raises IntegrityError if this ID already exists
-        EscrowKeypair.objects.create(keychain_uid=keychain_uid, key_type=key_type.upper(), keypair=keypair_serialized)
+    def get_public_key(self, *, keychain_uid: uuid.UUID, key_type: str) -> bytes:
+        keypair_obj_or_none = self._fetch_key_object_or_none(keychain_uid=keychain_uid, key_type=key_type)
+        return keypair_obj_or_none.public_key if keypair_obj_or_none else None
 
+    def get_private_key(self, *, keychain_uid: uuid.UUID, key_type: str) -> bytes:
+        keypair_obj_or_none = self._fetch_key_object_or_none(keychain_uid=keychain_uid, key_type=key_type)
+        return keypair_obj_or_none.private_key if keypair_obj_or_none else None
 
 
 class SqlEscrowApi(EscrowApi):

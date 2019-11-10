@@ -40,20 +40,28 @@ def test_sql_key_storage(db):
     keychain_uid2 = uuid.uuid4()
     keychain_uid_unexisting = uuid.uuid4()
 
-    key_storage.set_keypair(keychain_uid=keychain_uid1, key_type="RSA", keypair=dict(a=2))
-    key_storage.set_keypair(keychain_uid=keychain_uid2, key_type="RSA", keypair=dict(B="xyz"))
-    key_storage.set_keypair(keychain_uid=keychain_uid1, key_type="DSA", keypair=dict(c=b"99"))
-    key_storage.set_keypair(keychain_uid=keychain_uid2, key_type="DSA", keypair=dict(D=1.0))
+    key_storage.set_keys(keychain_uid=keychain_uid1, key_type="RSA", public_key=b"pubkey", private_key=b"privkey")
+    key_storage.set_keys(keychain_uid=keychain_uid2, key_type="RSA", public_key=b"pubkey2", private_key=b"privkey2")
+    key_storage.set_keys(keychain_uid=keychain_uid1, key_type="DSA", public_key=b"pubkey3", private_key=b"privkey3")
+    key_storage.set_keys(keychain_uid=keychain_uid2, key_type="DSA", public_key=b"pubkey4", private_key=b"privkey4")
 
-    assert key_storage.get_keypair(keychain_uid=keychain_uid1, key_type="RSA") == dict(a=2)
-    assert key_storage.get_keypair(keychain_uid=keychain_uid2, key_type="RSA") == dict(B="xyz")
-    assert key_storage.get_keypair(keychain_uid=keychain_uid1, key_type="DSA") == dict(c=b"99")
-    assert key_storage.get_keypair(keychain_uid=keychain_uid2, key_type="DSA") == dict(D=1.0)
+    assert key_storage.get_public_key(keychain_uid=keychain_uid1, key_type="RSA") == b"pubkey"
+    assert key_storage.get_private_key(keychain_uid=keychain_uid1, key_type="RSA") == b"privkey"
 
-    assert key_storage.get_keypair(keychain_uid=keychain_uid_unexisting, key_type="RSA") == None
+    assert key_storage.get_public_key(keychain_uid=keychain_uid2, key_type="RSA") == b"pubkey2"
+    assert key_storage.get_private_key(keychain_uid=keychain_uid2, key_type="RSA") == b"privkey2"
+
+    assert key_storage.get_public_key(keychain_uid=keychain_uid1, key_type="DSA") == b"pubkey3"
+    assert key_storage.get_private_key(keychain_uid=keychain_uid1, key_type="DSA") == b"privkey3"
+
+    assert key_storage.get_public_key(keychain_uid=keychain_uid2, key_type="DSA") == b"pubkey4"
+    assert key_storage.get_private_key(keychain_uid=keychain_uid2, key_type="DSA") == b"privkey4"
+
+    assert key_storage.get_public_key(keychain_uid=keychain_uid_unexisting, key_type="RSA") == None
+    assert key_storage.get_private_key(keychain_uid=keychain_uid_unexisting, key_type="RSA") == None
 
     with pytest.raises(IntegrityError):  # Final tests, since it breaks current DB transaction
-        key_storage.set_keypair(keychain_uid=keychain_uid1, key_type="RSA", keypair=dict(a=3))
+        key_storage.set_keys(keychain_uid=keychain_uid1, key_type="RSA", public_key=b"xyz", private_key=b"zyx")
 
 
 def test_waescrow_escrow_api_workflow(db):
