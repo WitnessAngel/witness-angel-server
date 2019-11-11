@@ -135,3 +135,7 @@ def test_waescrow_escrow_api_workflow(db):
             _attempt_decryption()  # No more authorization at all
 
 
+def test_waescrow_wsgi_application(db):
+    from waescrow.wsgi import application
+    with pytest.raises(KeyError, match="REQUEST_METHOD"):
+        application(environ={}, start_response=lambda *args, **kwargs: None)
