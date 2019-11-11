@@ -2,18 +2,16 @@ from django.core.serializers.json import DjangoJSONEncoder
 from jsonrpc import jsonrpc_method
 from jsonrpc.site import JsonRpcSite
 
+from wacryptolib.utilities import load_from_json_str, dump_to_json_str
 from waescrow.escrow_api import SQL_ESCROW_API
 
-from . import escrow_api
-
-# MONKEY-PATCH django-jsonrpc package so that it uses Extended Json on responses
-from bson.json_util import dumps, loads
+# MONKEY-PATCH django-jsonrpc package so that it uses Extended Json in CANONICAL form on responses
 from jsonrpc import site
 
 assert site.loads
-site.loads = loads
+site.loads = load_from_json_str
 assert site.dumps
-site.dumps = dumps
+site.dumps = dump_to_json_str
 
 class ExtendedDjangoJSONEncoder(DjangoJSONEncoder):
     def default(self, o):
