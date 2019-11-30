@@ -16,6 +16,7 @@ from jsonrpc import proxy
 from wacryptolib.encryption import _encrypt_via_rsa_oaep
 from wacryptolib.key_generation import load_asymmetric_key_from_pem_bytestring
 from wacryptolib.signature import verify_message_signature
+from wacryptolib.utilities import generate_uuid0
 from waescrow import escrow_api
 from waescrow.escrow_api import SqlKeyStorage
 from waescrow.models import EscrowKeypair
@@ -36,9 +37,9 @@ def test_sql_key_storage(db):
 
     key_storage = SqlKeyStorage()
 
-    keychain_uid1 = uuid.uuid4()
-    keychain_uid2 = uuid.uuid4()
-    keychain_uid_unexisting = uuid.uuid4()
+    keychain_uid1 = generate_uuid0()
+    keychain_uid2 = generate_uuid0()
+    keychain_uid_unexisting = generate_uuid0()
 
     key_storage.set_keys(keychain_uid=keychain_uid1, key_type="RSA", public_key=b"pubkey", private_key=b"privkey")
     key_storage.set_keys(keychain_uid=keychain_uid2, key_type="RSA", public_key=b"pubkey2", private_key=b"privkey2")
@@ -70,7 +71,7 @@ def test_waescrow_escrow_api_workflow(db):
         client=Client(), service_url="/json/", version="2.0"
     )
 
-    keychain_uid = uuid.uuid4()
+    keychain_uid = generate_uuid0()
     key_type= "RSA"
     secret = get_random_bytes(101)
 
