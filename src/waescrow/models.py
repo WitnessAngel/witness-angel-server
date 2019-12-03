@@ -9,6 +9,10 @@ DECRYPTION_AUTHORIZATION_LIFESPAN_H = 24  # Access remains only authorized for t
 
 
 class EscrowKeypair(models.Model):
+    """
+    Stores key pairs attached to UUIDs.
+    Free keys are inserted with keychain_uid=None.
+    """
 
     class Meta:
         verbose_name = _("escrow key pair")
@@ -17,7 +21,7 @@ class EscrowKeypair(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
 
-    keychain_uid = models.UUIDField(_("Keychain uid"))
+    keychain_uid = models.UUIDField(_("Keychain uid"), null=True)
     key_type = models.CharField(_("Key type"), max_length=20)
     public_key = encrypt(models.BinaryField(_("Public key (PEM format)")))
     private_key = encrypt(models.BinaryField(_("Private key (PEM format)")))
@@ -25,4 +29,5 @@ class EscrowKeypair(models.Model):
     # When set, the private key can be accessed for DECRYPTION_AUTHORIZATION_LIFESPAN_H hours after this datetime
     decryption_authorized_at = models.DateTimeField(blank=True, null=True)  # FIXME TYPO!!!
 
-
+    def __repr__(self):
+        return "<EscrowKeypair (type=%s, uid=%s)>" % (self.key_type, self.keychain_uid)

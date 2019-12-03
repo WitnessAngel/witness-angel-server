@@ -15,6 +15,8 @@ from jsonrpc import proxy
 
 from wacryptolib.encryption import _encrypt_via_rsa_oaep
 from wacryptolib.key_generation import load_asymmetric_key_from_pem_bytestring
+from wacryptolib.scaffolding import check_key_storage_basic_get_set_api, check_key_storage_free_keys_api, \
+    check_key_storage_free_keys_concurrency
 from wacryptolib.signature import verify_message_signature
 from wacryptolib.utilities import generate_uuid0
 from waescrow import escrow_api
@@ -33,36 +35,25 @@ def _get_jsonrpc_result(response_dict):
     return response_dict["result"]
 
 
-def test_sql_key_storage(db):
+def test_sql_key_storage_basic_and_free_keys_api(db):  # FIXME factorize
 
-    key_storage = SqlKeyStorage()
+    sql_key_storage = SqlKeyStorage()
 
-    keychain_uid1 = generate_uuid0()
-    keychain_uid2 = generate_uuid0()
-    keychain_uid_unexisting = generate_uuid0()
+    test_locals = check_key_storage_basic_get_set_api(sql_key_storage)
+    keychain_uid = test_locals["keychain_uid"]
+    key_type = test_locals["key_type"]
 
-    key_storage.set_keys(keychain_uid=keychain_uid1, key_type="RSA", public_key=b"pubkey", private_key=b"privkey")
-    key_storage.set_keys(keychain_uid=keychain_uid2, key_type="RSA", public_key=b"pubkey2", private_key=b"privkey2")
-    key_storage.set_keys(keychain_uid=keychain_uid1, key_type="DSA", public_key=b"pubkey3", private_key=b"privkey3")
-    key_storage.set_keys(keychain_uid=keychain_uid2, key_type="DSA", public_key=b"pubkey4", private_key=b"privkey4")
-
-    assert key_storage.get_public_key(keychain_uid=keychain_uid1, key_type="RSA") == b"pubkey"
-    assert key_storage.get_private_key(keychain_uid=keychain_uid1, key_type="RSA") == b"privkey"
-
-    assert key_storage.get_public_key(keychain_uid=keychain_uid2, key_type="RSA") == b"pubkey2"
-    assert key_storage.get_private_key(keychain_uid=keychain_uid2, key_type="RSA") == b"privkey2"
-
-    assert key_storage.get_public_key(keychain_uid=keychain_uid1, key_type="DSA") == b"pubkey3"
-    assert key_storage.get_private_key(keychain_uid=keychain_uid1, key_type="DSA") == b"privkey3"
-
-    assert key_storage.get_public_key(keychain_uid=keychain_uid2, key_type="DSA") == b"pubkey4"
-    assert key_storage.get_private_key(keychain_uid=keychain_uid2, key_type="DSA") == b"privkey4"
-
-    assert key_storage.get_public_key(keychain_uid=keychain_uid_unexisting, key_type="RSA") == None
-    assert key_storage.get_private_key(keychain_uid=keychain_uid_unexisting, key_type="RSA") == None
+    check_key_storage_free_keys_api(sql_key_storage)
 
     with pytest.raises(IntegrityError):  # Final tests, since it breaks current DB transaction
-        key_storage.set_keys(keychain_uid=keychain_uid1, key_type="RSA", public_key=b"xyz", private_key=b"zyx")
+        EscrowKeypair.objects.create(keychain_uid=keychain_uid, key_type=key_type, public_key=b"hhhh", private_key=b"jjj")
+
+
+@pytest.mark.django_db(transaction=True)
+def test_sql_key_storage_free_keys_concurrent_transactions():
+    """This test runs outside SQL transactions, and checks the handling of concurrency via threading locks."""
+    sql_key_storage = SqlKeyStorage()
+    check_key_storage_free_keys_concurrency(sql_key_storage)
 
 
 def test_waescrow_escrow_api_workflow(db):

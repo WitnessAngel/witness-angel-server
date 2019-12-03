@@ -80,7 +80,13 @@ DATABASES = {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": os.path.join(BASE_DIR, "db.sqlite3"),
         "ATOMIC_REQUESTS": True,
+        'TEST': {"NAME": os.path.join(BASE_DIR, "test_db.sqlite3")},  # Necessary to have proper concurrency timeouts
+        'OPTIONS': {
+            'timeout': 2,  # Wait timeout for DB table locking, in seconds (seems broken in tests)
+            # see also https://docs.python.org/3.7/library/sqlite3.html#sqlite3.connect
+        }
     }
+
 }
 
 
