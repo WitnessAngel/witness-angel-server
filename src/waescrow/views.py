@@ -3,7 +3,7 @@ from jsonrpc import jsonrpc_method
 from jsonrpc.site import JsonRpcSite
 
 from wacryptolib.utilities import load_from_json_str, dump_to_json_str
-from waescrow.escrow_api import SQL_ESCROW_API
+from waescrow.escrow import SQL_ESCROW_API
 
 # MONKEY-PATCH django-jsonrpc package so that it uses Extended Json in CANONICAL form on responses
 from jsonrpc import site
@@ -56,4 +56,11 @@ def decrypt_with_private_key(request, keychain_uid, key_type, encryption_algo, c
         key_type=key_type,
         encryption_algo=encryption_algo,
         cipherdict=cipherdict,
+    )
+
+@jsonrpc_method("request_decryption_authorization", site=extended_jsonrpc_site)
+def request_decryption_authorization(request, keypair_identifiers, request_message):
+    del request
+    return SQL_ESCROW_API.request_decryption_authorization(
+            keypair_identifiers=keypair_identifiers, request_message=request_message
     )

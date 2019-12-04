@@ -9,6 +9,14 @@ from wacryptolib.escrow import KeyStorageBase, EscrowApi
 from waescrow.models import EscrowKeypair, DECRYPTION_AUTHORIZATION_LIFESPAN_H
 
 
+# TODO add "fetch object which must exist" utility method!
+def _fetch_key_object_or_none(keychain_uid: uuid.UUID, key_type: str) -> EscrowKeypair:
+    try:
+        return EscrowKeypair.objects.get(keychain_uid=keychain_uid, key_type=key_type)
+    except EscrowKeypair.DoesNotExist:
+        return None
+
+
 class SqlKeyStorage(KeyStorageBase):
     """
     Store keys in records of SQL DB.
@@ -22,15 +30,9 @@ class SqlKeyStorage(KeyStorageBase):
 
     _lock = threading.Lock()  # Process-wide lock
 
-    def _fetch_key_object_or_none(self, keychain_uid: uuid.UUID, key_type: str) -> EscrowKeypair:
-        try:
-            return EscrowKeypair.objects.get(keychain_uid=keychain_uid, key_type=key_type)
-        except EscrowKeypair.DoesNotExist:
-            return None
-
     def _ensure_keypair_does_not_exist(self, keychain_uid, key_type):
         # program might still raise IntegrityError if the same key is inserted concurrently
-        if self._fetch_key_object_or_none(keychain_uid=keychain_uid, key_type=key_type):
+        if _fetch_key_object_or_none(keychain_uid=keychain_uid, key_type=key_type):
             raise RuntimeError(
                 "Already existing sql keypair %s/%s" % (keychain_uid, key_type)
             )
@@ -43,12 +45,12 @@ class SqlKeyStorage(KeyStorageBase):
 
     @synchronized
     def get_public_key(self, *, keychain_uid: uuid.UUID, key_type: str) -> bytes:
-        keypair_obj_or_none = self._fetch_key_object_or_none(keychain_uid=keychain_uid, key_type=key_type)
+        keypair_obj_or_none = _fetch_key_object_or_none(keychain_uid=keychain_uid, key_type=key_type)
         return keypair_obj_or_none.public_key if keypair_obj_or_none else None
 
     @synchronized
     def get_private_key(self, *, keychain_uid: uuid.UUID, key_type: str) -> bytes:
-        keypair_obj_or_none = self._fetch_key_object_or_none(keychain_uid=keychain_uid, key_type=key_type)
+        keypair_obj_or_none = _fetch_key_object_or_none(keychain_uid=keychain_uid, key_type=key_type)
         return keypair_obj_or_none.private_key if keypair_obj_or_none else None
 
     @synchronized
@@ -68,6 +70,8 @@ class SqlKeyStorage(KeyStorageBase):
         self, *, keychain_uid: uuid.UUID, key_type: str
     ):
         self._ensure_keypair_does_not_exist(keychain_uid=keychain_uid, key_type=key_type)
+
+        # Beware, SPECIAL LOOKUP for the first available free key, here
         keypair_obj_or_none = EscrowKeypair.objects.filter(keychain_uid=None, key_type=key_type).first()
         if not keypair_obj_or_none:
             raise RuntimeError(
@@ -78,6 +82,9 @@ class SqlKeyStorage(KeyStorageBase):
 
 
 class SqlEscrowApi(EscrowApi):
+
+    DECRYPTION_AUTHORIZATION_GRACE_PERIOD_S = 5 * 60
+
     def decrypt_with_private_key(self,
             keychain_uid,
             key_type,
@@ -85,9 +92,11 @@ class SqlEscrowApi(EscrowApi):
             cipherdict):
 
         # TODO - a redesign of the API could prevent the double DB lookup here, but not sure if it's useful on the long term...
-        keypair_obj = EscrowKeypair.objects.get(keychain_uid=keychain_uid, key_type=key_type)
+        keypair_obj_or_none = _fetch_key_object_or_none(keychain_uid=keychain_uid, key_type=key_type)
+        if not keypair_obj_or_none:  # Redundant with checks in decrypt_with_private_key()
+            raise ValueError("Unexisting sql keypair %s/%s in SQL escrow api" % (keychain_uid, key_type))
 
-        decryption_authorized_at = keypair_obj.decryption_authorized_at
+        decryption_authorized_at = keypair_obj_or_none.decryption_authorized_at
 
         if not decryption_authorized_at:
             raise RuntimeError("Decryption not authorized")  # TODO better exception class
@@ -97,6 +106,38 @@ class SqlEscrowApi(EscrowApi):
             raise RuntimeError("Decryption authorization is not currently active")  # TODO better exception class
 
         return super().decrypt_with_private_key(keychain_uid=keychain_uid, key_type=key_type,encryption_algo=encryption_algo, cipherdict=cipherdict)
+
+    def request_decryption_authorization(self,
+                                                                                  keypair_identifiers,
+                                                                                  request_message
+                                         ):
+        success_count = 0
+        too_old_count = 0
+        not_found_count = 0
+
+        now = timezone.now()
+        min_created_at = now - timedelta(seconds=self.DECRYPTION_AUTHORIZATION_GRACE_PERIOD_S)
+
+        for keypair_identifier in keypair_identifiers:
+            keypair_obj_or_none = _fetch_key_object_or_none(keychain_uid=keypair_identifier["keychain_uid"],
+                                                                 key_type=keypair_identifier["key_type"])
+            if keypair_obj_or_none is None:
+                not_found_count += 1
+                continue
+            elif keypair_obj_or_none.created_at < min_created_at:
+                too_old_count += 1
+            else:
+                keypair_obj_or_none.decryption_authorized_at = now  # Might renew existing authorization
+                keypair_obj_or_none.save()
+                success_count += 1
+
+        response_message = f"Authorization provided for {success_count} key pairs, rejected for {too_old_count} " \
+                           f"key pairs due to age, and to {not_found_count} key pairs not found"
+
+        return dict(response_message=response_message,
+                    success_count=success_count,
+                    too_old_count=too_old_count,
+                    not_found_count=not_found_count)
 
 
 SQL_ESCROW_API = SqlEscrowApi(key_storage=SqlKeyStorage())
