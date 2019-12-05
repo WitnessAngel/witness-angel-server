@@ -108,8 +108,8 @@ class SqlEscrowApi(EscrowApi):
         return super().decrypt_with_private_key(keychain_uid=keychain_uid, key_type=key_type,encryption_algo=encryption_algo, cipherdict=cipherdict)
 
     def request_decryption_authorization(self,
-                                                                                  keypair_identifiers,
-                                                                                  request_message
+                                 keypair_identifiers,
+                                 request_message
                                          ):
         success_count = 0
         too_old_count = 0

@@ -14,6 +14,7 @@ from bson.json_util import dumps, loads
 from jsonrpc import proxy
 
 from wacryptolib.encryption import _encrypt_via_rsa_oaep
+from wacryptolib.jsonrpc_client import JsonRpcProxy, status_slugs_response_error_handler
 from wacryptolib.key_generation import load_asymmetric_key_from_pem_bytestring
 from wacryptolib.scaffolding import check_key_storage_basic_get_set_api, check_key_storage_free_keys_api, \
     check_key_storage_free_keys_concurrency
@@ -29,7 +30,7 @@ assert proxy.dumps
 proxy.dumps = dumps
 
 
-def _get_jsonrpc_result(response_dict):
+def ___OBSOLETE_get_jsonrpc_result(response_dict):
     assert isinstance(response_dict, dict)
     assert "error" not in response_dict
     return response_dict["result"]
@@ -60,25 +61,25 @@ def test_sql_key_storage_free_keys_concurrent_transactions():
 
 
 # TODO factorize this test with part of wacryptolib testsuite
-def test_waescrow_escrow_api_workflow(db):
+def test_waescrow_escrow_api_workflow(live_server):
 
-    escrow_proxy = TestingServiceProxy(
-        client=Client(), service_url="/json/", version="2.0"
-    )
+    jsonrpc_url = live_server.url + "/json/"  # FIXME change url!!
+
+    escrow_proxy = JsonRpcProxy(url=jsonrpc_url, response_error_handler=status_slugs_response_error_handler)
 
     keychain_uid = generate_uuid0()
     keychain_uid_bad = generate_uuid0()
     key_type= "RSA"
     secret = get_random_bytes(101)
 
-    public_key_pem = _get_jsonrpc_result(escrow_proxy.get_public_key(keychain_uid=keychain_uid, key_type=key_type))
+    public_key_pem = escrow_proxy.get_public_key(keychain_uid=keychain_uid, key_type=key_type)
     public_key = load_asymmetric_key_from_pem_bytestring(
         key_pem=public_key_pem, key_type=key_type
     )
 
-    signature = _get_jsonrpc_result(escrow_proxy.get_message_signature(
+    signature = escrow_proxy.get_message_signature(
             keychain_uid=keychain_uid, message=secret, key_type=key_type, signature_algo="PSS"
-    ))
+    )
     verify_message_signature(
         message=secret, signature=signature, key=public_key, signature_algo="PSS"
     )
@@ -110,18 +111,16 @@ def test_waescrow_escrow_api_workflow(db):
 
         frozen_datetime.tick(delta=timedelta(hours=3))
 
-        decrypted = _get_jsonrpc_result(_attempt_decryption())
+        decrypted = _attempt_decryption()
         assert decrypted == secret  # It works!
 
-        with pytest.raises(ValueError, match="Unexisting"):
-            # Django test client reraises signalled exception
+        with pytest.raises(ValueError, match="Unexisting sql keypair"):
             escrow_proxy.decrypt_with_private_key(
                     keychain_uid=keychain_uid_bad, key_type=key_type, encryption_algo="RSA_OAEP", cipherdict=cipherdict
             )
 
         cipherdict["digest_list"].append(b"aaabbbccc")
         with pytest.raises(ValueError, match="Ciphertext with incorrect length"):
-            # Django test client reraises signalled exception
             escrow_proxy.decrypt_with_private_key(
                     keychain_uid=keychain_uid, key_type=key_type, encryption_algo="RSA_OAEP", cipherdict=cipherdict
             )
@@ -152,20 +151,20 @@ def test_waescrow_escrow_api_workflow(db):
             dict(keychain_uid=keychain_uid4, key_type=key_type),
             dict(keychain_uid=keychain_uid_unexisting, key_type=key_type)]
 
-        public_key_pem = _get_jsonrpc_result(escrow_proxy.get_public_key(keychain_uid=keychain_uid1, key_type=key_type))
+        public_key_pem = escrow_proxy.get_public_key(keychain_uid=keychain_uid1, key_type=key_type)
         assert public_key_pem
         assert not _fetch_key_object_or_none(keychain_uid=keychain_uid1, key_type=key_type).decryption_authorized_at
 
-        result = _get_jsonrpc_result(escrow_proxy.request_decryption_authorization(keypair_identifiers=[],
-                                         request_message="I want decryption!"))
+        result = escrow_proxy.request_decryption_authorization(keypair_identifiers=[],
+                                         request_message="I want decryption!")
         assert result["success_count"] == 0
         assert result["too_old_count"] == 0
         assert result["not_found_count"] == 0
 
         frozen_datetime.tick(delta=timedelta(minutes=2))
 
-        result = _get_jsonrpc_result(escrow_proxy.request_decryption_authorization(keypair_identifiers=all_keypair_identifiers,
-                                         request_message="I want decryption!"))
+        result = escrow_proxy.request_decryption_authorization(keypair_identifiers=all_keypair_identifiers,
+                                         request_message="I want decryption!")
         assert result["success_count"] == 1
         assert result["too_old_count"] == 0
         assert result["not_found_count"] == 4  # keychain_uid2 and keychain_uid3 not created yet
@@ -173,15 +172,15 @@ def test_waescrow_escrow_api_workflow(db):
         old_decryption_authorized_at = _fetch_key_object_or_none(keychain_uid=keychain_uid1, key_type=key_type).decryption_authorized_at
         assert old_decryption_authorized_at
 
-        public_key_pem = _get_jsonrpc_result(escrow_proxy.get_public_key(keychain_uid=keychain_uid2, key_type=key_type))
+        public_key_pem = escrow_proxy.get_public_key(keychain_uid=keychain_uid2, key_type=key_type)
         assert public_key_pem
-        public_key_pem = _get_jsonrpc_result(escrow_proxy.get_public_key(keychain_uid=keychain_uid3, key_type=key_type))
+        public_key_pem = escrow_proxy.get_public_key(keychain_uid=keychain_uid3, key_type=key_type)
         assert public_key_pem
 
         frozen_datetime.tick(delta=timedelta(minutes=4))
 
-        result = _get_jsonrpc_result(escrow_proxy.request_decryption_authorization(keypair_identifiers=all_keypair_identifiers,
-                                         request_message="I want decryption!"))
+        result = escrow_proxy.request_decryption_authorization(keypair_identifiers=all_keypair_identifiers,
+                                         request_message="I want decryption!")
         assert result["success_count"] == 2
         assert result["too_old_count"] == 1
         assert result["not_found_count"] == 2
@@ -192,13 +191,13 @@ def test_waescrow_escrow_api_workflow(db):
 
         assert not _fetch_key_object_or_none(keychain_uid=keychain_uid_unexisting, key_type=key_type)  # Unexisting still!
 
-        public_key_pem = _get_jsonrpc_result(escrow_proxy.get_public_key(keychain_uid=keychain_uid4, key_type=key_type))
+        public_key_pem = escrow_proxy.get_public_key(keychain_uid=keychain_uid4, key_type=key_type)
         assert public_key_pem
 
         frozen_datetime.tick(delta=timedelta(minutes=6))
 
-        result = _get_jsonrpc_result(escrow_proxy.request_decryption_authorization(keypair_identifiers=all_keypair_identifiers,
-                                         request_message="I want decryption!"))
+        result = escrow_proxy.request_decryption_authorization(keypair_identifiers=all_keypair_identifiers,
+                                         request_message="I want decryption!")
         assert result["success_count"] == 0
         assert result["too_old_count"] == 4
         assert result["not_found_count"] == 1
