@@ -71,6 +71,7 @@ def test_waescrow_escrow_api_workflow(live_server):
     keychain_uid_bad = generate_uuid0()
     key_type= "RSA"
     secret = get_random_bytes(101)
+    secret_too_big = get_random_bytes(150)
 
     public_key_pem = escrow_proxy.get_public_key(keychain_uid=keychain_uid, key_type=key_type)
     public_key = load_asymmetric_key_from_pem_bytestring(
@@ -80,6 +81,13 @@ def test_waescrow_escrow_api_workflow(live_server):
     signature = escrow_proxy.get_message_signature(
             keychain_uid=keychain_uid, message=secret, key_type=key_type, signature_algo="PSS"
     )
+
+    with pytest.raises(ValueError, match="too big"):
+        escrow_proxy.get_message_signature(
+            keychain_uid=keychain_uid, message=secret_too_big, key_type="DSA", signature_algo="DSS"
+        )
+
+
     verify_message_signature(
         message=secret, signature=signature, key=public_key, signature_algo="PSS"
     )
