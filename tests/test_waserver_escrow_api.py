@@ -13,9 +13,11 @@ from jsonrpc.proxy import TestingServiceProxy
 from bson.json_util import dumps, loads
 from jsonrpc import proxy
 
+from wacryptolib.container import encrypt_data_into_container, decrypt_data_from_container
 from wacryptolib.encryption import _encrypt_via_rsa_oaep
 from wacryptolib.jsonrpc_client import JsonRpcProxy, status_slugs_response_error_handler
 from wacryptolib.key_generation import load_asymmetric_key_from_pem_bytestring
+from wacryptolib.key_storage import DummyKeyStorage
 from wacryptolib.scaffolding import check_key_storage_basic_get_set_api, check_key_storage_free_keys_api, \
     check_key_storage_free_keys_concurrency
 from wacryptolib.signature import verify_message_signature
@@ -87,7 +89,6 @@ def test_waescrow_escrow_api_workflow(live_server):
             keychain_uid=keychain_uid, message=secret_too_big, key_type="DSA", signature_algo="DSS"
         )
 
-
     verify_message_signature(
         message=secret, signature=signature, key=public_key, signature_algo="PSS"
     )
@@ -114,7 +115,7 @@ def test_waescrow_escrow_api_workflow(live_server):
         keypair_obj.decryption_authorized_at = timezone.now() + timedelta(hours = 2)
         keypair_obj.save()
 
-        with pytest.raises(RuntimeError, match="Decryption authorization is not currently active"):
+        with pytest.raises(RuntimeError, match="Decryption authorization is only valid from"):
             _attempt_decryption()  # Too early
 
         frozen_datetime.tick(delta=timedelta(hours=3))
@@ -135,7 +136,7 @@ def test_waescrow_escrow_api_workflow(live_server):
 
         frozen_datetime.tick(delta=timedelta(hours=24))  # We hardcode DECRYPTION_AUTHORIZATION_LIFESPAN_H here
 
-        with pytest.raises(RuntimeError, match="Decryption authorization is not currently active"):
+        with pytest.raises(RuntimeError, match="Decryption authorization is only valid from"):
             _attempt_decryption()  # Too late, cipherdict is not even used so no ValueError
 
         keypair_obj.decryption_authorized_at = None
@@ -211,6 +212,83 @@ def test_waescrow_escrow_api_workflow(live_server):
         assert result["not_found_count"] == 1
 
         assert _fetch_key_object_or_none(keychain_uid=keychain_uid1, key_type=key_type).decryption_authorized_at == old_decryption_authorized_at  # Unchanged
+
+
+def test_waescrow_escrow_api_encrypt_decrypt_container(live_server):
+
+    jsonrpc_url = live_server.url + "/json/"  # FIXME change url!!
+
+    encryption_conf = dict(
+        data_encryption_strata=[
+            # First we encrypt with local key and sign via main remote escrow
+            dict(
+                data_encryption_algo="AES_EAX",
+                key_encryption_strata=[
+                    dict(
+                        escrow_key_type="RSA",
+                        key_encryption_algo="RSA_OAEP",
+                        key_escrow=dict(url=jsonrpc_url),
+                    )
+                ],
+                data_signatures=[
+                    dict(
+                        signature_key_type="DSA",
+                        message_prehash_algo="SHA512",
+                        signature_algo="DSS",
+                        signature_escrow=dict(url=jsonrpc_url),
+                    )
+                ],
+            )])
+
+
+    # CASE 1: authorization request well sent a short time after creation of "keychain_uid" keypair, so decryption is accepted
+
+    with freeze_time() as frozen_datetime:
+
+        keychain_uid = generate_uuid0()
+        data = get_random_bytes(101)
+        local_key_storage = DummyKeyStorage()
+
+        container = encrypt_data_into_container(
+            data=data,
+            conf=encryption_conf,
+            metadata=None,
+            keychain_uid=keychain_uid,
+            local_key_storage=local_key_storage  # Unused by this config actually
+        )
+
+        frozen_datetime.tick(delta=timedelta(minutes=3))
+        # This call requests an authorization along the way
+        decrypted_data = decrypt_data_from_container(container=container, local_key_storage=local_key_storage)
+        assert decrypted_data == data
+
+        frozen_datetime.tick(delta=timedelta(hours=23))  # Once authorization is granted, it stays so for al ong time
+        decrypted_data = decrypt_data_from_container(container=container, local_key_storage=local_key_storage)
+        assert decrypted_data == data
+
+        frozen_datetime.tick(delta=timedelta(hours=2))  # Authorization has expired, and grace period to get one has long expired
+        with pytest.raises(RuntimeError, match="Decryption authorization is only valid from"):
+            decrypt_data_from_container(container=container, local_key_storage=local_key_storage)
+
+    # CASE 2: authorization request sent too late after creation of "keychain_uid" keypair, so decryption is rejected
+
+    with freeze_time() as frozen_datetime:
+
+        keychain_uid = generate_uuid0()
+        data = get_random_bytes(101)
+        local_key_storage = DummyKeyStorage()
+
+        container = encrypt_data_into_container(
+            data=data,
+            conf=encryption_conf,
+            metadata=None,
+            keychain_uid=keychain_uid,
+            local_key_storage=local_key_storage  # Unused by this config actually
+        )
+
+        frozen_datetime.tick(delta=timedelta(minutes=6))  # More than the 5 minutes grace period
+        with pytest.raises(RuntimeError, match="Decryption not authorized"):
+            decrypt_data_from_container(container=container, local_key_storage=local_key_storage)
 
 
 def test_waescrow_wsgi_application(db):

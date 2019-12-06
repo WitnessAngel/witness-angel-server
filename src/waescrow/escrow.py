@@ -101,16 +101,22 @@ class SqlEscrowApi(EscrowApi):
         if not decryption_authorized_at:
             raise RuntimeError("Decryption not authorized")  # TODO better exception class
 
+        decryption_authorized_until = decryption_authorized_at + timedelta(hours=DECRYPTION_AUTHORIZATION_LIFESPAN_H)
+
         now = timezone.now()
-        if not (decryption_authorized_at < now < decryption_authorized_at + timedelta(hours=DECRYPTION_AUTHORIZATION_LIFESPAN_H)):
-            raise RuntimeError("Decryption authorization is not currently active")  # TODO better exception class
+        _format_datetime =  lambda dt: dt.isoformat(sep="_", timespec="seconds")
+
+        if not (decryption_authorized_at <= now <= decryption_authorized_until):
+            raise RuntimeError("Decryption authorization is only valid from %s to %s (current time: %s)" %
+                               (_format_datetime(decryption_authorized_at),
+                                _format_datetime(decryption_authorized_until),
+                                _format_datetime(now)))  # TODO better exception class
 
         return super().decrypt_with_private_key(keychain_uid=keychain_uid, key_type=key_type,encryption_algo=encryption_algo, cipherdict=cipherdict)
 
     def request_decryption_authorization(self,
                                  keypair_identifiers,
-                                 request_message
-                                         ):
+                                 request_message):
         success_count = 0
         too_old_count = 0
         not_found_count = 0
@@ -131,8 +137,7 @@ class SqlEscrowApi(EscrowApi):
                 keypair_obj_or_none.save()
                 success_count += 1
 
-        response_message = f"Authorization provided for {success_count} key pairs, rejected for {too_old_count} " \
-                           f"key pairs due to age, and to {not_found_count} key pairs not found"
+        response_message = f"Authorization provided to {success_count} key pairs for {DECRYPTION_AUTHORIZATION_LIFESPAN_H}h, rejected for {too_old_count} key pairs due to age, and impossible for {not_found_count} key pairs not found"
 
         return dict(response_message=response_message,
                     success_count=success_count,
