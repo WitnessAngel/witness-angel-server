@@ -66,3 +66,6 @@ sphinx-autodoc-typehints = "^1.6"
 sphinx_rtd_theme = "^0.4.3"
 toml = "^0.10.0"
 
+# Frozen executable building
+pyinstaller = "^3.5"
+

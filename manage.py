@@ -4,12 +4,16 @@ import os
 import sys
 import pathlib
 
-ROOT = pathlib.Path(__file__).resolve().parents[0]
-assert (ROOT / "manage.py").exists()
-sys.path.append(str(ROOT / "src"))
+executable_is_frozen = getattr(sys, 'frozen', False)
 
+if not executable_is_frozen:
+    # Ensure application code is importable
+    root_dir = pathlib.Path(__file__).resolve().parents[0]
+    assert (root_dir / "manage.py").exists(), (root_dir / "manage.py")
+    sys.path.append(str(root_dir / "src"))
 
 def main():
+    import waescrow.settings
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "waescrow.settings")
     try:
         from django.core.management import execute_from_command_line
