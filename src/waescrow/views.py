@@ -59,19 +59,18 @@ def get_public_key(request, keychain_uid, key_type):
 
 @jsonrpc_method("get_message_signature", site=extended_jsonrpc_site)
 @convert_exceptions_to_jsonrpc_status_slugs
-def get_message_signature(request, keychain_uid, message, key_type, signature_algo):
+def get_message_signature(request, keychain_uid, message, signature_algo):
     del request
     return SQL_ESCROW_API.get_message_signature(
-            keychain_uid=keychain_uid, message=message, key_type=key_type, signature_algo=signature_algo
+            keychain_uid=keychain_uid, message=message, signature_algo=signature_algo
     )
 
 @jsonrpc_method("decrypt_with_private_key", site=extended_jsonrpc_site)
 @convert_exceptions_to_jsonrpc_status_slugs
-def decrypt_with_private_key(request, keychain_uid, key_type, encryption_algo, cipherdict):
+def decrypt_with_private_key(request, keychain_uid, encryption_algo, cipherdict):
     del request
     return SQL_ESCROW_API.decrypt_with_private_key(
-            keychain_uid=keychain_uid,
-        key_type=key_type,
+        keychain_uid=keychain_uid,
         encryption_algo=encryption_algo,
         cipherdict=cipherdict,
     )

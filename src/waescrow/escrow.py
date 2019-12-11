@@ -87,14 +87,13 @@ class SqlEscrowApi(EscrowApi):
 
     def decrypt_with_private_key(self,
             keychain_uid,
-            key_type,
             encryption_algo,
             cipherdict):
 
         # TODO - a redesign of the API could prevent the double DB lookup here, but not sure if it's useful on the long term...
-        keypair_obj_or_none = _fetch_key_object_or_none(keychain_uid=keychain_uid, key_type=key_type)
+        keypair_obj_or_none = _fetch_key_object_or_none(keychain_uid=keychain_uid, key_type=encryption_algo)
         if not keypair_obj_or_none:  # Redundant with checks in decrypt_with_private_key()
-            raise ValueError("Unexisting sql keypair %s/%s in SQL escrow api" % (keychain_uid, key_type))
+            raise ValueError("Unexisting sql keypair %s/%s in SQL escrow api" % (keychain_uid, encryption_algo))
 
         decryption_authorized_at = keypair_obj_or_none.decryption_authorized_at
 
@@ -112,7 +111,7 @@ class SqlEscrowApi(EscrowApi):
                                 _format_datetime(decryption_authorized_until),
                                 _format_datetime(now)))  # TODO better exception class
 
-        return super().decrypt_with_private_key(keychain_uid=keychain_uid, key_type=key_type,encryption_algo=encryption_algo, cipherdict=cipherdict)
+        return super().decrypt_with_private_key(keychain_uid=keychain_uid, encryption_algo=encryption_algo, cipherdict=cipherdict)
 
     def request_decryption_authorization(self,
                                  keypair_identifiers,

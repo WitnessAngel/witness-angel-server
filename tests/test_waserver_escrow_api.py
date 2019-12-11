@@ -71,39 +71,45 @@ def test_waescrow_escrow_api_workflow(live_server):
 
     keychain_uid = generate_uuid0()
     keychain_uid_bad = generate_uuid0()
-    key_type= "RSA"
+    key_encryption_algo = "RSA_OAEP"
+    signature_algo = "DSA_DSS"
     secret = get_random_bytes(101)
     secret_too_big = get_random_bytes(150)
 
-    public_key_pem = escrow_proxy.get_public_key(keychain_uid=keychain_uid, key_type=key_type)
-    public_key = load_asymmetric_key_from_pem_bytestring(
-        key_pem=public_key_pem, key_type=key_type
+    public_key_encryption_pem = escrow_proxy.get_public_key(keychain_uid=keychain_uid, key_type=key_encryption_algo)
+    public_key_encryption = load_asymmetric_key_from_pem_bytestring(
+        key_pem=public_key_encryption_pem, key_type=key_encryption_algo
+    )
+
+    public_key_signature_pem = escrow_proxy.get_public_key(keychain_uid=keychain_uid, key_type=signature_algo)
+    public_key_signature = load_asymmetric_key_from_pem_bytestring(
+        key_pem=public_key_signature_pem, key_type=signature_algo
     )
 
     signature = escrow_proxy.get_message_signature(
-            keychain_uid=keychain_uid, message=secret, key_type=key_type, signature_algo="PSS"
+            keychain_uid=keychain_uid, message=secret, signature_algo=signature_algo
     )
 
     with pytest.raises(ValueError, match="too big"):
         escrow_proxy.get_message_signature(
-            keychain_uid=keychain_uid, message=secret_too_big, key_type="DSA", signature_algo="DSS"
+            keychain_uid=keychain_uid, message=secret_too_big, signature_algo=signature_algo
         )
 
     verify_message_signature(
-        message=secret, signature=signature, key=public_key, signature_algo="PSS"
+        message=secret, signature=signature, key=public_key_signature, signature_algo=signature_algo
     )
 
     signature["digest"] += b"xyz"
-    with pytest.raises(ValueError, match="Incorrect signature"):
+    with pytest.raises(ValueError, match="not authentic|Incorrect signature"):
         verify_message_signature(
-            message=secret, signature=signature, key=public_key, signature_algo="PSS"
+            message=secret, signature=signature, key=public_key_signature, signature_algo=signature_algo
         )
 
-    cipherdict = _encrypt_via_rsa_oaep(plaintext=secret, key=public_key)
+    cipherdict = _encrypt_via_rsa_oaep(plaintext=secret, key=public_key_encryption)
 
     def _attempt_decryption():
         return escrow_proxy.decrypt_with_private_key(
-                    keychain_uid=keychain_uid, key_type=key_type, encryption_algo="RSA_OAEP", cipherdict=cipherdict
+                    keychain_uid=keychain_uid, encryption_algo=key_encryption_algo, cipherdict=cipherdict
             )
 
     with freeze_time() as frozen_datetime:  # TEST AUTHORIZATION FLAG IN DB
@@ -111,7 +117,7 @@ def test_waescrow_escrow_api_workflow(live_server):
         with pytest.raises(RuntimeError, match="Decryption not authorized"):
             _attempt_decryption()
 
-        keypair_obj = EscrowKeypair.objects.get(keychain_uid=keychain_uid, key_type=key_type)
+        keypair_obj = EscrowKeypair.objects.get(keychain_uid=keychain_uid, key_type=key_encryption_algo)
         keypair_obj.decryption_authorized_at = timezone.now() + timedelta(hours = 2)
         keypair_obj.save()
 
@@ -125,13 +131,13 @@ def test_waescrow_escrow_api_workflow(live_server):
 
         with pytest.raises(ValueError, match="Unexisting sql keypair"):
             escrow_proxy.decrypt_with_private_key(
-                    keychain_uid=keychain_uid_bad, key_type=key_type, encryption_algo="RSA_OAEP", cipherdict=cipherdict
+                    keychain_uid=keychain_uid_bad, encryption_algo=key_encryption_algo, cipherdict=cipherdict
             )
 
         cipherdict["digest_list"].append(b"aaabbbccc")
         with pytest.raises(ValueError, match="Ciphertext with incorrect length"):
             escrow_proxy.decrypt_with_private_key(
-                    keychain_uid=keychain_uid, key_type=key_type, encryption_algo="RSA_OAEP", cipherdict=cipherdict
+                    keychain_uid=keychain_uid, encryption_algo=key_encryption_algo, cipherdict=cipherdict
             )
 
         frozen_datetime.tick(delta=timedelta(hours=24))  # We hardcode DECRYPTION_AUTHORIZATION_LIFESPAN_H here
@@ -154,15 +160,15 @@ def test_waescrow_escrow_api_workflow(live_server):
         keychain_uid_unexisting = generate_uuid0()
 
         all_keypair_identifiers = [
-            dict(keychain_uid=keychain_uid1, key_type=key_type),
-            dict(keychain_uid=keychain_uid2, key_type=key_type),
-            dict(keychain_uid=keychain_uid3, key_type=key_type),
-            dict(keychain_uid=keychain_uid4, key_type=key_type),
-            dict(keychain_uid=keychain_uid_unexisting, key_type=key_type)]
+            dict(keychain_uid=keychain_uid1, key_type=key_encryption_algo),
+            dict(keychain_uid=keychain_uid2, key_type=key_encryption_algo),
+            dict(keychain_uid=keychain_uid3, key_type=key_encryption_algo),
+            dict(keychain_uid=keychain_uid4, key_type=key_encryption_algo),
+            dict(keychain_uid=keychain_uid_unexisting, key_type=key_encryption_algo)]
 
-        public_key_pem = escrow_proxy.get_public_key(keychain_uid=keychain_uid1, key_type=key_type)
+        public_key_pem = escrow_proxy.get_public_key(keychain_uid=keychain_uid1, key_type=key_encryption_algo)
         assert public_key_pem
-        assert not _fetch_key_object_or_none(keychain_uid=keychain_uid1, key_type=key_type).decryption_authorized_at
+        assert not _fetch_key_object_or_none(keychain_uid=keychain_uid1, key_type=key_encryption_algo).decryption_authorized_at
 
         result = escrow_proxy.request_decryption_authorization(keypair_identifiers=[],
                                          request_message="I want decryption!")
@@ -178,12 +184,12 @@ def test_waescrow_escrow_api_workflow(live_server):
         assert result["too_old_count"] == 0
         assert result["not_found_count"] == 4  # keychain_uid2 and keychain_uid3 not created yet
 
-        old_decryption_authorized_at = _fetch_key_object_or_none(keychain_uid=keychain_uid1, key_type=key_type).decryption_authorized_at
+        old_decryption_authorized_at = _fetch_key_object_or_none(keychain_uid=keychain_uid1, key_type=key_encryption_algo).decryption_authorized_at
         assert old_decryption_authorized_at
 
-        public_key_pem = escrow_proxy.get_public_key(keychain_uid=keychain_uid2, key_type=key_type)
+        public_key_pem = escrow_proxy.get_public_key(keychain_uid=keychain_uid2, key_type=key_encryption_algo)
         assert public_key_pem
-        public_key_pem = escrow_proxy.get_public_key(keychain_uid=keychain_uid3, key_type=key_type)
+        public_key_pem = escrow_proxy.get_public_key(keychain_uid=keychain_uid3, key_type=key_encryption_algo)
         assert public_key_pem
 
         frozen_datetime.tick(delta=timedelta(minutes=4))
@@ -194,13 +200,13 @@ def test_waescrow_escrow_api_workflow(live_server):
         assert result["too_old_count"] == 1
         assert result["not_found_count"] == 2
 
-        assert _fetch_key_object_or_none(keychain_uid=keychain_uid1, key_type=key_type).decryption_authorized_at == old_decryption_authorized_at  # Unchanged
-        assert _fetch_key_object_or_none(keychain_uid=keychain_uid2, key_type=key_type).decryption_authorized_at
-        assert _fetch_key_object_or_none(keychain_uid=keychain_uid3, key_type=key_type).decryption_authorized_at
+        assert _fetch_key_object_or_none(keychain_uid=keychain_uid1, key_type=key_encryption_algo).decryption_authorized_at == old_decryption_authorized_at  # Unchanged
+        assert _fetch_key_object_or_none(keychain_uid=keychain_uid2, key_type=key_encryption_algo).decryption_authorized_at
+        assert _fetch_key_object_or_none(keychain_uid=keychain_uid3, key_type=key_encryption_algo).decryption_authorized_at
 
-        assert not _fetch_key_object_or_none(keychain_uid=keychain_uid_unexisting, key_type=key_type)  # Unexisting still!
+        assert not _fetch_key_object_or_none(keychain_uid=keychain_uid_unexisting, key_type=key_encryption_algo)  # Unexisting still!
 
-        public_key_pem = escrow_proxy.get_public_key(keychain_uid=keychain_uid4, key_type=key_type)
+        public_key_pem = escrow_proxy.get_public_key(keychain_uid=keychain_uid4, key_type=key_encryption_algo)
         assert public_key_pem
 
         frozen_datetime.tick(delta=timedelta(minutes=6))
@@ -211,7 +217,7 @@ def test_waescrow_escrow_api_workflow(live_server):
         assert result["too_old_count"] == 4
         assert result["not_found_count"] == 1
 
-        assert _fetch_key_object_or_none(keychain_uid=keychain_uid1, key_type=key_type).decryption_authorized_at == old_decryption_authorized_at  # Unchanged
+        assert _fetch_key_object_or_none(keychain_uid=keychain_uid1, key_type=key_encryption_algo).decryption_authorized_at == old_decryption_authorized_at  # Unchanged
 
 
 def test_waescrow_escrow_api_encrypt_decrypt_container(live_server):
@@ -225,16 +231,14 @@ def test_waescrow_escrow_api_encrypt_decrypt_container(live_server):
                 data_encryption_algo="AES_EAX",
                 key_encryption_strata=[
                     dict(
-                        escrow_key_type="RSA",
                         key_encryption_algo="RSA_OAEP",
                         key_escrow=dict(url=jsonrpc_url),
                     )
                 ],
                 data_signatures=[
                     dict(
-                        signature_key_type="DSA",
                         message_prehash_algo="SHA512",
-                        signature_algo="DSS",
+                        signature_algo="DSA_DSS",
                         signature_escrow=dict(url=jsonrpc_url),
                     )
                 ],
