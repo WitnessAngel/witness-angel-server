@@ -19,7 +19,7 @@ if not executable_is_frozen:
     BASE_DIR = Path(__file__).resolve().parents[2]
     assert BASE_DIR.joinpath("manage.py").exists(), BASE_DIR
 else:
-    BASE_DIR = Path(sys.executable).parent
+    BASE_DIR = Path(sys.executable).parent  # pragma: no cover
 
 
 # Quick-start development settings - unsuitable for production
