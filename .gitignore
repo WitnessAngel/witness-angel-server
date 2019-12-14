@@ -214,6 +214,7 @@ fabric.properties
 /media/
 /static/
 /backups/
+/crashdumps/
 
 # django-extensions runserver_plus SSL
 cert.crt

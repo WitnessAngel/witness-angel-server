@@ -21,7 +21,6 @@ from django.contrib import admin
 from waescrow.views import extended_jsonrpc_site
 
 from . import views  # Register methods
-del views
 
 urlpatterns = [
     url(r"^json/browse/", jsonrpc.views.browse, name="jsonrpc_browser"),
@@ -31,5 +30,6 @@ urlpatterns = [
             extended_jsonrpc_site.dispatch,
         name="jsonrpc_getter_mountpoint",
     ),
+    url(r"^crashdumps/", views.crashdump_report_view),
     url(r"^admin/", admin.site.urls),
 ]

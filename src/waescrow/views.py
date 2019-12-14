@@ -1,14 +1,20 @@
 import builtins
+import logging
 
 import jsonrpc
 from decorator import decorator
+from django.conf import settings
 from django.core.serializers.json import DjangoJSONEncoder
+from django.http import HttpResponse, HttpResponseBadRequest
+from django.utils import timezone
 from jsonrpc import jsonrpc_method
 from jsonrpc.site import JsonRpcSite
 
 from wacryptolib.error_handling import StatusSlugsMapper
 from wacryptolib.utilities import load_from_json_str, dump_to_json_str
 from waescrow.escrow import SQL_ESCROW_API
+
+logger = logging.getLogger(__name__)
 
 # MONKEY-PATCH django-jsonrpc package so that it uses Extended Json in CANONICAL form on responses
 from jsonrpc import site
@@ -82,3 +88,15 @@ def request_decryption_authorization(request, keypair_identifiers, request_messa
     return SQL_ESCROW_API.request_decryption_authorization(
             keypair_identifiers=keypair_identifiers, request_message=request_message
     )
+
+
+def crashdump_report_view(request):
+
+    crashdump = request.POST.get("crashdump")
+    if not crashdump:
+        logger.warning("Empty crashdump report received")
+        return HttpResponseBadRequest(b"Missing crashdump field")
+
+    crashdump_path = settings.CRASHDUMPS_DIR.joinpath(timezone.now().strftime("%Y%m%d-%H%M%S-%f.dump"))
+    crashdump_path.write_text(crashdump, encoding="utf8")
+    return HttpResponse(b"OK")

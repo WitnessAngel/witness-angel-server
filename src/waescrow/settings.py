@@ -129,6 +129,12 @@ USE_TZ = True
 STATIC_URL = "/static/"
 
 
+# Folder from crashdumps received by webservice
+CRASHDUMPS_DIR = BASE_DIR.joinpath("crashdumps")
+CRASHDUMPS_DIR.mkdir(exist_ok=True)
+
+
 # Obsolete settings, just to satisfy PyInstaller
 TEMPLATE_CONTEXT_PROCESSORS = []
 TEMPLATE_LOADERS = []
+

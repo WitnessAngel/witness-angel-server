@@ -1,8 +1,10 @@
+import random
 import uuid
 from datetime import timedelta
 
 import pytest
 from Crypto.Random import get_random_bytes
+from django.conf import settings
 from django.db import IntegrityError
 from django.test import Client
 from django.utils import timezone
@@ -63,7 +65,7 @@ def test_sql_key_storage_free_keys_concurrent_transactions():
 
 
 # TODO factorize this test with part of wacryptolib testsuite
-def test_waescrow_escrow_api_workflow(live_server):
+def test_jsonrpc_escrow_api_workflow(live_server):
 
     jsonrpc_url = live_server.url + "/json/"  # FIXME change url!!
 
@@ -220,7 +222,7 @@ def test_waescrow_escrow_api_workflow(live_server):
         assert _fetch_key_object_or_none(keychain_uid=keychain_uid1, key_type=key_encryption_algo).decryption_authorized_at == old_decryption_authorized_at  # Unchanged
 
 
-def test_waescrow_escrow_api_encrypt_decrypt_container(live_server):
+def test_jsonrpc_escrow_api_encrypt_decrypt_container(live_server):
 
     jsonrpc_url = live_server.url + "/json/"  # FIXME change url!!
 
@@ -293,6 +295,25 @@ def test_waescrow_escrow_api_encrypt_decrypt_container(live_server):
         frozen_datetime.tick(delta=timedelta(minutes=6))  # More than the 5 minutes grace period
         with pytest.raises(RuntimeError, match="Decryption not authorized"):
             decrypt_data_from_container(container=container, local_key_storage=local_key_storage)
+
+
+def test_crashdump_reports(db):
+    client = Client()
+
+    crashdump = "sòme dâta %s" % random.randint(1, 10000)
+
+    res = client.post("/crashdumps/")
+    assert res.status_code == 400
+    assert res.content == b"Missing crashdump field"
+
+    res = client.post("/crashdumps/", data=dict(crashdump=crashdump))
+    assert res.status_code == 200
+    assert res.content == b"OK"
+
+    dump_files = sorted(settings.CRASHDUMPS_DIR.iterdir())
+    assert dump_files
+    dump_file_content = dump_files[-1].read_text(encoding="utf8")
+    assert dump_file_content == crashdump
 
 
 def test_waescrow_wsgi_application(db):
