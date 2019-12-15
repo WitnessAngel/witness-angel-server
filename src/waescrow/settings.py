@@ -154,19 +154,7 @@ LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
     "root": {"level": "DEBUG", "handlers": ["console"]},
-    "filters": {
-        "require_debug_false": {"()": "django.utils.log.RequireDebugFalse"},
-        "require_debug_true": {"()": "django.utils.log.RequireDebugTrue"},
-    },
     "formatters": {
-        "verbose": {
-            "format": (
-                "[%(name)s] %(asctime)s [%(process)d] [%(levelname)s] "
-                + "pathname=%(pathname)s lineno=%(lineno)s "
-                + "funcname=%(funcName)s %(message)s"
-            ),
-            "datefmt": "%Y-%m-%d %H:%M:%S",
-        },
         "simple": {
             "format": "[%(name)s] %(asctime)s [%(levelname)s] %(message)s",
             "datefmt": "%Y-%m-%d %H:%M:%S",
@@ -178,25 +166,10 @@ LOGGING = {
             "class": "logging.StreamHandler",
             "formatter": "simple",
         },
-        "console-verbose": {
-            "level": "DEBUG",
-            "class": "logging.StreamHandler",
-            "formatter": "verbose",
-        },
-        "mail_admins": {
-            "level": "ERROR",
-            "filters": ["require_debug_false"],
-            "class": "django.utils.log.AdminEmailHandler",
-        },
-    },
-    "loggers": {
-        "django": {"propagate": True, "level": "INFO", "handlers": ["mail_admins"]},
-        "django.request": {"propagate": False, "level": "ERROR"},
-        "security": {
-            "propagate": False,
-            "level": "ERROR",
-            "handlers": ["console-verbose"],
-        },
-        "axes": {"propagate": True, "level": "WARNING"},
     },
 }
+
+try:
+    from waescrow_prod_settings import *
+except ImportError:
+    pass  # Dev mode?
