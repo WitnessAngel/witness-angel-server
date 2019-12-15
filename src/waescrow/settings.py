@@ -16,7 +16,7 @@ from pathlib import Path
 
 from decouple import AutoConfig
 
-executable_is_frozen = getattr(sys, 'frozen', False)
+executable_is_frozen = getattr(sys, "frozen", False)
 
 if not executable_is_frozen:
     BASE_DIR = Path(__file__).resolve().parents[2]
@@ -37,7 +37,11 @@ SECRET_KEY = config("SECRET_KEY", cast=str)
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config("DEBUG", cast=bool, default=False)
 
-ALLOWED_HOSTS = config("ALLOWED_HOSTS", cast=lambda v: [s.strip() for s in v.split(',') if s.strip()], default=[])
+ALLOWED_HOSTS = config(
+    "ALLOWED_HOSTS",
+    cast=lambda v: [s.strip() for s in v.split(",") if s.strip()],
+    default=[],
+)
 
 # Application definition
 
@@ -92,13 +96,14 @@ DATABASES = {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": os.path.join(BASE_DIR, "db.sqlite3"),
         "ATOMIC_REQUESTS": False,  # IMPORTANT - prevents "database is locked" in sqlite
-        'TEST': {"NAME": os.path.join(BASE_DIR, "test_db.sqlite3")},  # Necessary to have proper concurrency timeouts
-        'OPTIONS': {
-            'timeout': 20,  # Wait timeout for DB table locking, in seconds (seems broken in tests)
+        "TEST": {
+            "NAME": os.path.join(BASE_DIR, "test_db.sqlite3")
+        },  # Necessary to have proper concurrency timeouts
+        "OPTIONS": {
+            "timeout": 20,  # Wait timeout for DB table locking, in seconds (seems broken in tests)
             # see also https://docs.python.org/3.7/library/sqlite3.html#sqlite3.connect
-        }
+        },
     }
-
 }
 
 
@@ -160,14 +165,14 @@ LOGGING = {
         "simple": {
             "format": "[%(name)s] %(asctime)s [%(levelname)s] %(message)s",
             "datefmt": "%Y-%m-%d %H:%M:%S",
-        },
+        }
     },
     "handlers": {
         "console": {
             "level": "DEBUG",
             "class": "logging.StreamHandler",
             "formatter": "simple",
-        },
+        }
     },
 }
 

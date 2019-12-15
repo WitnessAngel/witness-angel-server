@@ -16,8 +16,12 @@ def test_generate_free_keys(db):
     output = out_stream.getvalue()
     print(output)
 
-    assert "Launching generate_free_keys.py script with max_free_keys_per_type=1" in output
+    assert (
+        "Launching generate_free_keys.py script with max_free_keys_per_type=1" in output
+    )
     assert "No more need for additional free keys" in output
 
-    assert output.count("New iteration") == 5  # 1 key x 4 key types, and final iteration for nothing
+    assert (
+        output.count("New iteration") == 5
+    )  # 1 key x 4 key types, and final iteration for nothing
     assert sql_key_storage.get_free_keypairs_count("RSA_OAEP") == 1

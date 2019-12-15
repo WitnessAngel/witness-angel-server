@@ -4,13 +4,14 @@ import os
 import pathlib
 import sys
 
-executable_is_frozen = getattr(sys, 'frozen', False)
+executable_is_frozen = getattr(sys, "frozen", False)
 
 if not executable_is_frozen:
     # Ensure application code is importable
     root_dir = pathlib.Path(__file__).resolve().parents[0]
-    assert (root_dir / "manage.py").exists(), (root_dir / "manage.py")
+    assert (root_dir / "manage.py").exists(), root_dir / "manage.py"
     sys.path.append(str(root_dir / "src"))
+
 
 def main():
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "waescrow.settings")
