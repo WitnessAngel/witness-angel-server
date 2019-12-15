@@ -31,7 +31,7 @@ exclude = ["_build"]
 python = ">=3.6"
 
 # Witness Angel system
-wacryptolib = "^0.2.0"
+wacryptolib = "^0.4.0"
 
 # Django & Bson
 Django = "^2.2"
