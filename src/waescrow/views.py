@@ -7,6 +7,7 @@ from django.conf import settings
 from django.core.serializers.json import DjangoJSONEncoder
 from django.http import HttpResponse, HttpResponseBadRequest
 from django.utils import timezone
+from django.views.decorators.csrf import csrf_exempt
 from jsonrpc import jsonrpc_method
 from jsonrpc.site import JsonRpcSite
 
@@ -90,6 +91,7 @@ def request_decryption_authorization(request, keypair_identifiers, request_messa
     )
 
 
+@csrf_exempt
 def crashdump_report_view(request):
 
     crashdump = request.POST.get("crashdump")

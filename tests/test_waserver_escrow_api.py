@@ -298,7 +298,7 @@ def test_jsonrpc_escrow_api_encrypt_decrypt_container(live_server):
 
 
 def test_crashdump_reports(db):
-    client = Client()
+    client = Client(enforce_csrf_checks=True)
 
     crashdump = "sòme dâta %s" % random.randint(1, 10000)
 

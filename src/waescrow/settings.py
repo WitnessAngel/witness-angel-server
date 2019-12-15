@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/2.2/ref/settings/
 
 import os, sys
 from pathlib import Path
+from decouple import AutoConfig
 
 executable_is_frozen = getattr(sys, 'frozen', False)
 
@@ -22,16 +23,19 @@ else:
     BASE_DIR = Path(sys.executable).parent  # pragma: no cover
 
 
+config = AutoConfig(search_path=str(BASE_DIR))
+
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/2.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "y@qnd)u(75+3-b6fz@g88jndk&=6b_tpim4&yhbl=apgrga6ms"
+SECRET_KEY = config("SECRET_KEY", cast=str)
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = config("DEBUG", cast=bool, default=False)
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = config("ALLOWED_HOSTS", cast=lambda v: [s.strip() for s in v.split(',')], default=[])
 
 
 # Application definition
@@ -46,6 +50,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "waescrow",  # New form "waescrow.apps.WaescrowConfig" is not supported by PyInstaller
 ]
+
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -138,3 +143,9 @@ CRASHDUMPS_DIR.mkdir(exist_ok=True)
 TEMPLATE_CONTEXT_PROCESSORS = []
 TEMPLATE_LOADERS = []
 
+
+# Security settings for prod
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+SECURE_SSL_REDIRECT = config("SECURE_SSL_REDIRECT", cast=bool, default=True)
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True

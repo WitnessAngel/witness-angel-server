@@ -38,6 +38,7 @@ Django = "^2.2"
 json-rpc-django = "^1.0"
 schema = "^0.7.0"
 django_cryptography = "^0.3.0"
+python-decouple = "^3.3"
 
 [tool.poetry.dev-dependencies]
 
