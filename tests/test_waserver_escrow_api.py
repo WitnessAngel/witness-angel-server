@@ -1,19 +1,14 @@
 import random
-import uuid
 from datetime import timedelta
 
 import pytest
 from Crypto.Random import get_random_bytes
+from bson.json_util import dumps, loads
 from django.conf import settings
 from django.db import IntegrityError
 from django.test import Client
 from django.utils import timezone
 from freezegun import freeze_time
-from jsonrpc.proxy import TestingServiceProxy
-
-# MONKEY-PATCH django-jsonrpc package so that it uses Extended Json on proxy requests
-from bson.json_util import dumps, loads
-from jsonrpc import proxy
 
 from wacryptolib.container import encrypt_data_into_container, decrypt_data_from_container
 from wacryptolib.encryption import _encrypt_via_rsa_oaep
@@ -24,20 +19,8 @@ from wacryptolib.scaffolding import check_key_storage_basic_get_set_api, check_k
     check_key_storage_free_keys_concurrency
 from wacryptolib.signature import verify_message_signature
 from wacryptolib.utilities import generate_uuid0
-from waescrow import escrow
 from waescrow.escrow import SqlKeyStorage, _fetch_key_object_or_none
 from waescrow.models import EscrowKeypair
-
-assert proxy.loads
-proxy.loads = loads
-assert proxy.dumps
-proxy.dumps = dumps
-
-
-def ___OBSOLETE_get_jsonrpc_result(response_dict):
-    assert isinstance(response_dict, dict)
-    assert "error" not in response_dict
-    return response_dict["result"]
 
 
 def test_sql_key_storage_basic_and_free_keys_api(db):  # FIXME factorize

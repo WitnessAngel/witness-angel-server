@@ -1,12 +1,8 @@
-import io
-import pathlib
-import tarfile
-
-import requests
-from django.conf import settings
 from django.core.management.base import BaseCommand
 
-from wacryptolib.escrow import get_free_keys_generator_worker, generate_free_keypair_for_least_provisioned_key_type
+from django.core.management.base import BaseCommand
+
+from wacryptolib.escrow import generate_free_keypair_for_least_provisioned_key_type
 from waescrow.escrow import SqlKeyStorage
 
 

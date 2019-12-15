@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 """Django's command-line utility for administrative tasks."""
 import os
-import sys
 import pathlib
+import sys
 
 executable_is_frozen = getattr(sys, 'frozen', False)
 
@@ -13,7 +13,6 @@ if not executable_is_frozen:
     sys.path.append(str(root_dir / "src"))
 
 def main():
-    import waescrow.settings
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "waescrow.settings")
     try:
         from django.core.management import execute_from_command_line

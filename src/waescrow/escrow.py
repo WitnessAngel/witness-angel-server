@@ -3,9 +3,9 @@ import uuid
 from datetime import timedelta
 
 from django.utils import timezone
-from wacryptolib.utilities import synchronized
 
 from wacryptolib.escrow import KeyStorageBase, EscrowApi
+from wacryptolib.utilities import synchronized
 from waescrow.models import EscrowKeypair, DECRYPTION_AUTHORIZATION_LIFESPAN_H
 
 
