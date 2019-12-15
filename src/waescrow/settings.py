@@ -35,8 +35,7 @@ SECRET_KEY = config("SECRET_KEY", cast=str)
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config("DEBUG", cast=bool, default=False)
 
-ALLOWED_HOSTS = config("ALLOWED_HOSTS", cast=lambda v: [s.strip() for s in v.split(',')], default=[])
-
+ALLOWED_HOSTS = config("ALLOWED_HOSTS", cast=lambda v: [s.strip() for s in v.split(',') if s.strip()], default=[])
 
 # Application definition
 
@@ -90,10 +89,10 @@ DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": os.path.join(BASE_DIR, "db.sqlite3"),
-        "ATOMIC_REQUESTS": True,
+        "ATOMIC_REQUESTS": False,  # IMPORTANT - prevents "database is locked" in sqlite
         'TEST': {"NAME": os.path.join(BASE_DIR, "test_db.sqlite3")},  # Necessary to have proper concurrency timeouts
         'OPTIONS': {
-            'timeout': 2,  # Wait timeout for DB table locking, in seconds (seems broken in tests)
+            'timeout': 20,  # Wait timeout for DB table locking, in seconds (seems broken in tests)
             # see also https://docs.python.org/3.7/library/sqlite3.html#sqlite3.connect
         }
     }
@@ -149,3 +148,55 @@ SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 SECURE_SSL_REDIRECT = config("SECURE_SSL_REDIRECT", cast=bool, default=True)
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
+
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "root": {"level": "DEBUG", "handlers": ["console"]},
+    "filters": {
+        "require_debug_false": {"()": "django.utils.log.RequireDebugFalse"},
+        "require_debug_true": {"()": "django.utils.log.RequireDebugTrue"},
+    },
+    "formatters": {
+        "verbose": {
+            "format": (
+                "[%(name)s] %(asctime)s [%(process)d] [%(levelname)s] "
+                + "pathname=%(pathname)s lineno=%(lineno)s "
+                + "funcname=%(funcName)s %(message)s"
+            ),
+            "datefmt": "%Y-%m-%d %H:%M:%S",
+        },
+        "simple": {
+            "format": "[%(name)s] %(asctime)s [%(levelname)s] %(message)s",
+            "datefmt": "%Y-%m-%d %H:%M:%S",
+        },
+    },
+    "handlers": {
+        "console": {
+            "level": "DEBUG",
+            "class": "logging.StreamHandler",
+            "formatter": "simple",
+        },
+        "console-verbose": {
+            "level": "DEBUG",
+            "class": "logging.StreamHandler",
+            "formatter": "verbose",
+        },
+        "mail_admins": {
+            "level": "ERROR",
+            "filters": ["require_debug_false"],
+            "class": "django.utils.log.AdminEmailHandler",
+        },
+    },
+    "loggers": {
+        "django": {"propagate": True, "level": "INFO", "handlers": ["mail_admins"]},
+        "django.request": {"propagate": False, "level": "ERROR"},
+        "security": {
+            "propagate": False,
+            "level": "ERROR",
+            "handlers": ["console-verbose"],
+        },
+        "axes": {"propagate": True, "level": "WARNING"},
+    },
+}

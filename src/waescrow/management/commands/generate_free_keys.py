@@ -20,12 +20,6 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
 
-        # For now we keep high verbosity for standard logging
-        import logging
-        logging.basicConfig()
-        logging.getLogger().setLevel(logging.DEBUG)
-        logging.disable(0)
-
         max_free_keys_per_type = options["max_free_keys_per_type"]
 
         sql_key_storage = SqlKeyStorage()
