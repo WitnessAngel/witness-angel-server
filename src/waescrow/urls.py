@@ -23,13 +23,13 @@ from waescrow.views import extended_jsonrpc_site
 from . import views  # Register methods
 
 urlpatterns = [
-    url(r"^json/browse/", jsonrpc.views.browse, name="jsonrpc_browser"),
+    #url(r"^json/browse/", jsonrpc.views.browse, name="jsonrpc_browser"),
     url(r"^json/", extended_jsonrpc_site.dispatch, name="jsonrpc_mountpoint"),
-    url(
-        r"^json/(?P<method>[a-zA-Z0-9.]+)$",
-            extended_jsonrpc_site.dispatch,
-        name="jsonrpc_getter_mountpoint",
-    ),
+    #url(
+    #    r"^json/(?P<method>[a-zA-Z0-9.]+)$",
+    #        extended_jsonrpc_site.dispatch,
+    #    name="jsonrpc_getter_mountpoint",
+    #),
     url(r"^crashdumps/", views.crashdump_report_view),
     url(r"^admin/", admin.site.urls),
 ]
