@@ -18,7 +18,7 @@ executable_is_frozen = getattr(sys, 'frozen', False)
 
 if not executable_is_frozen:
     BASE_DIR = Path(__file__).resolve().parents[2]
-    assert BASE_DIR.joinpath("manage.py").exists(), BASE_DIR
+    assert BASE_DIR.joinpath("settings.ini").exists(), BASE_DIR
 else:
     BASE_DIR = Path(sys.executable).parent  # pragma: no cover
 
