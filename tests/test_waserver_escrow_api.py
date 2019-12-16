@@ -380,6 +380,10 @@ def test_crashdump_reports(db):
 
     crashdump = "sòme dâta %s" % random.randint(1, 10000)
 
+    res = client.get("/crashdumps/")
+    assert res.status_code == 200
+    assert res.content == b"CRASHDUMP ENDPOINT OF WAESCROW"
+
     res = client.post("/crashdumps/")
     assert res.status_code == 400
     assert res.content == b"Missing crashdump field"

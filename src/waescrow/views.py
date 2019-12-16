@@ -127,6 +127,9 @@ def request_decryption_authorization(request, keypair_identifiers, request_messa
 @csrf_exempt
 def crashdump_report_view(request):
 
+    if request.method == "GET":
+        return HttpResponse(b"CRASHDUMP ENDPOINT OF WAESCROW")
+
     crashdump = request.POST.get("crashdump")
     if not crashdump:
         logger.warning("Empty crashdump report received")
