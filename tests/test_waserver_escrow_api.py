@@ -60,8 +60,7 @@ def test_sql_key_storage_free_keys_concurrent_transactions():
     check_key_storage_free_keys_concurrency(sql_key_storage)
 
 
-# TODO factorize this test with part of wacryptolib testsuite
-def test_jsonrpc_escrow_api_workflow(live_server):
+def test_jsonrpc_escrow_signature(live_server):
 
     jsonrpc_url = live_server.url + "/json/"  # FIXME change url!!
 
@@ -70,18 +69,9 @@ def test_jsonrpc_escrow_api_workflow(live_server):
     )
 
     keychain_uid = generate_uuid0()
-    keychain_uid_bad = generate_uuid0()
-    key_encryption_algo = "RSA_OAEP"
     signature_algo = "DSA_DSS"
     secret = get_random_bytes(101)
     secret_too_big = get_random_bytes(150)
-
-    public_key_encryption_pem = escrow_proxy.get_public_key(
-        keychain_uid=keychain_uid, key_type=key_encryption_algo
-    )
-    public_key_encryption = load_asymmetric_key_from_pem_bytestring(
-        key_pem=public_key_encryption_pem, key_type=key_encryption_algo
-    )
 
     public_key_signature_pem = escrow_proxy.get_public_key(
         keychain_uid=keychain_uid, key_type=signature_algo
@@ -117,6 +107,28 @@ def test_jsonrpc_escrow_api_workflow(live_server):
             signature_algo=signature_algo,
         )
 
+
+
+def test_jsonrpc_escrow_decryption_authorization_flags(live_server):
+
+    jsonrpc_url = live_server.url + "/json/"  # FIXME change url!!
+
+    escrow_proxy = JsonRpcProxy(
+        url=jsonrpc_url, response_error_handler=status_slugs_response_error_handler
+    )
+
+    keychain_uid = generate_uuid0()
+    keychain_uid_bad = generate_uuid0()
+    key_encryption_algo = "RSA_OAEP"
+    secret = get_random_bytes(101)
+
+    public_key_encryption_pem = escrow_proxy.get_public_key(
+        keychain_uid=keychain_uid, key_type=key_encryption_algo
+    )
+    public_key_encryption = load_asymmetric_key_from_pem_bytestring(
+        key_pem=public_key_encryption_pem, key_type=key_encryption_algo
+    )
+
     cipherdict = _encrypt_via_rsa_oaep(plaintext=secret, key=public_key_encryption)
 
     def _attempt_decryption():
@@ -126,7 +138,7 @@ def test_jsonrpc_escrow_api_workflow(live_server):
             cipherdict=cipherdict,
         )
 
-    with freeze_time() as frozen_datetime:  # TEST AUTHORIZATION FLAG IN DB
+    with freeze_time() as frozen_datetime:
 
         with pytest.raises(RuntimeError, match="Decryption not authorized"):
             _attempt_decryption()
@@ -176,6 +188,17 @@ def test_jsonrpc_escrow_api_workflow(live_server):
 
         with pytest.raises(RuntimeError, match="Decryption not authorized"):
             _attempt_decryption()  # No more authorization at all
+
+
+def test_jsonrpc_escrow_request_decryption_authorization(live_server):
+
+    jsonrpc_url = live_server.url + "/json/"  # FIXME change url!!
+
+    escrow_proxy = JsonRpcProxy(
+        url=jsonrpc_url, response_error_handler=status_slugs_response_error_handler
+    )
+
+    key_encryption_algo = "RSA_OAEP"
 
     with freeze_time() as frozen_datetime:  # TEST AUTHORIZATION REQUEST HANDLING
 
@@ -284,7 +307,7 @@ def test_jsonrpc_escrow_api_workflow(live_server):
         )  # Unchanged
 
 
-def test_jsonrpc_escrow_api_encrypt_decrypt_container(live_server):
+def test_jsonrpc_escrow_encrypt_decrypt_container(live_server):
 
     jsonrpc_url = live_server.url + "/json/"  # FIXME change url!!
 
