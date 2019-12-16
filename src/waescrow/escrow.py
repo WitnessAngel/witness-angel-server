@@ -101,6 +101,7 @@ class SqlKeyStorage(KeyStorageBase):
                 "No free keypair of type %s available in sql storage" % key_type
             )
         keypair_obj_or_none.keychain_uid = keychain_uid
+        keypair_obj_or_none.attached_at = timezone.now()
         keypair_obj_or_none.save()
 
 
@@ -109,6 +110,10 @@ class SqlEscrowApi(EscrowApi):
     DECRYPTION_AUTHORIZATION_GRACE_PERIOD_S = 5 * 60
 
     def decrypt_with_private_key(self, keychain_uid, encryption_algo, cipherdict):
+        """
+        This implementation checks for a dedicated timestamp flag on the keypair, in DB, and
+        only allows decryption for a certain time after that timestamp.
+        """
 
         # TODO - a redesign of the API could prevent the double DB lookup here, but not sure if it's useful on the long term...
         keypair_obj_or_none = _fetch_key_object_or_none(
@@ -153,12 +158,20 @@ class SqlEscrowApi(EscrowApi):
         )
 
     def request_decryption_authorization(self, keypair_identifiers, request_message):
+        """
+        This implementation only activates the dedicated timestamp flag, in DB, for the targeted keypairs,
+        if the keypair has been attached to the keychain uid for a small amount of time.
+
+        A possibly already existing dedicated timestamp flag is ignorzed, so this method could return negative results
+        even if a previously given authorization is still valid.
+        """
+
         success_count = 0
         too_old_count = 0
         not_found_count = 0
 
         now = timezone.now()
-        min_created_at = now - timedelta(
+        min_attached_at = now - timedelta(
             seconds=self.DECRYPTION_AUTHORIZATION_GRACE_PERIOD_S
         )
 
@@ -170,14 +183,20 @@ class SqlEscrowApi(EscrowApi):
             if keypair_obj_or_none is None:
                 not_found_count += 1
                 continue
-            elif keypair_obj_or_none.created_at < min_created_at:
+
+            # Different times for pregenarated and on-demand keys
+            attached_at = keypair_obj_or_none.attached_at or keypair_obj_or_none.created_at
+
+            if attached_at < min_attached_at:
                 too_old_count += 1
-            else:
-                keypair_obj_or_none.decryption_authorized_at = (
-                    now
-                )  # Might renew existing authorization
-                keypair_obj_or_none.save()
-                success_count += 1
+                continue
+
+            # SUCCESS case
+            keypair_obj_or_none.decryption_authorized_at = (
+                now
+            )  # Might renew existing authorization
+            keypair_obj_or_none.save()
+            success_count += 1
 
         response_message = f"Authorization provided to {success_count} key pairs for {DECRYPTION_AUTHORIZATION_LIFESPAN_H}h, rejected for {too_old_count} key pairs due to age, and impossible for {not_found_count} key pairs not found"
 

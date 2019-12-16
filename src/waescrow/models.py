@@ -21,7 +21,10 @@ class EscrowKeypair(models.Model):
         verbose_name_plural = _("escrow key pairs")
         unique_together = [("keychain_uid", "key_type")]
 
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(_("Creation of record"), auto_now_add=True)
+
+    # This remains null for non-pregenerated keys
+    attached_at = models.DateTimeField(_("Attachment of free key to keychain uid"), null=True)  
 
     keychain_uid = models.UUIDField(_("Keychain uid"), null=True)
     key_type = models.CharField(_("Key type"), max_length=20)

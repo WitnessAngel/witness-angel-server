@@ -15,6 +15,7 @@ from wacryptolib.container import (
     decrypt_data_from_container,
 )
 from wacryptolib.encryption import _encrypt_via_rsa_oaep
+from wacryptolib.escrow import generate_free_keypair_for_least_provisioned_key_type
 from wacryptolib.jsonrpc_client import JsonRpcProxy, status_slugs_response_error_handler
 from wacryptolib.key_generation import load_asymmetric_key_from_pem_bytestring
 from wacryptolib.key_storage import DummyKeyStorage
@@ -29,7 +30,7 @@ from waescrow.escrow import SqlKeyStorage, _fetch_key_object_or_none
 from waescrow.models import EscrowKeypair
 
 
-def test_sql_key_storage_basic_and_free_keys_api(db):  # FIXME factorize
+def test_sql_key_storage_basic_and_free_keys_api(db):
 
     sql_key_storage = SqlKeyStorage()
 
@@ -190,7 +191,7 @@ def test_jsonrpc_escrow_decryption_authorization_flags(live_server):
             _attempt_decryption()  # No more authorization at all
 
 
-def test_jsonrpc_escrow_request_decryption_authorization(live_server):
+def test_jsonrpc_escrow_request_decryption_authorization_for_normal_keys(live_server):
 
     jsonrpc_url = live_server.url + "/json/"  # FIXME change url!!
 
@@ -223,6 +224,11 @@ def test_jsonrpc_escrow_request_decryption_authorization(live_server):
         assert not _fetch_key_object_or_none(
             keychain_uid=keychain_uid1, key_type=key_encryption_algo
         ).decryption_authorized_at
+
+        # Non-pregenerated keys don't have that field set!
+        assert not _fetch_key_object_or_none(
+            keychain_uid=keychain_uid1, key_type=key_encryption_algo
+        ).attached_at
 
         result = escrow_proxy.request_decryption_authorization(
             keypair_identifiers=[], request_message="I want decryption!"
@@ -305,6 +311,98 @@ def test_jsonrpc_escrow_request_decryption_authorization(live_server):
             ).decryption_authorized_at
             == old_decryption_authorized_at
         )  # Unchanged
+
+    del all_keypair_identifiers
+
+
+def test_jsonrpc_escrow_request_decryption_authorization_for_free_keys(live_server):
+
+    jsonrpc_url = live_server.url + "/json/"  # FIXME change url!!
+
+    escrow_proxy = JsonRpcProxy(
+        url=jsonrpc_url, response_error_handler=status_slugs_response_error_handler
+    )
+
+    keychain_uid_free = generate_uuid0()
+    free_key_type1 = "RSA_OAEP"
+    free_key_type2 = "ECC_DSS"
+    free_key_type3 = "DSA_DSS"
+
+    all_requested_keypair_identifiers = [
+        dict(keychain_uid=keychain_uid_free, key_type=free_key_type1),
+        dict(keychain_uid=keychain_uid_free, key_type=free_key_type2),
+    ]
+
+    sql_key_storage = SqlKeyStorage()
+
+    with freeze_time() as frozen_datetime:  # TEST RELATION WITH FREE KEYS ATTACHMENT
+
+        for i in range(3):  # Generate 1 free keypair per type
+            has_generated = generate_free_keypair_for_least_provisioned_key_type(
+                key_storage=sql_key_storage,
+                max_free_keys_per_type=1,
+                key_types=[free_key_type1, free_key_type2, free_key_type3]
+            )
+            assert has_generated
+
+        keys_generated_before_datetime = timezone.now()
+
+        public_key_pem1 = escrow_proxy.get_public_key(
+                    keychain_uid=keychain_uid_free, key_type=free_key_type1
+                )
+        assert public_key_pem1
+
+        # This key will not have early-enough request for authorization
+        public_key_pem3 = escrow_proxy.get_public_key(
+                    keychain_uid=keychain_uid_free, key_type=free_key_type3
+                )
+        assert public_key_pem3
+
+        result = escrow_proxy.request_decryption_authorization(
+            keypair_identifiers=all_requested_keypair_identifiers,
+            request_message="I want early decryption!",
+        )
+        assert result["success_count"] == 1
+        assert result["too_old_count"] == 0
+        assert result["not_found_count"] == 1  # free_key_type2 is not attached yet
+
+        frozen_datetime.tick(delta=timedelta(minutes=6))
+
+        public_key_pem2 = escrow_proxy.get_public_key(
+                    keychain_uid=keychain_uid_free, key_type=free_key_type2
+                )
+        assert public_key_pem2
+
+        result = escrow_proxy.request_decryption_authorization(
+            keypair_identifiers=all_requested_keypair_identifiers,
+            request_message="I want later decryption!",
+        )
+        assert result["success_count"] == 1  # It's attachment time which counts!
+        assert result["too_old_count"] == 1  # First key is too old now
+        assert result["not_found_count"] == 0
+
+        keypair_obj = EscrowKeypair.objects.get(
+            keychain_uid=keychain_uid_free, key_type=free_key_type1
+        )
+        assert keypair_obj.created_at <= keys_generated_before_datetime
+        assert keypair_obj.attached_at
+        assert keypair_obj.decryption_authorized_at
+        first_authorized_at = keypair_obj.decryption_authorized_at
+
+        keypair_obj = EscrowKeypair.objects.get(
+            keychain_uid=keychain_uid_free, key_type=free_key_type2
+        )
+        assert keypair_obj.created_at <= keys_generated_before_datetime
+        assert keypair_obj.attached_at
+        assert keypair_obj.decryption_authorized_at
+        assert keypair_obj.decryption_authorized_at >= first_authorized_at + timedelta(minutes=5)
+
+        keypair_obj = EscrowKeypair.objects.get(
+            keychain_uid=keychain_uid_free, key_type=free_key_type3
+        )
+        assert keypair_obj.created_at <= keys_generated_before_datetime
+        assert keypair_obj.attached_at
+        assert not keypair_obj.decryption_authorized_at  # Never requested
 
 
 def test_jsonrpc_escrow_encrypt_decrypt_container(live_server):
