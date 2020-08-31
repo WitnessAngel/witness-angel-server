@@ -16,6 +16,7 @@ from wacryptolib.container import (
 )
 from wacryptolib.encryption import _encrypt_via_rsa_oaep
 from wacryptolib.escrow import generate_free_keypair_for_least_provisioned_key_type
+from wacryptolib.exceptions import KeyDoesNotExist
 from wacryptolib.jsonrpc_client import JsonRpcProxy, status_slugs_response_error_handler
 from wacryptolib.key_generation import load_asymmetric_key_from_pem_bytestring
 from wacryptolib.key_storage import DummyKeyStorage
@@ -26,7 +27,7 @@ from wacryptolib.scaffolding import (
 )
 from wacryptolib.signature import verify_message_signature
 from wacryptolib.utilities import generate_uuid0
-from waescrow.escrow import SqlKeyStorage, _fetch_key_object_or_none
+from waescrow.escrow import SqlKeyStorage, _fetch_key_object_or_raise
 from waescrow.models import EscrowKeypair
 
 
@@ -160,7 +161,7 @@ def test_jsonrpc_escrow_decryption_authorization_flags(live_server):
         decrypted = _attempt_decryption()
         assert decrypted == secret  # It works!
 
-        with pytest.raises(ValueError, match="Unexisting sql keypair"):
+        with pytest.raises(KeyDoesNotExist, match="not found"):
             escrow_proxy.decrypt_with_private_key(
                 keychain_uid=keychain_uid_bad,
                 encryption_algo=key_encryption_algo,
@@ -221,12 +222,12 @@ def test_jsonrpc_escrow_request_decryption_authorization_for_normal_keys(live_se
             keychain_uid=keychain_uid1, key_type=key_encryption_algo
         )
         assert public_key_pem
-        assert not _fetch_key_object_or_none(
+        assert not _fetch_key_object_or_raise(
             keychain_uid=keychain_uid1, key_type=key_encryption_algo
         ).decryption_authorized_at
 
         # Non-pregenerated keys don't have that field set!
-        assert not _fetch_key_object_or_none(
+        assert not _fetch_key_object_or_raise(
             keychain_uid=keychain_uid1, key_type=key_encryption_algo
         ).attached_at
 
@@ -249,7 +250,7 @@ def test_jsonrpc_escrow_request_decryption_authorization_for_normal_keys(live_se
             result["not_found_count"] == 4
         )  # keychain_uid2 and keychain_uid3 not created yet
 
-        old_decryption_authorized_at = _fetch_key_object_or_none(
+        old_decryption_authorized_at = _fetch_key_object_or_raise(
             keychain_uid=keychain_uid1, key_type=key_encryption_algo
         ).decryption_authorized_at
         assert old_decryption_authorized_at
@@ -274,21 +275,22 @@ def test_jsonrpc_escrow_request_decryption_authorization_for_normal_keys(live_se
         assert result["not_found_count"] == 2
 
         assert (
-            _fetch_key_object_or_none(
+                _fetch_key_object_or_raise(
                 keychain_uid=keychain_uid1, key_type=key_encryption_algo
             ).decryption_authorized_at
             == old_decryption_authorized_at
         )  # Unchanged
-        assert _fetch_key_object_or_none(
+        assert _fetch_key_object_or_raise(
             keychain_uid=keychain_uid2, key_type=key_encryption_algo
         ).decryption_authorized_at
-        assert _fetch_key_object_or_none(
+        assert _fetch_key_object_or_raise(
             keychain_uid=keychain_uid3, key_type=key_encryption_algo
         ).decryption_authorized_at
 
-        assert not _fetch_key_object_or_none(
-            keychain_uid=keychain_uid_unexisting, key_type=key_encryption_algo
-        )  # Unexisting still!
+        with pytest.raises(KeyDoesNotExist, match="not found"):
+            _fetch_key_object_or_raise(
+                keychain_uid=keychain_uid_unexisting, key_type=key_encryption_algo
+            )
 
         public_key_pem = escrow_proxy.get_public_key(
             keychain_uid=keychain_uid4, key_type=key_encryption_algo
@@ -306,7 +308,7 @@ def test_jsonrpc_escrow_request_decryption_authorization_for_normal_keys(live_se
         assert result["not_found_count"] == 1
 
         assert (
-            _fetch_key_object_or_none(
+            _fetch_key_object_or_raise(
                 keychain_uid=keychain_uid1, key_type=key_encryption_algo
             ).decryption_authorized_at
             == old_decryption_authorized_at
