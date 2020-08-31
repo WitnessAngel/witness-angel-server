@@ -70,14 +70,15 @@ def convert_exceptions_to_jsonrpc_status_slugs(f, *args, **kwargs):
 
 @jsonrpc_method("get_public_key", site=extended_jsonrpc_site)
 @convert_exceptions_to_jsonrpc_status_slugs
-def get_public_key(request, keychain_uid, key_type):
+def get_public_key(request, keychain_uid, key_type, must_exist=False):
     logger.info(
-        "Got webservice request on get_public_key() for key type %s and keychain uid %s",
+        "Got webservice request on get_public_key() for key type %s and keychain uid %s (must_exist=%s)",
         key_type,
         keychain_uid,
+        must_exist,
     )
     del request
-    return SQL_ESCROW_API.get_public_key(keychain_uid=keychain_uid, key_type=key_type)
+    return SQL_ESCROW_API.get_public_key(keychain_uid=keychain_uid, key_type=key_type, must_exist=must_exist)
 
 
 @jsonrpc_method("get_message_signature", site=extended_jsonrpc_site)
