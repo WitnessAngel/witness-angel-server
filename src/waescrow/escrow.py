@@ -1,6 +1,7 @@
 import threading
 import uuid
 from datetime import timedelta
+from typing import Optional
 
 from django.utils import timezone
 
@@ -113,11 +114,12 @@ class SqlEscrowApi(EscrowApi):
 
     DECRYPTION_AUTHORIZATION_GRACE_PERIOD_S = 5 * 60
 
-    def decrypt_with_private_key(self, keychain_uid, encryption_algo, cipherdict):
+    def decrypt_with_private_key(self, keychain_uid, encryption_algo, cipherdict, passphrases: Optional[list]=None):
         """
         This implementation checks for a dedicated timestamp flag on the keypair, in DB, and
         only allows decryption for a certain time after that timestamp.
         """
+        del passphrases  # For now, SQL keypairs are never passphrase-protected
 
         # TODO - a redesign of the API could prevent the double DB lookup here, but not sure if it's useful on the long term...
         keypair_obj = _fetch_key_object_or_raise(

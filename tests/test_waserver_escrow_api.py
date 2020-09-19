@@ -75,7 +75,7 @@ def test_jsonrpc_escrow_signature(live_server):
     secret = get_random_bytes(101)
     secret_too_big = get_random_bytes(150)
 
-    public_key_signature_pem = escrow_proxy.get_public_key(
+    public_key_signature_pem = escrow_proxy.fetch_public_key(
         keychain_uid=keychain_uid, key_type=signature_algo
     )
     public_key_signature = load_asymmetric_key_from_pem_bytestring(
@@ -124,7 +124,7 @@ def test_jsonrpc_escrow_decryption_authorization_flags(live_server):
     key_encryption_algo = "RSA_OAEP"
     secret = get_random_bytes(101)
 
-    public_key_encryption_pem = escrow_proxy.get_public_key(
+    public_key_encryption_pem = escrow_proxy.fetch_public_key(
         keychain_uid=keychain_uid, key_type=key_encryption_algo
     )
     public_key_encryption = load_asymmetric_key_from_pem_bytestring(
@@ -218,7 +218,7 @@ def test_jsonrpc_escrow_request_decryption_authorization_for_normal_keys(live_se
             dict(keychain_uid=keychain_uid_unexisting, key_type=key_encryption_algo),
         ]
 
-        public_key_pem = escrow_proxy.get_public_key(
+        public_key_pem = escrow_proxy.fetch_public_key(
             keychain_uid=keychain_uid1, key_type=key_encryption_algo
         )
         assert public_key_pem
@@ -255,11 +255,11 @@ def test_jsonrpc_escrow_request_decryption_authorization_for_normal_keys(live_se
         ).decryption_authorized_at
         assert old_decryption_authorized_at
 
-        public_key_pem = escrow_proxy.get_public_key(
+        public_key_pem = escrow_proxy.fetch_public_key(
             keychain_uid=keychain_uid2, key_type=key_encryption_algo
         )
         assert public_key_pem
-        public_key_pem = escrow_proxy.get_public_key(
+        public_key_pem = escrow_proxy.fetch_public_key(
             keychain_uid=keychain_uid3, key_type=key_encryption_algo
         )
         assert public_key_pem
@@ -292,7 +292,7 @@ def test_jsonrpc_escrow_request_decryption_authorization_for_normal_keys(live_se
                 keychain_uid=keychain_uid_unexisting, key_type=key_encryption_algo
             )
 
-        public_key_pem = escrow_proxy.get_public_key(
+        public_key_pem = escrow_proxy.fetch_public_key(
             keychain_uid=keychain_uid4, key_type=key_encryption_algo
         )
         assert public_key_pem
@@ -349,13 +349,13 @@ def test_jsonrpc_escrow_request_decryption_authorization_for_free_keys(live_serv
 
         keys_generated_before_datetime = timezone.now()
 
-        public_key_pem1 = escrow_proxy.get_public_key(
+        public_key_pem1 = escrow_proxy.fetch_public_key(
                     keychain_uid=keychain_uid_free, key_type=free_key_type1
                 )
         assert public_key_pem1
 
         # This key will not have early-enough request for authorization
-        public_key_pem3 = escrow_proxy.get_public_key(
+        public_key_pem3 = escrow_proxy.fetch_public_key(
                     keychain_uid=keychain_uid_free, key_type=free_key_type3
                 )
         assert public_key_pem3
@@ -370,7 +370,7 @@ def test_jsonrpc_escrow_request_decryption_authorization_for_free_keys(live_serv
 
         frozen_datetime.tick(delta=timedelta(minutes=6))
 
-        public_key_pem2 = escrow_proxy.get_public_key(
+        public_key_pem2 = escrow_proxy.fetch_public_key(
                     keychain_uid=keychain_uid_free, key_type=free_key_type2
                 )
         assert public_key_pem2
@@ -418,14 +418,14 @@ def test_jsonrpc_escrow_encrypt_decrypt_container(live_server):
                 data_encryption_algo="AES_EAX",
                 key_encryption_strata=[
                     dict(
-                        key_encryption_algo="RSA_OAEP", key_escrow=dict(url=jsonrpc_url)
+                        key_encryption_algo="RSA_OAEP", key_escrow=dict(escrow_type="jsonrpc", url=jsonrpc_url)
                     )
                 ],
                 data_signatures=[
                     dict(
                         message_prehash_algo="SHA512",
                         signature_algo="DSA_DSS",
-                        signature_escrow=dict(url=jsonrpc_url),
+                        signature_escrow=dict(escrow_type="jsonrpc", url=jsonrpc_url),
                     )
                 ],
             )
@@ -438,28 +438,30 @@ def test_jsonrpc_escrow_encrypt_decrypt_container(live_server):
 
         keychain_uid = generate_uuid0()
         data = get_random_bytes(101)
-        local_key_storage = DummyKeyStorage()
 
         container = encrypt_data_into_container(
             data=data,
             conf=encryption_conf,
             metadata=None,
             keychain_uid=keychain_uid,
-            local_key_storage=local_key_storage,  # Unused by this config actually
+            key_storage_pool=None,  # Unused by this config actually
         )
 
         frozen_datetime.tick(delta=timedelta(minutes=3))
         # This call requests an authorization along the way
+
+
+
         decrypted_data = decrypt_data_from_container(
-            container=container, local_key_storage=local_key_storage
+            container=container, key_storage_pool=None
         )
         assert decrypted_data == data
 
         frozen_datetime.tick(
             delta=timedelta(hours=23)
-        )  # Once authorization is granted, it stays so for al ong time
+        )  # Once authorization is granted, it stays so for a long time
         decrypted_data = decrypt_data_from_container(
-            container=container, local_key_storage=local_key_storage
+            container=container, key_storage_pool=None
         )
         assert decrypted_data == data
 
@@ -470,7 +472,7 @@ def test_jsonrpc_escrow_encrypt_decrypt_container(live_server):
             RuntimeError, match="Decryption authorization is only valid from"
         ):
             decrypt_data_from_container(
-                container=container, local_key_storage=local_key_storage
+                container=container, key_storage_pool=None
             )
 
     # CASE 2: authorization request sent too late after creation of "keychain_uid" keypair, so decryption is rejected
@@ -486,7 +488,7 @@ def test_jsonrpc_escrow_encrypt_decrypt_container(live_server):
             conf=encryption_conf,
             metadata=None,
             keychain_uid=keychain_uid,
-            local_key_storage=local_key_storage,  # Unused by this config actually
+                key_storage_pool=None,  # Unused by this config actually
         )
 
         frozen_datetime.tick(
@@ -494,7 +496,7 @@ def test_jsonrpc_escrow_encrypt_decrypt_container(live_server):
         )  # More than the 5 minutes grace period
         with pytest.raises(RuntimeError, match="Decryption not authorized"):
             decrypt_data_from_container(
-                container=container, local_key_storage=local_key_storage
+                container=container, key_storage_pool=None
             )
 
 

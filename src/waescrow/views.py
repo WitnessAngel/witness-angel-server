@@ -68,9 +68,9 @@ def convert_exceptions_to_jsonrpc_status_slugs(f, *args, **kwargs):
         raise jsonrpc_error from exc
 
 
-@jsonrpc_method("get_public_key", site=extended_jsonrpc_site)
+@jsonrpc_method("fetch_public_key", site=extended_jsonrpc_site)
 @convert_exceptions_to_jsonrpc_status_slugs
-def get_public_key(request, keychain_uid, key_type, must_exist=False):
+def fetch_public_key(request, keychain_uid, key_type, must_exist=False):
     logger.info(
         "Got webservice request on get_public_key() for key type %s and keychain uid %s (must_exist=%s)",
         key_type,
@@ -78,7 +78,7 @@ def get_public_key(request, keychain_uid, key_type, must_exist=False):
         must_exist,
     )
     del request
-    return SQL_ESCROW_API.get_public_key(keychain_uid=keychain_uid, key_type=key_type, must_exist=must_exist)
+    return SQL_ESCROW_API.fetch_public_key(keychain_uid=keychain_uid, key_type=key_type, must_exist=must_exist)
 
 
 @jsonrpc_method("get_message_signature", site=extended_jsonrpc_site)
@@ -97,7 +97,7 @@ def get_message_signature(request, keychain_uid, message, signature_algo):
 
 @jsonrpc_method("decrypt_with_private_key", site=extended_jsonrpc_site)
 @convert_exceptions_to_jsonrpc_status_slugs
-def decrypt_with_private_key(request, keychain_uid, encryption_algo, cipherdict):
+def decrypt_with_private_key(request, keychain_uid, encryption_algo, cipherdict, passphrases=None):
     logger.info(
         "Got webservice request on decrypt_with_private_key() for encryption algo %s and keychain uid %s",
         encryption_algo,
@@ -108,6 +108,7 @@ def decrypt_with_private_key(request, keychain_uid, encryption_algo, cipherdict)
         keychain_uid=keychain_uid,
         encryption_algo=encryption_algo,
         cipherdict=cipherdict,
+        passphrases=passphrases,
     )
 
 
