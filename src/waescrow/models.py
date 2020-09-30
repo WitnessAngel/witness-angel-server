@@ -34,7 +34,7 @@ class EscrowKeypair(models.Model):
     # When set, the private key can be accessed for DECRYPTION_AUTHORIZATION_LIFESPAN_H hours after this datetime
     decryption_authorized_at = models.DateTimeField(
         blank=True, null=True
-    )  # FIXME TYPO!!!
+    )
 
     def __repr__(self):
         return "<EscrowKeypair (type=%s, uid=%s)>" % (self.key_type, self.keychain_uid)

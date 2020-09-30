@@ -6,7 +6,7 @@ from typing import Optional
 from django.utils import timezone
 
 from wacryptolib.escrow import KeyStorageBase, EscrowApi
-from wacryptolib.exceptions import KeyDoesNotExist, KeyAlreadyExists
+from wacryptolib.exceptions import KeyDoesNotExist, KeyAlreadyExists, AuthorizationError
 from wacryptolib.utilities import synchronized
 from waescrow.models import EscrowKeypair, DECRYPTION_AUTHORIZATION_LIFESPAN_H
 
@@ -128,9 +128,9 @@ class SqlEscrowApi(EscrowApi):
         decryption_authorized_at = keypair_obj.decryption_authorized_at
 
         if not decryption_authorized_at:
-            raise RuntimeError(
+            raise AuthorizationError(
                 "Decryption not authorized"
-            )  # TODO better exception class
+            )
 
         decryption_authorized_until = decryption_authorized_at + timedelta(
             hours=DECRYPTION_AUTHORIZATION_LIFESPAN_H
@@ -140,14 +140,14 @@ class SqlEscrowApi(EscrowApi):
         _format_datetime = lambda dt: dt.isoformat(sep="_", timespec="seconds")
 
         if not (decryption_authorized_at <= now <= decryption_authorized_until):
-            raise RuntimeError(
+            raise AuthorizationError(
                 "Decryption authorization is only valid from %s to %s (current time: %s)"
                 % (
                     _format_datetime(decryption_authorized_at),
                     _format_datetime(decryption_authorized_until),
                     _format_datetime(now),
                 )
-            )  # TODO better exception class
+            )
 
         return super().decrypt_with_private_key(
             keychain_uid=keychain_uid,
@@ -155,7 +155,7 @@ class SqlEscrowApi(EscrowApi):
             cipherdict=cipherdict,
         )
 
-    def request_decryption_authorization(self, keypair_identifiers, request_message):
+    def request_decryption_authorization(self, keypair_identifiers, request_message, passphrases=None):
         """
         This implementation only activates the dedicated timestamp flag, in DB, for the targeted keypairs,
         if the keypair has been attached to the keychain uid for a small amount of time.
@@ -163,6 +163,8 @@ class SqlEscrowApi(EscrowApi):
         A possibly already existing dedicated timestamp flag is ignorzed, so this method could return negative results
         even if a previously given authorization is still valid.
         """
+
+        del passphrases  # Unused in this kind of remote escrow
 
         success_count = 0
         too_old_count = 0

@@ -11,6 +11,7 @@ from django.views.decorators.csrf import csrf_exempt
 from jsonrpc import jsonrpc_method
 from jsonrpc.site import JsonRpcSite
 
+from wacryptolib import exceptions as wacryptolib_exceptions
 from wacryptolib.error_handling import StatusSlugsMapper
 from wacryptolib.utilities import load_from_json_str, dump_to_json_str
 from waescrow.escrow import SQL_ESCROW_API
@@ -39,12 +40,16 @@ class ExtendedDjangoJSONEncoder(DjangoJSONEncoder):
 extended_jsonrpc_site = JsonRpcSite(json_encoder=ExtendedDjangoJSONEncoder)
 
 
-# TODO refine translated exceptions later
-exception_classes = StatusSlugsMapper.gather_exception_subclasses(
+# TODO refine translated exceptions later - FIXME DEDUPLICATE THIS WITH WACRYPTOLIB JSONRPC CLIENT!!!
+_exception_classes = StatusSlugsMapper.gather_exception_subclasses(
     builtins, parent_classes=[Exception]
 )
+_exception_classes += StatusSlugsMapper.gather_exception_subclasses(
+        wacryptolib_exceptions, parent_classes=[wacryptolib_exceptions.FunctionalError]
+)
+
 exception_mapper = StatusSlugsMapper(
-    exception_classes, fallback_exception_class=Exception
+    _exception_classes, fallback_exception_class=Exception
 )
 
 
@@ -114,7 +119,7 @@ def decrypt_with_private_key(request, keychain_uid, encryption_algo, cipherdict,
 
 @jsonrpc_method("request_decryption_authorization", site=extended_jsonrpc_site)
 @convert_exceptions_to_jsonrpc_status_slugs
-def request_decryption_authorization(request, keypair_identifiers, request_message):
+def request_decryption_authorization(request, keypair_identifiers, request_message, passphrases=None):
     logger.info(
         "Got webservice request on request_decryption_authorization() for %s keypairs with message %r",
         len(keypair_identifiers),
@@ -122,7 +127,7 @@ def request_decryption_authorization(request, keypair_identifiers, request_messa
     )
     del request
     return SQL_ESCROW_API.request_decryption_authorization(
-        keypair_identifiers=keypair_identifiers, request_message=request_message
+        keypair_identifiers=keypair_identifiers, request_message=request_message, passphrases=passphrases
     )
 
 

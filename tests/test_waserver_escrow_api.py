@@ -12,11 +12,11 @@ from freezegun import freeze_time
 
 from wacryptolib.container import (
     encrypt_data_into_container,
-    decrypt_data_from_container,
+    decrypt_data_from_container, gather_escrow_dependencies, request_decryption_authorizations,
 )
 from wacryptolib.encryption import _encrypt_via_rsa_oaep
 from wacryptolib.escrow import generate_free_keypair_for_least_provisioned_key_type
-from wacryptolib.exceptions import KeyDoesNotExist
+from wacryptolib.exceptions import KeyDoesNotExist, SignatureVerificationError, AuthorizationError, DecryptionError
 from wacryptolib.jsonrpc_client import JsonRpcProxy, status_slugs_response_error_handler
 from wacryptolib.key_generation import load_asymmetric_key_from_pem_bytestring
 from wacryptolib.key_storage import DummyKeyStorage
@@ -101,7 +101,7 @@ def test_jsonrpc_escrow_signature(live_server):
     )
 
     signature["digest"] += b"xyz"
-    with pytest.raises(ValueError, match="not authentic|Incorrect signature"):
+    with pytest.raises(SignatureVerificationError, match="not authentic|Incorrect signature"):
         verify_message_signature(
             message=secret,
             signature=signature,
@@ -142,7 +142,7 @@ def test_jsonrpc_escrow_decryption_authorization_flags(live_server):
 
     with freeze_time() as frozen_datetime:
 
-        with pytest.raises(RuntimeError, match="Decryption not authorized"):
+        with pytest.raises(AuthorizationError, match="Decryption not authorized"):
             _attempt_decryption()
 
         keypair_obj = EscrowKeypair.objects.get(
@@ -152,7 +152,7 @@ def test_jsonrpc_escrow_decryption_authorization_flags(live_server):
         keypair_obj.save()
 
         with pytest.raises(
-            RuntimeError, match="Decryption authorization is only valid from"
+                AuthorizationError, match="Decryption authorization is only valid from"
         ):
             _attempt_decryption()  # Too early
 
@@ -181,14 +181,14 @@ def test_jsonrpc_escrow_decryption_authorization_flags(live_server):
         )  # We hardcode DECRYPTION_AUTHORIZATION_LIFESPAN_H here
 
         with pytest.raises(
-            RuntimeError, match="Decryption authorization is only valid from"
+            AuthorizationError, match="Decryption authorization is only valid from"
         ):
             _attempt_decryption()  # Too late, cipherdict is not even used so no ValueError
 
         keypair_obj.decryption_authorized_at = None
         keypair_obj.save()
 
-        with pytest.raises(RuntimeError, match="Decryption not authorized"):
+        with pytest.raises(AuthorizationError, match="Decryption not authorized"):
             _attempt_decryption()  # No more authorization at all
 
 
@@ -448,9 +448,19 @@ def test_jsonrpc_escrow_encrypt_decrypt_container(live_server):
         )
 
         frozen_datetime.tick(delta=timedelta(minutes=3))
-        # This call requests an authorization along the way
 
+        with pytest.raises(AuthorizationError):
+            decrypt_data_from_container(
+                container=container, key_storage_pool=None
+            )
 
+        # Access automatically granted for now, with this escrow, when keys are young
+        escrow_dependencies = gather_escrow_dependencies(containers=[container])
+        decryption_authorization_requests_result = request_decryption_authorizations(
+                escrow_dependencies,
+                key_storage_pool=None,
+                request_message="I need access to this")
+        print(">>>>> request_decryption_authorizations is", decryption_authorization_requests_result)
 
         decrypted_data = decrypt_data_from_container(
             container=container, key_storage_pool=None
@@ -469,7 +479,7 @@ def test_jsonrpc_escrow_encrypt_decrypt_container(live_server):
             delta=timedelta(hours=2)
         )  # Authorization has expired, and grace period to get one has long expired
         with pytest.raises(
-            RuntimeError, match="Decryption authorization is only valid from"
+            AuthorizationError, match="Decryption authorization is only valid from"
         ):
             decrypt_data_from_container(
                 container=container, key_storage_pool=None
@@ -494,7 +504,7 @@ def test_jsonrpc_escrow_encrypt_decrypt_container(live_server):
         frozen_datetime.tick(
             delta=timedelta(minutes=6)
         )  # More than the 5 minutes grace period
-        with pytest.raises(RuntimeError, match="Decryption not authorized"):
+        with pytest.raises(AuthorizationError, match="Decryption not authorized"):
             decrypt_data_from_container(
                 container=container, key_storage_pool=None
             )
