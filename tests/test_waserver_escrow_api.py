@@ -1,4 +1,5 @@
 import random
+import requests
 from datetime import timedelta
 
 import pytest
@@ -109,6 +110,17 @@ def test_jsonrpc_escrow_signature(live_server):
             signature_algo=signature_algo,
         )
 
+
+def test_jsonrpc_get_request(live_server):
+
+    jsonrpc_url = live_server.url + "/json/"
+
+    response = requests.get(jsonrpc_url)
+    assert response.headers["Content-Type"] == "application/json"
+    assert response.json() == \
+           {'error': {'code': {'$numberInt': '-32600'},
+                      'data': None, 'message': 'InvalidRequestError: The method you are trying to access is not available by GET requests',
+                      'name': 'InvalidRequestError'}, 'id': None}
 
 
 def test_jsonrpc_escrow_decryption_authorization_flags(live_server):

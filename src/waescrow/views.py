@@ -37,6 +37,18 @@ class ExtendedDjangoJSONEncoder(DjangoJSONEncoder):
             )  # Just to please jsonrpc _response_dict() method...
 
 
+# Fix empty GET call case case
+_legacy_validate_get = JsonRpcSite._validate_get
+JsonRpcSite._validate_get = lambda *args, **kwargs: _legacy_validate_get(*args, **kwargs) or (False, None)
+
+# Fix wrong content type
+_legacy_dispatch = JsonRpcSite.dispatch
+def bugfixed_dispatched(*args, **kwargs):
+    res = _legacy_dispatch(*args, **kwargs)
+    res['Content-Type'] = "application/json"  # Else ERR_INVALID_RESPONSE in browser
+    return res
+JsonRpcSite.dispatch = csrf_exempt(bugfixed_dispatched)
+
 extended_jsonrpc_site = JsonRpcSite(json_encoder=ExtendedDjangoJSONEncoder)
 
 
