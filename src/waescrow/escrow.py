@@ -31,7 +31,7 @@ class SqlKeyStorage(KeyStorageBase):
 
     _lock = threading.Lock()  # Process-wide lock
 
-    def _ensure_keypair_does_not_exist(self, keychain_uid, key_type):
+    def _ensure_keypair_does_not_exist(self, keychain_uid: uuid.UUID, key_type: str):
         # program might still raise IntegrityError if the same key is inserted concurrently
         try:
             _fetch_key_object_or_raise(keychain_uid=keychain_uid, key_type=key_type)

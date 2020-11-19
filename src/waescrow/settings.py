@@ -19,7 +19,10 @@ from decouple import AutoConfig
 executable_is_frozen = getattr(sys, "frozen", False)
 
 if not executable_is_frozen:
-    BASE_DIR = Path(__file__).resolve().parents[2]
+    _parents = Path(__file__).resolve().parents  # handle several setup structures
+    BASE_DIR = _parents[1]
+    if not BASE_DIR.joinpath("settings.ini").exists():
+        BASE_DIR = _parents[2]
     assert BASE_DIR.joinpath("settings.ini").exists(), BASE_DIR
 else:
     BASE_DIR = Path(sys.executable).parent  # pragma: no cover

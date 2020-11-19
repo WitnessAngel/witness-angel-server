@@ -31,7 +31,7 @@ exclude = ["_build"]
 python = ">=3.6"
 
 # Witness Angel system
-wacryptolib = "^0.4.0"
+wacryptolib = "^0.5.2"
 
 # Django & Bson
 Django = "^2.2"
@@ -51,6 +51,7 @@ pytest-testmon = "^0.9"
 pytest-timeout = "^1.3"
 pytest-django = "^3.5"
 freezegun = "^0.3.12"
+typeguard = "^2.10.0"
 
 # Linters and formatters
 black = {version = "^18.3-alpha.0",allow-prereleases = true}
