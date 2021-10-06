@@ -143,7 +143,7 @@ def test_jsonrpc_escrow_decryption_authorization_flags(live_server):
         key_pem=public_key_encryption_pem, key_type=key_encryption_algo
     )
 
-    cipherdict = _encrypt_via_rsa_oaep(plaintext=secret, key=public_key_encryption)
+    cipherdict = _encrypt_via_rsa_oaep(plaintext=secret, key_dict=dict(key=public_key_encryption))
 
     def _attempt_decryption():
         return escrow_proxy.decrypt_with_private_key(
@@ -435,7 +435,7 @@ def test_jsonrpc_escrow_encrypt_decrypt_container(live_server):
                 ],
                 data_signatures=[
                     dict(
-                        message_prehash_algo="SHA512",
+                        message_digest_algo="SHA512",
                         signature_algo="DSA_DSS",
                         signature_escrow=dict(escrow_type="jsonrpc", url=jsonrpc_url),
                     )

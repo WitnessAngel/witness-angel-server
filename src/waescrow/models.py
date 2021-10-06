@@ -26,10 +26,10 @@ class EscrowKeypair(models.Model):
     # This remains null for non-pregenerated keys
     attached_at = models.DateTimeField(_("Attachment of free key to keychain uid"), null=True)  
 
-    keychain_uid = models.UUIDField(_("Keychain uid"), null=True)
+    keychain_uid = models.UUIDField(_("Keychain uid"), null=True)  # Null for free keys
     key_type = models.CharField(_("Key type"), max_length=20)
     public_key = encrypt(models.BinaryField(_("Public key (PEM format)")))
-    private_key = encrypt(models.BinaryField(_("Private key (PEM format)")))
+    private_key = encrypt(models.BinaryField(_("Private key (PEM format)")))  # MUST exist
 
     # When set, the private key can be accessed for DECRYPTION_AUTHORIZATION_LIFESPAN_H hours after this datetime
     decryption_authorized_at = models.DateTimeField(
