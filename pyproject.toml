@@ -59,8 +59,9 @@ pylint = "^2.3"
 safety = "^1.8"
 yamllint = "^1.15"
 xenon = "^0.5"
-mypy = "^0.701"
+mypy = "^0.910"
 doc8 = "^0.8"
+typed-ast = "^1.4.0"  # Recent version necessay for python3.8 and pylint/mypy
 
 # Documentation
 sphinx = "^2.0"
