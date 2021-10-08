@@ -24,7 +24,7 @@ classifiers = [
     "Operating System :: Unix",
     "Operating System :: MacOS :: MacOS X",
 ]
-include = ["CHANGELOG", "tox.ini", "docs/*", "docs/api/*", "tests/*.py"]
+include = ["CHANGELOG", "tox.ini", "settings.ini", "docs/*", "docs/api/*", "tests/*.py"]
 exclude = ["_build"]
 
 [tool.poetry.dependencies]
@@ -39,6 +39,7 @@ json-rpc-django = "^1.0"
 schema = "^0.7.0"
 django_cryptography = "^0.3.0"
 python-decouple = "^3.3"
+django-model-utils = "^4.1.1"
 
 [tool.poetry.dev-dependencies]
 
