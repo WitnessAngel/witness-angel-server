@@ -69,6 +69,18 @@ def authenticate_authenticator_user(username, password, authenticathor_secret):
 
 
 
+
+class AuthenticatorPublicKey(TimeStampedModel):
+
+    authenticator_user = models.ForeignKey(AuthenticatorUser, on_delete=models.CASCADE, verbose_name=_('authenticator user'))
+
+    active = models.BooleanField(_("active"), default=True) # If this public key might be used for new containers
+    keychain_uid = models.UUIDField(_("Keychain uid"), null=True)
+    key_type = models.CharField(_("Key type"), max_length=20)
+    public_key = encrypt(models.BinaryField(_("Public key (PEM format)")))
+
+
+
 '''
 class Authenticator(TimeStampedModel):
 
