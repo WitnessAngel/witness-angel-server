@@ -10,11 +10,15 @@ from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from jsonrpc import jsonrpc_method
 from jsonrpc.site import JsonRpcSite
+from rest_framework import viewsets
 
 from wacryptolib import exceptions as wacryptolib_exceptions
 from wacryptolib.error_handling import StatusSlugsMapper
 from wacryptolib.utilities import load_from_json_str, dump_to_json_str
-from waescrow.escrow import SQL_ESCROW_API
+
+from waescrow.escrow import get_authenticator_users, SQL_ESCROW_API
+from waescrow.models import AuthenticatorUser
+from waescrow.serializers import AuthenticatorUserSerializer
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +37,7 @@ class ExtendedDjangoJSONEncoder(DjangoJSONEncoder):
             return super().default(o)
         except TypeError:
             return (
-                "<BROKEN JSON OBJECT FOR %s>" % o
+                    "<BROKEN JSON OBJECT FOR %s>" % o
             )  # Just to please jsonrpc _response_dict() method...
 
 
@@ -43,21 +47,24 @@ JsonRpcSite._validate_get = lambda *args, **kwargs: _legacy_validate_get(*args, 
 
 # Fix wrong content type
 _legacy_dispatch = JsonRpcSite.dispatch
+
+
 def bugfixed_dispatched(*args, **kwargs):
     res = _legacy_dispatch(*args, **kwargs)
     res['Content-Type'] = "application/json"  # Else ERR_INVALID_RESPONSE in browser
     return res
+
+
 JsonRpcSite.dispatch = csrf_exempt(bugfixed_dispatched)
 
 extended_jsonrpc_site = JsonRpcSite(json_encoder=ExtendedDjangoJSONEncoder)
-
 
 # TODO refine translated exceptions later - FIXME DEDUPLICATE THIS WITH WACRYPTOLIB JSONRPC CLIENT!!!
 _exception_classes = StatusSlugsMapper.gather_exception_subclasses(
     builtins, parent_classes=[Exception]
 )
 _exception_classes += StatusSlugsMapper.gather_exception_subclasses(
-        wacryptolib_exceptions, parent_classes=[wacryptolib_exceptions.FunctionalError]
+    wacryptolib_exceptions, parent_classes=[wacryptolib_exceptions.FunctionalError]
 )
 
 exception_mapper = StatusSlugsMapper(
@@ -145,7 +152,6 @@ def request_decryption_authorization(request, keypair_identifiers, request_messa
 
 @csrf_exempt
 def crashdump_report_view(request):
-
     if request.method == "GET":
         return HttpResponse(b"CRASHDUMP ENDPOINT OF WAESCROW")
 
@@ -164,3 +170,15 @@ def crashdump_report_view(request):
     crashdump_path = settings.CRASHDUMPS_DIR.joinpath(filename)
     crashdump_path.write_text(crashdump, encoding="utf8")
     return HttpResponse(b"OK")
+
+
+class AuthenticatorUserViewSet(viewsets.ModelViewSet):
+    queryset = AuthenticatorUser.objects.all()
+    serializer_class = AuthenticatorUserSerializer
+
+
+@jsonrpc_method("get_authenticator_user", site=extended_jsonrpc_site)
+@convert_exceptions_to_jsonrpc_status_slugs
+def get_authenticator_user(self, description, authenticator_secret):
+    return get_authenticator_users(description=description, authenticator_secret=authenticator_secret
+    )

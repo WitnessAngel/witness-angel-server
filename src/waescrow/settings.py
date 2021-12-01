@@ -56,6 +56,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "rest_framework",
     "waescrow",  # New form "waescrow.apps.WaescrowConfig" is not supported by PyInstaller
 ]
 

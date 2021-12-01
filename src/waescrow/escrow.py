@@ -6,9 +6,11 @@ from typing import Optional
 from django.utils import timezone
 
 from wacryptolib.escrow import KeyStorageBase, EscrowApi
-from wacryptolib.exceptions import KeyDoesNotExist, KeyAlreadyExists, AuthorizationError
+from wacryptolib.exceptions import KeyDoesNotExist, KeyAlreadyExists, AuthorizationError, ExistenceError
 from wacryptolib.utilities import synchronized
-from waescrow.models import EscrowKeypair, DECRYPTION_AUTHORIZATION_LIFESPAN_H
+
+from waescrow.models import AuthenticatorUser, EscrowKeypair, DECRYPTION_AUTHORIZATION_LIFESPAN_H
+from waescrow.serializers import AuthenticatorUserSerializer
 
 
 def _fetch_key_object_or_raise(keychain_uid: uuid.UUID, key_type: str) -> EscrowKeypair:
@@ -16,6 +18,22 @@ def _fetch_key_object_or_raise(keychain_uid: uuid.UUID, key_type: str) -> Escrow
         return EscrowKeypair.objects.get(keychain_uid=keychain_uid, key_type=key_type)
     except EscrowKeypair.DoesNotExist:
         raise KeyDoesNotExist("Database keypair %s/%s not found" % (keychain_uid, key_type))
+
+
+def get_authenticator_users(description: str, authenticator_secret: str):
+    try:
+        authenticator_user = AuthenticatorUser.objects.get(description=description,
+                                                           authenticator_secret=authenticator_secret)
+        res = AuthenticatorUserSerializer(authenticator_user).data
+    except EscrowKeypair.DoesNotExist:
+        raise ExistenceError("Authenticator User does not exist")  # TODO change this exception error
+
+
+def create_authenticator_user(description: str, authenticator_secret: str):
+    authenticator_user = AuthenticatorUser.objects.create(
+        description=description,
+        authenticator_secret=authenticator_secret
+    )
 
 
 class SqlKeyStorage(KeyStorageBase):
@@ -43,14 +61,7 @@ class SqlKeyStorage(KeyStorageBase):
             )
 
     @synchronized
-    def set_keys(
-        self,
-        *,
-        keychain_uid: uuid.UUID,
-        key_type: str,
-        public_key: bytes,
-        private_key: bytes,
-    ):
+    def set_keys(self, *, keychain_uid: uuid.UUID, key_type: str, public_key: bytes, private_key: bytes, ):
         self._ensure_keypair_does_not_exist(
             keychain_uid=keychain_uid, key_type=key_type
         )
@@ -111,10 +122,9 @@ class SqlKeyStorage(KeyStorageBase):
 
 
 class SqlEscrowApi(EscrowApi):
-
     DECRYPTION_AUTHORIZATION_GRACE_PERIOD_S = 5 * 60
 
-    def decrypt_with_private_key(self, keychain_uid, encryption_algo, cipherdict, passphrases: Optional[list]=None):
+    def decrypt_with_private_key(self, keychain_uid, encryption_algo, cipherdict, passphrases: Optional[list] = None):
         """
         This implementation checks for a dedicated timestamp flag on the keypair, in DB, and
         only allows decryption for a certain time after that timestamp.

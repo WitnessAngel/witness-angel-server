@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+import uuid
+
 from django.contrib.auth import authenticate
 from django.contrib.auth.hashers import make_password, check_password, is_password_usable
 from django.db import models
@@ -7,11 +9,9 @@ from django_cryptography.fields import encrypt
 from model_utils.models import TimeStampedModel
 from django.contrib.auth.models import AbstractUser
 
-
 DECRYPTION_AUTHORIZATION_LIFESPAN_H = (
     24
 )  # Access remains only authorized for that duration
-
 
 
 class AuthenticatorUser(AbstractUser):
@@ -21,14 +21,17 @@ class AuthenticatorUser(AbstractUser):
 
     Only public information is stored here, of course.
     """
+
     class Meta:
         verbose_name = _("authenticator user")
         verbose_name_plural = _("authenticator users")
-        #unique_together = [("keychain_uid", "key_type")]
+        # unique_together = [("keychain_uid", "key_type")]
 
     description = models.CharField(_("Identity/role of the key guardian"), max_length=100)
 
     # Todo add real mobile_phone field later!
+
+    # username = models.UUIDField(_("keychain uid"), default=uuid.uuid4, null=True)
 
     #: Hash of the secret string of the authenticator
     authenticator_secret = models.CharField(_('authenticator secret'), max_length=128)
@@ -42,10 +45,12 @@ class AuthenticatorUser(AbstractUser):
         Return a boolean of whether the authenticator_secret was correct. Handles
         hashing formats behind the scenes.
         """
+
         def setter(authenticator_secret):
             self.set_password(authenticator_secret)
             # Password hash upgrades shouldn't be considered password changes.
             self.save(update_fields=["authenticator_secret"])
+
         return check_password(authenticator_secret, self.authenticator_secret, setter)
 
     def set_unusable_authenticator_secret(self):
@@ -62,23 +67,20 @@ class AuthenticatorUser(AbstractUser):
 def authenticate_authenticator_user(username, password, authenticathor_secret):
     user = authenticate(username=username, password=password)
     if not user:
-        raise ValueError("bad credentials")  #FIXME use custom exceptions!
+        raise ValueError("bad credentials")  # FIXME use custom exceptions!
     if not user.check_authenticator_secret(authenticathor_secret):
-        raise ValueError("bad authenticator secret")  #FIXME use custom exceptions!
+        raise ValueError("bad authenticator secret")  # FIXME use custom exceptions!
     return user
 
 
-
-
 class AuthenticatorPublicKey(TimeStampedModel):
+    authenticator_user = models.ForeignKey(AuthenticatorUser, on_delete=models.CASCADE,
+                                           verbose_name=_('authenticator user'))
 
-    authenticator_user = models.ForeignKey(AuthenticatorUser, on_delete=models.CASCADE, verbose_name=_('authenticator user'))
-
-    active = models.BooleanField(_("active"), default=True) # If this public key might be used for new containers
+    active = models.BooleanField(_("active"), default=True)  # If this public key might be used for new containers
     keychain_uid = models.UUIDField(_("Keychain uid"), null=True)
     key_type = models.CharField(_("Key type"), max_length=20)
     public_key = encrypt(models.BinaryField(_("Public key (PEM format)")))
-
 
 
 '''
@@ -92,6 +94,7 @@ class Authenticator(TimeStampedModel):
 
     authentication_key = encrypt(models.BinaryField(_("Public key (PEM format)")))
 '''
+
 
 class EscrowKeypair(models.Model):
     """
@@ -107,7 +110,7 @@ class EscrowKeypair(models.Model):
     created_at = models.DateTimeField(_("Creation of record"), auto_now_add=True)
 
     # This remains null for non-pregenerated keys
-    attached_at = models.DateTimeField(_("Attachment of free key to keychain uid"), null=True)  
+    attached_at = models.DateTimeField(_("Attachment of free key to keychain uid"), null=True)
 
     keychain_uid = models.UUIDField(_("Keychain uid"), null=True)  # Null for free keys
     key_type = models.CharField(_("Key type"), max_length=20)

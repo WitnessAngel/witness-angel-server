@@ -10,6 +10,7 @@ from django.db import IntegrityError
 from django.test import Client
 from django.utils import timezone
 from freezegun import freeze_time
+from rest_framework import status
 
 from wacryptolib.container import (
     encrypt_data_into_container,
@@ -28,12 +29,11 @@ from wacryptolib.scaffolding import (
 )
 from wacryptolib.signature import verify_message_signature
 from wacryptolib.utilities import generate_uuid0
-from waescrow.escrow import SqlKeyStorage, _fetch_key_object_or_raise
+from waescrow.escrow import SqlKeyStorage, _fetch_key_object_or_raise, create_authenticator_user
 from waescrow.models import EscrowKeypair
 
 
 def test_sql_key_storage_basic_and_free_keys_api(db):
-
     sql_key_storage = SqlKeyStorage()
 
     test_locals = check_key_storage_basic_get_set_api(sql_key_storage)
@@ -46,7 +46,7 @@ def test_sql_key_storage_basic_and_free_keys_api(db):
     assert "ui" in representation
 
     with pytest.raises(
-        IntegrityError
+            IntegrityError
     ):  # Final tests, since it breaks current DB transaction
         EscrowKeypair.objects.create(
             keychain_uid=keychain_uid,
@@ -64,7 +64,6 @@ def test_sql_key_storage_free_keys_concurrent_transactions():
 
 
 def test_jsonrpc_escrow_signature(live_server):
-
     jsonrpc_url = live_server.url + "/json/"  # FIXME change url!!
 
     escrow_proxy = JsonRpcProxy(
@@ -112,19 +111,18 @@ def test_jsonrpc_escrow_signature(live_server):
 
 
 def test_jsonrpc_get_request(live_server):
-
     jsonrpc_url = live_server.url + "/json/"
 
     response = requests.get(jsonrpc_url)
     assert response.headers["Content-Type"] == "application/json"
     assert response.json() == \
            {'error': {'code': {'$numberInt': '-32600'},
-                      'data': None, 'message': 'InvalidRequestError: The method you are trying to access is not available by GET requests',
+                      'data': None,
+                      'message': 'InvalidRequestError: The method you are trying to access is not available by GET requests',
                       'name': 'InvalidRequestError'}, 'id': None}
 
 
 def test_jsonrpc_escrow_decryption_authorization_flags(live_server):
-
     jsonrpc_url = live_server.url + "/json/"  # FIXME change url!!
 
     escrow_proxy = JsonRpcProxy(
@@ -153,7 +151,6 @@ def test_jsonrpc_escrow_decryption_authorization_flags(live_server):
         )
 
     with freeze_time() as frozen_datetime:
-
         with pytest.raises(AuthorizationError, match="Decryption not authorized"):
             _attempt_decryption()
 
@@ -193,7 +190,7 @@ def test_jsonrpc_escrow_decryption_authorization_flags(live_server):
         )  # We hardcode DECRYPTION_AUTHORIZATION_LIFESPAN_H here
 
         with pytest.raises(
-            AuthorizationError, match="Decryption authorization is only valid from"
+                AuthorizationError, match="Decryption authorization is only valid from"
         ):
             _attempt_decryption()  # Too late, cipherdict is not even used so no ValueError
 
@@ -205,7 +202,6 @@ def test_jsonrpc_escrow_decryption_authorization_flags(live_server):
 
 
 def test_jsonrpc_escrow_request_decryption_authorization_for_normal_keys(live_server):
-
     jsonrpc_url = live_server.url + "/json/"  # FIXME change url!!
 
     escrow_proxy = JsonRpcProxy(
@@ -259,7 +255,7 @@ def test_jsonrpc_escrow_request_decryption_authorization_for_normal_keys(live_se
         assert result["success_count"] == 1
         assert result["too_old_count"] == 0
         assert (
-            result["not_found_count"] == 4
+                result["not_found_count"] == 4
         )  # keychain_uid2 and keychain_uid3 not created yet
 
         old_decryption_authorized_at = _fetch_key_object_or_raise(
@@ -288,9 +284,9 @@ def test_jsonrpc_escrow_request_decryption_authorization_for_normal_keys(live_se
 
         assert (
                 _fetch_key_object_or_raise(
-                keychain_uid=keychain_uid1, key_type=key_encryption_algo
-            ).decryption_authorized_at
-            == old_decryption_authorized_at
+                    keychain_uid=keychain_uid1, key_type=key_encryption_algo
+                ).decryption_authorized_at
+                == old_decryption_authorized_at
         )  # Unchanged
         assert _fetch_key_object_or_raise(
             keychain_uid=keychain_uid2, key_type=key_encryption_algo
@@ -320,17 +316,16 @@ def test_jsonrpc_escrow_request_decryption_authorization_for_normal_keys(live_se
         assert result["not_found_count"] == 1
 
         assert (
-            _fetch_key_object_or_raise(
-                keychain_uid=keychain_uid1, key_type=key_encryption_algo
-            ).decryption_authorized_at
-            == old_decryption_authorized_at
+                _fetch_key_object_or_raise(
+                    keychain_uid=keychain_uid1, key_type=key_encryption_algo
+                ).decryption_authorized_at
+                == old_decryption_authorized_at
         )  # Unchanged
 
     del all_keypair_identifiers
 
 
 def test_jsonrpc_escrow_request_decryption_authorization_for_free_keys(live_server):
-
     jsonrpc_url = live_server.url + "/json/"  # FIXME change url!!
 
     escrow_proxy = JsonRpcProxy(
@@ -362,14 +357,14 @@ def test_jsonrpc_escrow_request_decryption_authorization_for_free_keys(live_serv
         keys_generated_before_datetime = timezone.now()
 
         public_key_pem1 = escrow_proxy.fetch_public_key(
-                    keychain_uid=keychain_uid_free, key_type=free_key_type1
-                )
+            keychain_uid=keychain_uid_free, key_type=free_key_type1
+        )
         assert public_key_pem1
 
         # This key will not have early-enough request for authorization
         public_key_pem3 = escrow_proxy.fetch_public_key(
-                    keychain_uid=keychain_uid_free, key_type=free_key_type3
-                )
+            keychain_uid=keychain_uid_free, key_type=free_key_type3
+        )
         assert public_key_pem3
 
         result = escrow_proxy.request_decryption_authorization(
@@ -383,8 +378,8 @@ def test_jsonrpc_escrow_request_decryption_authorization_for_free_keys(live_serv
         frozen_datetime.tick(delta=timedelta(minutes=6))
 
         public_key_pem2 = escrow_proxy.fetch_public_key(
-                    keychain_uid=keychain_uid_free, key_type=free_key_type2
-                )
+            keychain_uid=keychain_uid_free, key_type=free_key_type2
+        )
         assert public_key_pem2
 
         result = escrow_proxy.request_decryption_authorization(
@@ -420,7 +415,6 @@ def test_jsonrpc_escrow_request_decryption_authorization_for_free_keys(live_serv
 
 
 def test_jsonrpc_escrow_encrypt_decrypt_container(live_server):
-
     jsonrpc_url = live_server.url + "/json/"  # FIXME change url!!
 
     encryption_conf = dict(
@@ -447,7 +441,6 @@ def test_jsonrpc_escrow_encrypt_decrypt_container(live_server):
     # CASE 1: authorization request well sent a short time after creation of "keychain_uid" keypair, so decryption is accepted
 
     with freeze_time() as frozen_datetime:
-
         keychain_uid = generate_uuid0()
         data = get_random_bytes(101)
 
@@ -469,9 +462,9 @@ def test_jsonrpc_escrow_encrypt_decrypt_container(live_server):
         # Access automatically granted for now, with this escrow, when keys are young
         escrow_dependencies = gather_escrow_dependencies(containers=[container])
         decryption_authorization_requests_result = request_decryption_authorizations(
-                escrow_dependencies,
-                key_storage_pool=None,
-                request_message="I need access to this")
+            escrow_dependencies,
+            key_storage_pool=None,
+            request_message="I need access to this")
         print(">>>>> request_decryption_authorizations is", decryption_authorization_requests_result)
 
         decrypted_data = decrypt_data_from_container(
@@ -491,7 +484,7 @@ def test_jsonrpc_escrow_encrypt_decrypt_container(live_server):
             delta=timedelta(hours=2)
         )  # Authorization has expired, and grace period to get one has long expired
         with pytest.raises(
-            AuthorizationError, match="Decryption authorization is only valid from"
+                AuthorizationError, match="Decryption authorization is only valid from"
         ):
             decrypt_data_from_container(
                 container=container, key_storage_pool=None
@@ -500,7 +493,6 @@ def test_jsonrpc_escrow_encrypt_decrypt_container(live_server):
     # CASE 2: authorization request sent too late after creation of "keychain_uid" keypair, so decryption is rejected
 
     with freeze_time() as frozen_datetime:
-
         keychain_uid = generate_uuid0()
         data = get_random_bytes(101)
         local_key_storage = DummyKeyStorage()
@@ -510,7 +502,7 @@ def test_jsonrpc_escrow_encrypt_decrypt_container(live_server):
             conf=encryption_conf,
             metadata=None,
             keychain_uid=keychain_uid,
-                key_storage_pool=None,  # Unused by this config actually
+            key_storage_pool=None,  # Unused by this config actually
         )
 
         frozen_datetime.tick(
@@ -550,3 +542,22 @@ def test_waescrow_wsgi_application(db):
 
     with pytest.raises(KeyError, match="REQUEST_METHOD"):
         application(environ={}, start_response=lambda *args, **kwargs: None)
+
+
+def test_jsonrpc_get_user_authenticator(live_server):
+    jsonrpc_url = live_server.url + "/json/"
+
+    escrow_proxy = JsonRpcProxy(
+        url=jsonrpc_url, response_error_handler=status_slugs_response_error_handler
+    )
+
+
+def test_get_user_authenticator(live_server):
+    description = "description"
+    authenticator_secret = "authenticator_secret"
+    create_authenticator_user(description=description,
+                              authenticator_secret=authenticator_secret)
+    url = live_server.url + "/authenticatorusers/"
+    response = requests.get(url)
+    print(response.json())
+    assert response.status_code == status.HTTP_200_OK

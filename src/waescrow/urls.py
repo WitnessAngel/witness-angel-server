@@ -17,12 +17,19 @@ Including another URLconf
 import jsonrpc.views
 from django.conf.urls import url
 from django.contrib import admin
+from django.urls import path, include
+from rest_framework import routers
 
-from waescrow.views import extended_jsonrpc_site
 
 from . import views  # Register methods
+from .views import extended_jsonrpc_site
+
+router = routers.DefaultRouter()
+router.register(r'authenticatorusers', views.AuthenticatorUserViewSet)
 
 urlpatterns = [
+    path('', include(router.urls)),
+    path('api-auth/', include('rest_framework.urls', namespace='rest_framework')),
     # url(r"^json/browse/", jsonrpc.views.browse, name="jsonrpc_browser"),
     url(r"^json/", extended_jsonrpc_site.dispatch, name="jsonrpc_mountpoint"),
     # url(
@@ -31,5 +38,5 @@ urlpatterns = [
     #    name="jsonrpc_getter_mountpoint",
     # ),
     url(r"^crashdumps/", views.crashdump_report_view),
-    url(r"^admin/", admin.site.urls),
+    url(r"^admin/", admin.site.urls)
 ]
