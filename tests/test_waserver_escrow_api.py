@@ -30,7 +30,8 @@ from wacryptolib.scaffolding import (
 from wacryptolib.signature import verify_message_signature
 from wacryptolib.utilities import generate_uuid0
 from waescrow.escrow import SqlKeyStorage, _fetch_key_object_or_raise, create_authenticator_user
-from waescrow.models import EscrowKeypair
+from waescrow.models import EscrowKeypair, AuthenticatorUser, AuthenticatorPublicKey
+from waescrow.serializers import AuthenticatorUserSerializer
 
 
 def test_sql_key_storage_basic_and_free_keys_api(db):
@@ -550,6 +551,12 @@ def test_jsonrpc_get_user_authenticator(live_server):
     escrow_proxy = JsonRpcProxy(
         url=jsonrpc_url, response_error_handler=status_slugs_response_error_handler
     )
+    description = "description"
+    authenticator_secret = "authenticator_secret"
+    create_authenticator_user(description=description,
+                              authenticator_secret=authenticator_secret)
+
+    result = escrow_proxy.get_authenticator_user(description=description, authenticator_secret=authenticator_secret)
 
 
 def test_get_user_authenticator(live_server):
@@ -561,3 +568,14 @@ def test_get_user_authenticator(live_server):
     response = requests.get(url)
     print(response.json())
     assert response.status_code == status.HTTP_200_OK
+
+
+def test_get_public_authenticator(live_server):
+    user = AuthenticatorUser.objects.create(description="description1", authenticator_secret="authenticator_secret1")
+    AuthenticatorPublicKey.objects.create(authenticator_user=user, keychain_uid=generate_uuid0(), key_type='RSA_OAEP')
+
+    serializer = AuthenticatorUserSerializer(instance=user)
+
+    url = live_server.url + "/publicauthenticator/"
+    print(serializer.data)
+    gtx

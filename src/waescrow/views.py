@@ -17,7 +17,7 @@ from wacryptolib.error_handling import StatusSlugsMapper
 from wacryptolib.utilities import load_from_json_str, dump_to_json_str
 
 from waescrow.escrow import get_authenticator_users, SQL_ESCROW_API
-from waescrow.models import AuthenticatorUser
+from waescrow.models import AuthenticatorUser, AuthenticatorPublicKey
 from waescrow.serializers import AuthenticatorUserSerializer
 
 logger = logging.getLogger(__name__)
@@ -180,5 +180,4 @@ class AuthenticatorUserViewSet(viewsets.ModelViewSet):
 @jsonrpc_method("get_authenticator_user", site=extended_jsonrpc_site)
 @convert_exceptions_to_jsonrpc_status_slugs
 def get_authenticator_user(self, description, authenticator_secret):
-    return get_authenticator_users(description=description, authenticator_secret=authenticator_secret
-    )
+    return get_authenticator_users(description=description, authenticator_secret=authenticator_secret)

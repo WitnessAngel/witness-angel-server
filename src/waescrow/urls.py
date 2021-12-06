@@ -26,6 +26,7 @@ from .views import extended_jsonrpc_site
 
 router = routers.DefaultRouter()
 router.register(r'authenticatorusers', views.AuthenticatorUserViewSet)
+# router.register(r'publicauthenticator', views.PublicAuthenticatorViewSet)
 
 urlpatterns = [
     path('', include(router.urls)),
