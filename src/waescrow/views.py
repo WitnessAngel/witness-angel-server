@@ -16,7 +16,7 @@ from wacryptolib import exceptions as wacryptolib_exceptions
 from wacryptolib.error_handling import StatusSlugsMapper
 from wacryptolib.utilities import load_from_json_str, dump_to_json_str
 
-from waescrow.escrow import get_authenticator_users, SQL_ESCROW_API
+from waescrow.escrow import SQL_ESCROW_API, get_public_authenticator, set_public_authenticator
 from waescrow.models import AuthenticatorUser, AuthenticatorPublicKey
 from waescrow.serializers import AuthenticatorUserSerializer
 
@@ -177,7 +177,15 @@ class AuthenticatorUserViewSet(viewsets.ModelViewSet):
     serializer_class = AuthenticatorUserSerializer
 
 
-@jsonrpc_method("get_authenticator_user", site=extended_jsonrpc_site)
+@jsonrpc_method("get_public_authenticator_view", site=extended_jsonrpc_site)
 @convert_exceptions_to_jsonrpc_status_slugs
-def get_authenticator_user(self, description, authenticator_secret):
-    return get_authenticator_users(description=description, authenticator_secret=authenticator_secret)
+def get_public_authenticator_view(self, username, authenticator_secret):
+    return get_public_authenticator(username=username, authenticator_secret=authenticator_secret)
+
+
+@jsonrpc_method("set_public_authenticator_view", site=extended_jsonrpc_site)
+@convert_exceptions_to_jsonrpc_status_slugs
+def set_public_authenticator_view(self, username, description, authenticator_secret, public_keys):
+    return set_public_authenticator(username=username, description=description,
+                                    authenticator_secret=authenticator_secret,
+                                    public_keys=public_keys)

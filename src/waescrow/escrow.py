@@ -5,11 +5,18 @@ from typing import Optional
 
 from django.utils import timezone
 
+import jsonschema
+from jsonschema import validate
+from schema import And, Or, Regex, Const, Schema
+from wacryptolib.encryption import SUPPORTED_ENCRYPTION_ALGOS
+
 from wacryptolib.escrow import KeyStorageBase, EscrowApi
-from wacryptolib.exceptions import KeyDoesNotExist, KeyAlreadyExists, AuthorizationError, ExistenceError
+from wacryptolib.exceptions import KeyDoesNotExist, KeyAlreadyExists, AuthorizationError, ExistenceError, \
+    ValidationError
 from wacryptolib.utilities import synchronized
 
-from waescrow.models import AuthenticatorUser, EscrowKeypair, DECRYPTION_AUTHORIZATION_LIFESPAN_H
+from waescrow.models import AuthenticatorUser, EscrowKeypair, DECRYPTION_AUTHORIZATION_LIFESPAN_H, \
+    AuthenticatorPublicKey
 from waescrow.serializers import AuthenticatorUserSerializer
 
 
@@ -20,13 +27,28 @@ def _fetch_key_object_or_raise(keychain_uid: uuid.UUID, key_type: str) -> Escrow
         raise KeyDoesNotExist("Database keypair %s/%s not found" % (keychain_uid, key_type))
 
 
-def get_authenticator_users(description: str, authenticator_secret: str):
+def get_public_authenticator(username, authenticator_secret):
     try:
-        authenticator_user = AuthenticatorUser.objects.get(description=description,
-                                                           authenticator_secret=authenticator_secret)
-        res = AuthenticatorUserSerializer(authenticator_user).data
+        authenticator_user = AuthenticatorUser.objects.get(username=username)
+
+        # assert authenticator_secret == AuthenticatorUserSerializer(authenticator_user).data.
+        return AuthenticatorUserSerializer(authenticator_user).data
     except EscrowKeypair.DoesNotExist:
         raise ExistenceError("Authenticator User does not exist")  # TODO change this exception error
+
+
+def set_public_authenticator(description: str, authenticator_secret: str, username: str, public_keys: list):
+    jj = AuthenticatorUser.objects.filter(username=username).first()
+
+    if jj:
+        raise KeyDoesNotExist("Authenticator already exists in sql storage" % username)
+    else:
+        user = AuthenticatorUser.objects.create(description=description,
+                                                authenticator_secret=authenticator_secret, username=username)
+        for public_key in public_keys:
+            AuthenticatorPublicKey.objects.create(authenticator_user=user,
+                                                  keychain_uid=public_key["keychain_uid"],
+                                                  key_type=public_key["key_type"], payload=public_key["payload"])
 
 
 def create_authenticator_user(description: str, authenticator_secret: str):
@@ -34,6 +56,50 @@ def create_authenticator_user(description: str, authenticator_secret: str):
         description=description,
         authenticator_secret=authenticator_secret
     )
+
+
+def _create_schema():
+    """Create validation schema for confs and containers.
+
+    :return: a schema.
+    """
+
+    _micro_schema_hex_uid = And(str, Or(Regex(
+        '^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{4})$'), Regex(
+        '[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}')))
+    micro_schema_uid = {
+        "$binary": {
+            "base64": _micro_schema_hex_uid,
+            "subType": "03"}}
+    micro_schema_binary = {
+        "$binary": {
+            "base64": And(str,
+                          Regex('^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{4})$')),
+            "subType": "00"}
+    }
+
+    SCHEMA_PUBLIC_AUTHENTICATOR = Schema([{
+        "description": And(str, len),
+        "username": And(str, len),
+        "public_keys": [
+            {
+                'key_type': Or(*SUPPORTED_ENCRYPTION_ALGOS),
+                'keychain_uid': micro_schema_uid,
+                'public_key': micro_schema_binary
+            }
+        ]
+    }])
+
+    return SCHEMA_PUBLIC_AUTHENTICATOR
+
+
+def check_public_authenticator_sanity(public_authenticator: list):
+    assert isinstance(public_authenticator, list)
+    public_authenticator_schema_tree = _create_schema().json_schema("schema_test")
+    try:
+        validate(instance=public_authenticator, schema=public_authenticator_schema_tree)
+    except jsonschema.exceptions.ValidationError as exc:
+        raise ValidationError("Error validating with {}".format(exc)) from exc
 
 
 class SqlKeyStorage(KeyStorageBase):

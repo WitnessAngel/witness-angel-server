@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import EscrowKeypair, AuthenticatorUser
+from .models import EscrowKeypair, AuthenticatorUser, AuthenticatorPublicKey
 
 
 class EscrowKeypairAdmin(admin.ModelAdmin):
@@ -19,3 +19,4 @@ class EscrowKeypairAdmin(admin.ModelAdmin):
 
 admin.site.register(EscrowKeypair, EscrowKeypairAdmin)
 admin.site.register(AuthenticatorUser)
+admin.site.register(AuthenticatorPublicKey)

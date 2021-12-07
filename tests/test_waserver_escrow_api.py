@@ -1,4 +1,7 @@
+import json
 import random
+from uuid import UUID
+
 import requests
 from datetime import timedelta
 
@@ -28,8 +31,9 @@ from wacryptolib.scaffolding import (
     check_key_storage_free_keys_concurrency,
 )
 from wacryptolib.signature import verify_message_signature
-from wacryptolib.utilities import generate_uuid0
-from waescrow.escrow import SqlKeyStorage, _fetch_key_object_or_raise, create_authenticator_user
+from wacryptolib.utilities import generate_uuid0, dump_to_json_str
+from waescrow.escrow import SqlKeyStorage, _fetch_key_object_or_raise, create_authenticator_user, \
+    check_public_authenticator_sanity, set_public_authenticator
 from waescrow.models import EscrowKeypair, AuthenticatorUser, AuthenticatorPublicKey
 from waescrow.serializers import AuthenticatorUserSerializer
 
@@ -545,37 +549,86 @@ def test_waescrow_wsgi_application(db):
         application(environ={}, start_response=lambda *args, **kwargs: None)
 
 
-def test_jsonrpc_get_user_authenticator(live_server):
+def _generate_authenticator_parameter_tree(key_count):
+    public_keys = []
+
+    for count in range(key_count):
+        public_keys.append({
+            "keychain_uid": generate_uuid0(),
+            "key_type": "RSA_OAEP",
+            "payload": get_random_bytes(20)
+        })
+
+    parameters = dict(
+        description="description",
+        authenticator_secret="authenticator_secret",
+        username="username",
+        public_keys=public_keys
+    )
+    return parameters
+
+
+def test_jsonrpc_get_authenticator(live_server):
     jsonrpc_url = live_server.url + "/json/"
 
     escrow_proxy = JsonRpcProxy(
         url=jsonrpc_url, response_error_handler=status_slugs_response_error_handler
     )
-    description = "description"
-    authenticator_secret = "authenticator_secret"
-    create_authenticator_user(description=description,
-                              authenticator_secret=authenticator_secret)
 
-    result = escrow_proxy.get_authenticator_user(description=description, authenticator_secret=authenticator_secret)
+    parameters = _generate_authenticator_parameter_tree(2)
+
+    escrow_proxy.set_public_authenticator_view(username=parameters["username"], description=parameters["description"],
+                                               authenticator_secret=parameters["authenticator_secret"],
+                                               public_keys=parameters["public_keys"])
+
+    public_authenticator = escrow_proxy.get_public_authenticator_view(username=parameters["username"],
+                                                                      authenticator_secret=parameters[
+                                                                          "authenticator_secret"])
+
+    print("public...........", public_authenticator)
+
+    del parameters["authenticator_secret"]
+
+    print("para..........", parameters)
+
+    assert public_authenticator == parameters
+    return public_authenticator
 
 
-def test_get_user_authenticator(live_server):
-    description = "description"
-    authenticator_secret = "authenticator_secret"
-    create_authenticator_user(description=description,
-                              authenticator_secret=authenticator_secret)
+def _dump_to_raw_json_tree(data):
+    """
+    Turn a python tree (including UUIDs, bytes etc.) into its representation
+    as Pymongo extended json (with $binary, $numberInt etc.)
+    """
+    # Export in pymongo extended json format
+    json_std_lib = dump_to_json_str(data)
+
+    # Parse Json from string
+    json_str_lib = json.loads(json_std_lib)
+
+    return json_str_lib
+
+
+def test_rest_api_get_authenticator(live_server):
+    parameters = _generate_authenticator_parameter_tree(2)
+
+    set_public_authenticator(username=parameters["username"], description=parameters["description"],
+                             authenticator_secret=parameters["authenticator_secret"], public_keys=parameters["public_keys"])
+
     url = live_server.url + "/authenticatorusers/"
     response = requests.get(url)
-    print(response.json())
+    print(response)
     assert response.status_code == status.HTTP_200_OK
-
-
-def test_get_public_authenticator(live_server):
-    user = AuthenticatorUser.objects.create(description="description1", authenticator_secret="authenticator_secret1")
-    AuthenticatorPublicKey.objects.create(authenticator_user=user, keychain_uid=generate_uuid0(), key_type='RSA_OAEP')
-
-    serializer = AuthenticatorUserSerializer(instance=user)
-
-    url = live_server.url + "/publicauthenticator/"
-    print(serializer.data)
+    public_authenticator = response.json()
+    print(public_authenticator)
     gtx
+    return public_authenticator
+
+
+
+
+
+def test_aaa():
+    serializer = AuthenticatorUserSerializer()
+    print(serializer)
+    aaaaaaaaaa

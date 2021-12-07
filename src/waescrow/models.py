@@ -30,7 +30,6 @@ class AuthenticatorUser(AbstractUser):
     description = models.CharField(_("Identity/role of the key guardian"), max_length=100)
 
     # Todo add real mobile_phone field later!
-
     # username = models.UUIDField(_("keychain uid"), default=uuid.uuid4, null=True)
 
     #: Hash of the secret string of the authenticator
@@ -77,13 +76,13 @@ class AuthenticatorPublicKey(models.Model):
     # authenticator_user = models.ForeignKey(AuthenticatorUser, on_delete=models.CASCADE, verbose_name=_(
     # 'authenticator user'))
 
-    authenticator_user = models.ForeignKey(AuthenticatorUser, related_name='public_key',
+    authenticator_user = models.ForeignKey(AuthenticatorUser, related_name='public_keys',
                                            on_delete=models.CASCADE)
 
     active = models.BooleanField(_("active"), default=True)  # If this public key might be used for new containers
     keychain_uid = models.UUIDField(_("Keychain uid"), null=True)
     key_type = models.CharField(_("Key type"), max_length=20)
-    public_key = encrypt(models.BinaryField(_("Public key (PEM format)")))
+    payload = encrypt(models.BinaryField(_("Public key (PEM format)")))
 
 
 '''
