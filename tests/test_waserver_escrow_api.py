@@ -32,7 +32,7 @@ from wacryptolib.scaffolding import (
 )
 from wacryptolib.signature import verify_message_signature
 from wacryptolib.utilities import generate_uuid0, dump_to_json_str
-from waescrow.escrow import SqlKeyStorage, _fetch_key_object_or_raise, create_authenticator_user, \
+from waescrow.escrow import SqlKeyStorage, _fetch_key_object_or_raise, \
     check_public_authenticator_sanity, set_public_authenticator
 from waescrow.models import EscrowKeypair, AuthenticatorUser, AuthenticatorPublicKey
 from waescrow.serializers import AuthenticatorUserSerializer
@@ -568,6 +568,20 @@ def _generate_authenticator_parameter_tree(key_count):
     return parameters
 
 
+def _dump_to_raw_json_tree(data):
+    """
+    Turn a python tree (including UUIDs, bytes etc.) into its representation
+    as Pymongo extended json (with $binary, $numberInt etc.)
+    """
+    # Export in pymongo extended json format
+    json_std_lib = dump_to_json_str(data)
+
+    # Parse Json from string
+    json_str_lib = json.loads(json_std_lib)
+
+    return json_str_lib
+
+
 def test_jsonrpc_get_authenticator(live_server):
     jsonrpc_url = live_server.url + "/json/"
 
@@ -585,50 +599,23 @@ def test_jsonrpc_get_authenticator(live_server):
                                                                       authenticator_secret=parameters[
                                                                           "authenticator_secret"])
 
-    print("public...........", public_authenticator)
-
     del parameters["authenticator_secret"]
-
-    print("para..........", parameters)
-
-    assert public_authenticator == parameters
+    assert parameters == public_authenticator
+    check_public_authenticator_sanity(_dump_to_raw_json_tree(public_authenticator))
     return public_authenticator
-
-
-def _dump_to_raw_json_tree(data):
-    """
-    Turn a python tree (including UUIDs, bytes etc.) into its representation
-    as Pymongo extended json (with $binary, $numberInt etc.)
-    """
-    # Export in pymongo extended json format
-    json_std_lib = dump_to_json_str(data)
-
-    # Parse Json from string
-    json_str_lib = json.loads(json_std_lib)
-
-    return json_str_lib
 
 
 def test_rest_api_get_authenticator(live_server):
     parameters = _generate_authenticator_parameter_tree(2)
 
+    for i in parameters["public_keys"]:
+        i["payload"] = b"azertyuiopppp"
     set_public_authenticator(username=parameters["username"], description=parameters["description"],
-                             authenticator_secret=parameters["authenticator_secret"], public_keys=parameters["public_keys"])
+                             authenticator_secret=parameters["authenticator_secret"],
+                             public_keys=parameters["public_keys"])
 
     url = live_server.url + "/authenticatorusers/"
     response = requests.get(url)
-    print(response)
     assert response.status_code == status.HTTP_200_OK
     public_authenticator = response.json()
-    print(public_authenticator)
-    gtx
     return public_authenticator
-
-
-
-
-
-def test_aaa():
-    serializer = AuthenticatorUserSerializer()
-    print(serializer)
-    aaaaaaaaaa

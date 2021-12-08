@@ -1,3 +1,4 @@
+import pickle
 import threading
 import uuid
 from datetime import timedelta
@@ -30,17 +31,16 @@ def _fetch_key_object_or_raise(keychain_uid: uuid.UUID, key_type: str) -> Escrow
 def get_public_authenticator(username, authenticator_secret):
     try:
         authenticator_user = AuthenticatorUser.objects.get(username=username)
-
-        # assert authenticator_secret == AuthenticatorUserSerializer(authenticator_user).data.
+        assert authenticator_secret == authenticator_user.authenticator_secret
         return AuthenticatorUserSerializer(authenticator_user).data
     except EscrowKeypair.DoesNotExist:
         raise ExistenceError("Authenticator User does not exist")  # TODO change this exception error
 
 
 def set_public_authenticator(description: str, authenticator_secret: str, username: str, public_keys: list):
-    jj = AuthenticatorUser.objects.filter(username=username).first()
+    authenticator_user_exist_or_none = AuthenticatorUser.objects.filter(username=username).first()
 
-    if jj:
+    if authenticator_user_exist_or_none:
         raise KeyDoesNotExist("Authenticator already exists in sql storage" % username)
     else:
         user = AuthenticatorUser.objects.create(description=description,
@@ -49,13 +49,6 @@ def set_public_authenticator(description: str, authenticator_secret: str, userna
             AuthenticatorPublicKey.objects.create(authenticator_user=user,
                                                   keychain_uid=public_key["keychain_uid"],
                                                   key_type=public_key["key_type"], payload=public_key["payload"])
-
-
-def create_authenticator_user(description: str, authenticator_secret: str):
-    authenticator_user = AuthenticatorUser.objects.create(
-        description=description,
-        authenticator_secret=authenticator_secret
-    )
 
 
 def _create_schema():
@@ -78,23 +71,23 @@ def _create_schema():
             "subType": "00"}
     }
 
-    SCHEMA_PUBLIC_AUTHENTICATOR = Schema([{
+    SCHEMA_PUBLIC_AUTHENTICATOR = Schema({
         "description": And(str, len),
         "username": And(str, len),
         "public_keys": [
             {
                 'key_type': Or(*SUPPORTED_ENCRYPTION_ALGOS),
                 'keychain_uid': micro_schema_uid,
-                'public_key': micro_schema_binary
+                'payload': micro_schema_binary
             }
         ]
-    }])
+    })
 
     return SCHEMA_PUBLIC_AUTHENTICATOR
 
 
-def check_public_authenticator_sanity(public_authenticator: list):
-    assert isinstance(public_authenticator, list)
+def check_public_authenticator_sanity(public_authenticator: dict):
+    assert isinstance(public_authenticator, dict)
     public_authenticator_schema_tree = _create_schema().json_schema("schema_test")
     try:
         validate(instance=public_authenticator, schema=public_authenticator_schema_tree)
