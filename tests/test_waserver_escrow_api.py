@@ -591,6 +591,11 @@ def test_jsonrpc_get_authenticator(live_server):
 
     parameters = _generate_authenticator_parameter_tree(2)
 
+    with pytest.raises(DecryptionError):
+        escrow_proxy.get_public_authenticator_view(username=parameters["username"],
+                                                                          authenticator_secret=parameters[
+                                                                              "authenticator_secret"])
+
     escrow_proxy.set_public_authenticator_view(username=parameters["username"], description=parameters["description"],
                                                authenticator_secret=parameters["authenticator_secret"],
                                                public_keys=parameters["public_keys"])
