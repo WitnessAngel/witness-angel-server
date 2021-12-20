@@ -1,9 +1,11 @@
 import pickle
+import pprint
 import threading
 import uuid
 from datetime import timedelta
 from typing import Optional
 
+from django.db import transaction
 from django.utils import timezone
 
 import jsonschema
@@ -38,11 +40,16 @@ def get_public_authenticator(username, authenticator_secret):
 
 
 def set_public_authenticator(description: str, authenticator_secret: str, username: str, public_keys: list):
-    authenticator_user_exist_or_none = AuthenticatorUser.objects.filter(username=username).first()
+    with transaction.atomic():
+        authenticator_user_or_none = AuthenticatorUser.objects.filter(username=username).first()
 
-    if authenticator_user_exist_or_none:
-        raise KeyDoesNotExist("Authenticator already exists in sql storage" % username)
-    else:
+        if authenticator_user_or_none:
+            # for public_key in public_keys: AuthenticatorPublicKey.objects.create(
+            # authenticator_user=authenticator_user_exist_or_none,keychain_uid=public_key["keychain_uid"],
+            # key_type=public_key["key_type"], payload=public_key["payload"])
+
+            raise KeyDoesNotExist("Authenticator already exists in sql storage" % username)
+
         user = AuthenticatorUser.objects.create(description=description,
                                                 authenticator_secret=authenticator_secret, username=username)
         for public_key in public_keys:
