@@ -35,7 +35,8 @@ def get_public_authenticator(username, authenticator_secret):
         authenticator_user = AuthenticatorUser.objects.get(username=username)
         assert authenticator_secret == authenticator_user.authenticator_secret
         return AuthenticatorUserSerializer(authenticator_user).data
-    except EscrowKeypair.DoesNotExist:
+    except Exception as exc:
+        print(exc)
         raise ExistenceError("Authenticator User does not exist")  # TODO change this exception error
 
 
