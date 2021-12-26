@@ -15,7 +15,7 @@ from django.utils import timezone
 from freezegun import freeze_time
 from rest_framework import status
 
-from wacryptolib.container import (
+from wacryptolib.cryptainer import (
     encrypt_data_into_container,
     decrypt_data_from_container, gather_escrow_dependencies, request_decryption_authorizations,
 )
