@@ -422,7 +422,7 @@ def test_jsonrpc_escrow_request_decryption_authorization_for_free_keys(live_serv
 def test_jsonrpc_escrow_encrypt_decrypt_container(live_server):
     jsonrpc_url = live_server.url + "/json/"  # FIXME change url!!
 
-    encryption_conf = dict(
+    cryptoconf = dict(
         data_encryption_strata=[
             # First we encrypt with local key and sign via main remote escrow
             dict(
@@ -451,7 +451,7 @@ def test_jsonrpc_escrow_encrypt_decrypt_container(live_server):
 
         container = encrypt_data_into_container(
             data=data,
-            conf=encryption_conf,
+            conf=cryptoconf,
             metadata=None,
             keychain_uid=keychain_uid,
             key_storage_pool=None,  # Unused by this config actually
@@ -504,7 +504,7 @@ def test_jsonrpc_escrow_encrypt_decrypt_container(live_server):
 
         container = encrypt_data_into_container(
             data=data,
-            conf=encryption_conf,
+            conf=cryptoconf,
             metadata=None,
             keychain_uid=keychain_uid,
             key_storage_pool=None,  # Unused by this config actually
