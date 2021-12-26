@@ -451,7 +451,7 @@ def test_jsonrpc_escrow_encrypt_decrypt_container(live_server):
 
         container = encrypt_data_into_container(
             data=data,
-            conf=cryptoconf,
+           cryptoconf=cryptoconf,
             metadata=None,
             keychain_uid=keychain_uid,
             key_storage_pool=None,  # Unused by this config actually
@@ -504,7 +504,7 @@ def test_jsonrpc_escrow_encrypt_decrypt_container(live_server):
 
         container = encrypt_data_into_container(
             data=data,
-            conf=cryptoconf,
+           cryptoconf=cryptoconf,
             metadata=None,
             keychain_uid=keychain_uid,
             key_storage_pool=None,  # Unused by this config actually
