@@ -23,7 +23,7 @@ class Migration(migrations.Migration):
                 ('modified', model_utils.fields.AutoLastModifiedField(default=django.utils.timezone.now, editable=False, verbose_name='modified')),
                 ('active', models.BooleanField(default=True, verbose_name='active')),
                 ('keychain_uid', models.UUIDField(null=True, verbose_name='Keychain uid')),
-                ('key_type', models.CharField(max_length=20, verbose_name='Key type')),
+                ('key_algo', models.CharField(max_length=20, verbose_name='Key type')),
                 ('public_key', django_cryptography.fields.encrypt(models.BinaryField(verbose_name='Public key (PEM format)'))),
                 ('authenticator_user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL, verbose_name='authenticator user')),
             ],

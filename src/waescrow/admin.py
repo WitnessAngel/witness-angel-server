@@ -8,7 +8,7 @@ class EscrowKeypairAdmin(admin.ModelAdmin):
     list_display = (
         "created_at",
         "keychain_uid",
-        "key_type",
+        "key_algo",
         "decryption_authorized_at",
     )
 

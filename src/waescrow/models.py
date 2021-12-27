@@ -25,7 +25,7 @@ class AuthenticatorUser(AbstractUser):
     class Meta:
         verbose_name = _("authenticator user")
         verbose_name_plural = _("authenticator users")
-        # unique_together = [("keychain_uid", "key_type")]
+        # unique_together = [("keychain_uid", "key_algo")]
 
     description = models.CharField(_("Identity/role of the key guardian"), max_length=100)
 
@@ -81,7 +81,7 @@ class AuthenticatorPublicKey(models.Model):
 
     active = models.BooleanField(_("active"), default=True)  # If this public key might be used for new containers
     keychain_uid = models.UUIDField(_("Keychain uid"), null=True)
-    key_type = models.CharField(_("Key type"), max_length=20)
+    key_algo = models.CharField(_("Key type"), max_length=20)
     payload = encrypt(models.BinaryField(_("Public key (PEM format)")))
 
 
@@ -107,7 +107,7 @@ class EscrowKeypair(models.Model):
     class Meta:
         verbose_name = _("escrow key pair")
         verbose_name_plural = _("escrow key pairs")
-        unique_together = [("keychain_uid", "key_type")]
+        unique_together = [("keychain_uid", "key_algo")]
 
     created_at = models.DateTimeField(_("Creation of record"), auto_now_add=True)
 
@@ -115,7 +115,7 @@ class EscrowKeypair(models.Model):
     attached_at = models.DateTimeField(_("Attachment of free key to keychain uid"), null=True)
 
     keychain_uid = models.UUIDField(_("Keychain uid"), null=True)  # Null for free keys
-    key_type = models.CharField(_("Key type"), max_length=20)
+    key_algo = models.CharField(_("Key type"), max_length=20)
     public_key = encrypt(models.BinaryField(_("Public key (PEM format)")))
     private_key = encrypt(models.BinaryField(_("Private key (PEM format)")))  # MUST exist
 
@@ -125,4 +125,4 @@ class EscrowKeypair(models.Model):
     )
 
     def __repr__(self):
-        return "<EscrowKeypair (type=%s, uid=%s)>" % (self.key_type, self.keychain_uid)
+        return "<EscrowKeypair (type=%s, uid=%s)>" % (self.key_algo, self.keychain_uid)

@@ -20,7 +20,7 @@ from wacryptolib.cryptainer import (
     decrypt_payload_from_cryptainer, gather_escrow_dependencies, request_decryption_authorizations,
 )
 from wacryptolib.encryption import _encrypt_via_rsa_oaep
-from wacryptolib.escrow import generate_free_keypair_for_least_provisioned_key_type
+from wacryptolib.escrow import generate_free_keypair_for_least_provisioned_key_algo
 from wacryptolib.exceptions import KeyDoesNotExist, SignatureVerificationError, AuthorizationError, DecryptionError
 from wacryptolib.jsonrpc_client import JsonRpcProxy, status_slugs_response_error_handler
 from wacryptolib.keygen import load_asymmetric_key_from_pem_bytestring
@@ -43,7 +43,7 @@ def test_sql_keystore_basic_and_free_keys_api(db):
 
     test_locals = check_keystore_basic_get_set_api(sql_keystore)
     keychain_uid = test_locals["keychain_uid"]
-    key_type = test_locals["key_type"]
+    key_algo = test_locals["key_algo"]
 
     check_keystore_free_keys_api(sql_keystore)
 
@@ -55,7 +55,7 @@ def test_sql_keystore_basic_and_free_keys_api(db):
     ):  # Final tests, since it breaks current DB transaction
         EscrowKeypair.objects.create(
             keychain_uid=keychain_uid,
-            key_type=key_type,
+            key_algo=key_algo,
             public_key=b"hhhh",
             private_key=b"jjj",
         )
@@ -81,10 +81,10 @@ def test_jsonrpc_escrow_signature(live_server):
     secret_too_big = get_random_bytes(150)
 
     public_key_signature_pem = escrow_proxy.fetch_public_key(
-        keychain_uid=keychain_uid, key_type=signature_algo
+        keychain_uid=keychain_uid, key_algo=signature_algo
     )
     public_key_signature = load_asymmetric_key_from_pem_bytestring(
-        key_pem=public_key_signature_pem, key_type=signature_algo
+        key_pem=public_key_signature_pem, key_algo=signature_algo
     )
 
     signature = escrow_proxy.get_message_signature(
@@ -140,10 +140,10 @@ def test_jsonrpc_escrow_decryption_authorization_flags(live_server):
     secret = get_random_bytes(101)
 
     public_key_encryption_pem = escrow_proxy.fetch_public_key(
-        keychain_uid=keychain_uid, key_type=key_encryption_algo
+        keychain_uid=keychain_uid, key_algo=key_encryption_algo
     )
     public_key_encryption = load_asymmetric_key_from_pem_bytestring(
-        key_pem=public_key_encryption_pem, key_type=key_encryption_algo
+        key_pem=public_key_encryption_pem, key_algo=key_encryption_algo
     )
 
     cipherdict = _encrypt_via_rsa_oaep(plaintext=secret, key_dict=dict(key=public_key_encryption))
@@ -160,7 +160,7 @@ def test_jsonrpc_escrow_decryption_authorization_flags(live_server):
             _attempt_decryption()
 
         keypair_obj = EscrowKeypair.objects.get(
-            keychain_uid=keychain_uid, key_type=key_encryption_algo
+            keychain_uid=keychain_uid, key_algo=key_encryption_algo
         )
         keypair_obj.decryption_authorized_at = timezone.now() + timedelta(hours=2)
         keypair_obj.save()
@@ -224,24 +224,24 @@ def test_jsonrpc_escrow_request_decryption_authorization_for_normal_keys(live_se
         keychain_uid_unexisting = generate_uuid0()
 
         all_keypair_identifiers = [
-            dict(keychain_uid=keychain_uid1, key_type=key_encryption_algo),
-            dict(keychain_uid=keychain_uid2, key_type=key_encryption_algo),
-            dict(keychain_uid=keychain_uid3, key_type=key_encryption_algo),
-            dict(keychain_uid=keychain_uid4, key_type=key_encryption_algo),
-            dict(keychain_uid=keychain_uid_unexisting, key_type=key_encryption_algo),
+            dict(keychain_uid=keychain_uid1, key_algo=key_encryption_algo),
+            dict(keychain_uid=keychain_uid2, key_algo=key_encryption_algo),
+            dict(keychain_uid=keychain_uid3, key_algo=key_encryption_algo),
+            dict(keychain_uid=keychain_uid4, key_algo=key_encryption_algo),
+            dict(keychain_uid=keychain_uid_unexisting, key_algo=key_encryption_algo),
         ]
 
         public_key_pem = escrow_proxy.fetch_public_key(
-            keychain_uid=keychain_uid1, key_type=key_encryption_algo
+            keychain_uid=keychain_uid1, key_algo=key_encryption_algo
         )
         assert public_key_pem
         assert not _fetch_key_object_or_raise(
-            keychain_uid=keychain_uid1, key_type=key_encryption_algo
+            keychain_uid=keychain_uid1, key_algo=key_encryption_algo
         ).decryption_authorized_at
 
         # Non-pregenerated keys don't have that field set!
         assert not _fetch_key_object_or_raise(
-            keychain_uid=keychain_uid1, key_type=key_encryption_algo
+            keychain_uid=keychain_uid1, key_algo=key_encryption_algo
         ).attached_at
 
         result = escrow_proxy.request_decryption_authorization(
@@ -264,16 +264,16 @@ def test_jsonrpc_escrow_request_decryption_authorization_for_normal_keys(live_se
         )  # keychain_uid2 and keychain_uid3 not created yet
 
         old_decryption_authorized_at = _fetch_key_object_or_raise(
-            keychain_uid=keychain_uid1, key_type=key_encryption_algo
+            keychain_uid=keychain_uid1, key_algo=key_encryption_algo
         ).decryption_authorized_at
         assert old_decryption_authorized_at
 
         public_key_pem = escrow_proxy.fetch_public_key(
-            keychain_uid=keychain_uid2, key_type=key_encryption_algo
+            keychain_uid=keychain_uid2, key_algo=key_encryption_algo
         )
         assert public_key_pem
         public_key_pem = escrow_proxy.fetch_public_key(
-            keychain_uid=keychain_uid3, key_type=key_encryption_algo
+            keychain_uid=keychain_uid3, key_algo=key_encryption_algo
         )
         assert public_key_pem
 
@@ -289,24 +289,24 @@ def test_jsonrpc_escrow_request_decryption_authorization_for_normal_keys(live_se
 
         assert (
                 _fetch_key_object_or_raise(
-                    keychain_uid=keychain_uid1, key_type=key_encryption_algo
+                    keychain_uid=keychain_uid1, key_algo=key_encryption_algo
                 ).decryption_authorized_at
                 == old_decryption_authorized_at
         )  # Unchanged
         assert _fetch_key_object_or_raise(
-            keychain_uid=keychain_uid2, key_type=key_encryption_algo
+            keychain_uid=keychain_uid2, key_algo=key_encryption_algo
         ).decryption_authorized_at
         assert _fetch_key_object_or_raise(
-            keychain_uid=keychain_uid3, key_type=key_encryption_algo
+            keychain_uid=keychain_uid3, key_algo=key_encryption_algo
         ).decryption_authorized_at
 
         with pytest.raises(KeyDoesNotExist, match="not found"):
             _fetch_key_object_or_raise(
-                keychain_uid=keychain_uid_unexisting, key_type=key_encryption_algo
+                keychain_uid=keychain_uid_unexisting, key_algo=key_encryption_algo
             )
 
         public_key_pem = escrow_proxy.fetch_public_key(
-            keychain_uid=keychain_uid4, key_type=key_encryption_algo
+            keychain_uid=keychain_uid4, key_algo=key_encryption_algo
         )
         assert public_key_pem
 
@@ -322,7 +322,7 @@ def test_jsonrpc_escrow_request_decryption_authorization_for_normal_keys(live_se
 
         assert (
                 _fetch_key_object_or_raise(
-                    keychain_uid=keychain_uid1, key_type=key_encryption_algo
+                    keychain_uid=keychain_uid1, key_algo=key_encryption_algo
                 ).decryption_authorized_at
                 == old_decryption_authorized_at
         )  # Unchanged
@@ -338,13 +338,13 @@ def test_jsonrpc_escrow_request_decryption_authorization_for_free_keys(live_serv
     )
 
     keychain_uid_free = generate_uuid0()
-    free_key_type1 = "RSA_OAEP"
-    free_key_type2 = "ECC_DSS"
-    free_key_type3 = "DSA_DSS"
+    free_key_algo1 = "RSA_OAEP"
+    free_key_algo2 = "ECC_DSS"
+    free_key_algo3 = "DSA_DSS"
 
     all_requested_keypair_identifiers = [
-        dict(keychain_uid=keychain_uid_free, key_type=free_key_type1),
-        dict(keychain_uid=keychain_uid_free, key_type=free_key_type2),
+        dict(keychain_uid=keychain_uid_free, key_algo=free_key_algo1),
+        dict(keychain_uid=keychain_uid_free, key_algo=free_key_algo2),
     ]
 
     sql_keystore = SqlKeystore()
@@ -352,23 +352,23 @@ def test_jsonrpc_escrow_request_decryption_authorization_for_free_keys(live_serv
     with freeze_time() as frozen_datetime:  # TEST RELATION WITH FREE KEYS ATTACHMENT
 
         for i in range(3):  # Generate 1 free keypair per type
-            has_generated = generate_free_keypair_for_least_provisioned_key_type(
+            has_generated = generate_free_keypair_for_least_provisioned_key_algo(
                 keystore=sql_keystore,
                 max_free_keys_per_type=1,
-                key_types=[free_key_type1, free_key_type2, free_key_type3]
+                key_algos=[free_key_algo1, free_key_algo2, free_key_algo3]
             )
             assert has_generated
 
         keys_generated_before_datetime = timezone.now()
 
         public_key_pem1 = escrow_proxy.fetch_public_key(
-            keychain_uid=keychain_uid_free, key_type=free_key_type1
+            keychain_uid=keychain_uid_free, key_algo=free_key_algo1
         )
         assert public_key_pem1
 
         # This key will not have early-enough request for authorization
         public_key_pem3 = escrow_proxy.fetch_public_key(
-            keychain_uid=keychain_uid_free, key_type=free_key_type3
+            keychain_uid=keychain_uid_free, key_algo=free_key_algo3
         )
         assert public_key_pem3
 
@@ -378,12 +378,12 @@ def test_jsonrpc_escrow_request_decryption_authorization_for_free_keys(live_serv
         )
         assert result["success_count"] == 1
         assert result["too_old_count"] == 0
-        assert result["not_found_count"] == 1  # free_key_type2 is not attached yet
+        assert result["not_found_count"] == 1  # free_key_algo2 is not attached yet
 
         frozen_datetime.tick(delta=timedelta(minutes=6))
 
         public_key_pem2 = escrow_proxy.fetch_public_key(
-            keychain_uid=keychain_uid_free, key_type=free_key_type2
+            keychain_uid=keychain_uid_free, key_algo=free_key_algo2
         )
         assert public_key_pem2
 
@@ -396,7 +396,7 @@ def test_jsonrpc_escrow_request_decryption_authorization_for_free_keys(live_serv
         assert result["not_found_count"] == 0
 
         keypair_obj = EscrowKeypair.objects.get(
-            keychain_uid=keychain_uid_free, key_type=free_key_type1
+            keychain_uid=keychain_uid_free, key_algo=free_key_algo1
         )
         assert keypair_obj.created_at <= keys_generated_before_datetime
         assert keypair_obj.attached_at
@@ -404,7 +404,7 @@ def test_jsonrpc_escrow_request_decryption_authorization_for_free_keys(live_serv
         first_authorized_at = keypair_obj.decryption_authorized_at
 
         keypair_obj = EscrowKeypair.objects.get(
-            keychain_uid=keychain_uid_free, key_type=free_key_type2
+            keychain_uid=keychain_uid_free, key_algo=free_key_algo2
         )
         assert keypair_obj.created_at <= keys_generated_before_datetime
         assert keypair_obj.attached_at
@@ -412,7 +412,7 @@ def test_jsonrpc_escrow_request_decryption_authorization_for_free_keys(live_serv
         assert keypair_obj.decryption_authorized_at >= first_authorized_at + timedelta(minutes=5)
 
         keypair_obj = EscrowKeypair.objects.get(
-            keychain_uid=keychain_uid_free, key_type=free_key_type3
+            keychain_uid=keychain_uid_free, key_algo=free_key_algo3
         )
         assert keypair_obj.created_at <= keys_generated_before_datetime
         assert keypair_obj.attached_at
@@ -555,7 +555,7 @@ def _generate_authenticator_parameter_tree(key_count):
     for count in range(key_count):
         public_keys.append({
             "keychain_uid": generate_uuid0(),
-            "key_type": "RSA_OAEP",
+            "key_algo": "RSA_OAEP",
             "payload": get_random_bytes(20)
         })
 

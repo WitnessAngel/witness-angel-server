@@ -23,11 +23,11 @@ from waescrow.models import AuthenticatorUser, EscrowKeypair, DECRYPTION_AUTHORI
 from waescrow.serializers import AuthenticatorUserSerializer
 
 
-def _fetch_key_object_or_raise(keychain_uid: uuid.UUID, key_type: str) -> EscrowKeypair:
+def _fetch_key_object_or_raise(keychain_uid: uuid.UUID, key_algo: str) -> EscrowKeypair:
     try:
-        return EscrowKeypair.objects.get(keychain_uid=keychain_uid, key_type=key_type)
+        return EscrowKeypair.objects.get(keychain_uid=keychain_uid, key_algo=key_algo)
     except EscrowKeypair.DoesNotExist:
-        raise KeyDoesNotExist("Database keypair %s/%s not found" % (keychain_uid, key_type))
+        raise KeyDoesNotExist("Database keypair %s/%s not found" % (keychain_uid, key_algo))
 
 
 def get_public_authenticator(username, authenticator_secret):
@@ -47,7 +47,7 @@ def set_public_authenticator(description: str, authenticator_secret: str, userna
         if authenticator_user_or_none:
             # for public_key in public_keys: AuthenticatorPublicKey.objects.create(
             # authenticator_user=authenticator_user_exist_or_none,keychain_uid=public_key["keychain_uid"],
-            # key_type=public_key["key_type"], payload=public_key["payload"])
+            # key_algo=public_key["key_algo"], payload=public_key["payload"])
 
             raise KeyDoesNotExist("Authenticator already exists in sql storage" % username)
 
@@ -56,7 +56,7 @@ def set_public_authenticator(description: str, authenticator_secret: str, userna
         for public_key in public_keys:
             AuthenticatorPublicKey.objects.create(authenticator_user=user,
                                                   keychain_uid=public_key["keychain_uid"],
-                                                  key_type=public_key["key_type"], payload=public_key["payload"])
+                                                  key_algo=public_key["key_algo"], payload=public_key["payload"])
 
 
 def _create_schema():
@@ -84,7 +84,7 @@ def _create_schema():
         "username": And(str, len),
         "public_keys": [
             {
-                'key_type': Or(*SUPPORTED_ENCRYPTION_ALGOS),
+                'key_algo': Or(*SUPPORTED_ENCRYPTION_ALGOS),
                 'keychain_uid': micro_schema_uid,
                 'payload': micro_schema_binary
             }
@@ -116,72 +116,72 @@ class SqlKeystore(KeystoreBase):
 
     _lock = threading.Lock()  # Process-wide lock
 
-    def _ensure_keypair_does_not_exist(self, keychain_uid: uuid.UUID, key_type: str):
+    def _ensure_keypair_does_not_exist(self, keychain_uid: uuid.UUID, key_algo: str):
         # program might still raise IntegrityError if the same key is inserted concurrently
         try:
-            _fetch_key_object_or_raise(keychain_uid=keychain_uid, key_type=key_type)
+            _fetch_key_object_or_raise(keychain_uid=keychain_uid, key_algo=key_algo)
         except KeyDoesNotExist:
             pass  # All is fine
         else:
             raise KeyAlreadyExists(
-                "Already existing sql keypair %s/%s" % (keychain_uid, key_type)
+                "Already existing sql keypair %s/%s" % (keychain_uid, key_algo)
             )
 
     @synchronized
-    def set_keys(self, *, keychain_uid: uuid.UUID, key_type: str, public_key: bytes, private_key: bytes, ):
+    def set_keys(self, *, keychain_uid: uuid.UUID, key_algo: str, public_key: bytes, private_key: bytes, ):
         self._ensure_keypair_does_not_exist(
-            keychain_uid=keychain_uid, key_type=key_type
+            keychain_uid=keychain_uid, key_algo=key_algo
         )
         EscrowKeypair.objects.create(
             keychain_uid=keychain_uid,
-            key_type=key_type,
+            key_algo=key_algo,
             public_key=public_key,
             private_key=private_key,
         )
 
     @synchronized
-    def get_public_key(self, *, keychain_uid: uuid.UUID, key_type: str) -> bytes:
+    def get_public_key(self, *, keychain_uid: uuid.UUID, key_algo: str) -> bytes:
         keypair_obj = _fetch_key_object_or_raise(
-            keychain_uid=keychain_uid, key_type=key_type
+            keychain_uid=keychain_uid, key_algo=key_algo
         )
         return keypair_obj.public_key
 
     @synchronized
-    def get_private_key(self, *, keychain_uid: uuid.UUID, key_type: str) -> bytes:
+    def get_private_key(self, *, keychain_uid: uuid.UUID, key_algo: str) -> bytes:
         keypair_obj = _fetch_key_object_or_raise(
-            keychain_uid=keychain_uid, key_type=key_type
+            keychain_uid=keychain_uid, key_algo=key_algo
         )
         return keypair_obj.private_key
 
     @synchronized
-    def get_free_keypairs_count(self, key_type: str) -> int:  # pragma: no cover
-        assert key_type, key_type
+    def get_free_keypairs_count(self, key_algo: str) -> int:  # pragma: no cover
+        assert key_algo, key_algo
         return EscrowKeypair.objects.filter(
-            keychain_uid=None, key_type=key_type
+            keychain_uid=None, key_algo=key_algo
         ).count()
 
     @synchronized
-    def add_free_keypair(self, *, key_type: str, public_key: bytes, private_key: bytes):
+    def add_free_keypair(self, *, key_algo: str, public_key: bytes, private_key: bytes):
         EscrowKeypair.objects.create(
             keychain_uid=None,
-            key_type=key_type,
+            key_algo=key_algo,
             public_key=public_key,
             private_key=private_key,
         )
 
     @synchronized
-    def attach_free_keypair_to_uuid(self, *, keychain_uid: uuid.UUID, key_type: str):
+    def attach_free_keypair_to_uuid(self, *, keychain_uid: uuid.UUID, key_algo: str):
         self._ensure_keypair_does_not_exist(
-            keychain_uid=keychain_uid, key_type=key_type
+            keychain_uid=keychain_uid, key_algo=key_algo
         )
 
         # Beware, SPECIAL LOOKUP for the first available free key, here
         keypair_obj_or_none = EscrowKeypair.objects.filter(
-            keychain_uid=None, key_type=key_type
+            keychain_uid=None, key_algo=key_algo
         ).first()
         if not keypair_obj_or_none:
             raise KeyDoesNotExist(
-                "No free keypair of type %s available in sql storage" % key_type
+                "No free keypair of type %s available in sql storage" % key_algo
             )
         keypair_obj_or_none.keychain_uid = keychain_uid
         keypair_obj_or_none.attached_at = timezone.now()
@@ -200,7 +200,7 @@ class SqlEscrowApi(EscrowApi):
 
         # TODO - a redesign of the API could prevent the double DB lookup here, but not sure if it's useful on the long term...
         keypair_obj = _fetch_key_object_or_raise(
-            keychain_uid=keychain_uid, key_type=encryption_algo
+            keychain_uid=keychain_uid, key_algo=encryption_algo
         )
         decryption_authorized_at = keypair_obj.decryption_authorized_at
 
@@ -256,7 +256,7 @@ class SqlEscrowApi(EscrowApi):
             try:
                 keypair_obj = _fetch_key_object_or_raise(
                     keychain_uid=keypair_identifier["keychain_uid"],
-                    key_type=keypair_identifier["key_type"],
+                    key_algo=keypair_identifier["key_algo"],
                 )
             except KeyDoesNotExist:
                 not_found_count += 1

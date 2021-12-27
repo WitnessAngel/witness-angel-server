@@ -39,7 +39,7 @@ class AuthenticatorPublicKey(serializers.ModelSerializer):
 
     class Meta:
         model = AuthenticatorPublicKey
-        fields = ['keychain_uid', 'key_type', 'payload']
+        fields = ['keychain_uid', 'key_algo', 'payload']
 
 
 class AuthenticatorUserSerializer(serializers.ModelSerializer):

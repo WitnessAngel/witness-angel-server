@@ -17,7 +17,7 @@ def fuzz():
         key_encryption_algo = random.choice(SUPPORTED_ASYMMETRIC_KEY_TYPES)
         print("Fetching key of type %s... " % key_encryption_algo, end="")
         escrow_proxy.fetch_public_key(
-            keychain_uid=keychain_uid, key_type=key_encryption_algo
+            keychain_uid=keychain_uid, key_algo=key_encryption_algo
         )
         print("DONE")
 
