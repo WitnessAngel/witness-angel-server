@@ -423,11 +423,11 @@ def test_jsonrpc_escrow_encrypt_decrypt_cryptainer(live_server):
     jsonrpc_url = live_server.url + "/json/"  # FIXME change url!!
 
     cryptoconf = dict(
-        data_encryption_strata=[
+        data_encryption_layers=[
             # First we encrypt with local key and sign via main remote escrow
             dict(
                 data_encryption_algo="AES_EAX",
-                key_encryption_strata=[
+                key_encryption_layers=[
                     dict(
                         key_encryption_algo="RSA_OAEP", key_escrow=dict(escrow_type="jsonrpc", url=jsonrpc_url)
                     )
