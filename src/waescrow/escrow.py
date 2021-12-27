@@ -11,7 +11,7 @@ from django.utils import timezone
 import jsonschema
 from jsonschema import validate
 from schema import And, Or, Regex, Const, Schema
-from wacryptolib.encryption import SUPPORTED_ENCRYPTION_ALGOS
+from wacryptolib.cipher import SUPPORTED_ENCRYPTION_ALGOS
 
 from wacryptolib.escrow import KeystoreBase, EscrowApi
 from wacryptolib.exceptions import KeyDoesNotExist, KeyAlreadyExists, AuthorizationError, ExistenceError, \

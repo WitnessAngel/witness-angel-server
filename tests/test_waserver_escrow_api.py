@@ -19,7 +19,7 @@ from wacryptolib.cryptainer import (
     encrypt_payload_into_cryptainer,
     decrypt_payload_from_cryptainer, gather_escrow_dependencies, request_decryption_authorizations,
 )
-from wacryptolib.encryption import _encrypt_via_rsa_oaep
+from wacryptolib.cipher import _encrypt_via_rsa_oaep
 from wacryptolib.escrow import generate_free_keypair_for_least_provisioned_key_algo
 from wacryptolib.exceptions import KeyDoesNotExist, SignatureVerificationError, AuthorizationError, DecryptionError
 from wacryptolib.jsonrpc_client import JsonRpcProxy, status_slugs_response_error_handler
