@@ -16,8 +16,8 @@ from freezegun import freeze_time
 from rest_framework import status
 
 from wacryptolib.cryptainer import (
-    encrypt_data_into_container,
-    decrypt_data_from_container, gather_escrow_dependencies, request_decryption_authorizations,
+    encrypt_data_into_cryptainer,
+    decrypt_data_from_cryptainer, gather_escrow_dependencies, request_decryption_authorizations,
 )
 from wacryptolib.encryption import _encrypt_via_rsa_oaep
 from wacryptolib.escrow import generate_free_keypair_for_least_provisioned_key_type
@@ -419,7 +419,7 @@ def test_jsonrpc_escrow_request_decryption_authorization_for_free_keys(live_serv
         assert not keypair_obj.decryption_authorized_at  # Never requested
 
 
-def test_jsonrpc_escrow_encrypt_decrypt_container(live_server):
+def test_jsonrpc_escrow_encrypt_decrypt_cryptainer(live_server):
     jsonrpc_url = live_server.url + "/json/"  # FIXME change url!!
 
     cryptoconf = dict(
@@ -449,7 +449,7 @@ def test_jsonrpc_escrow_encrypt_decrypt_container(live_server):
         keychain_uid = generate_uuid0()
         data = get_random_bytes(101)
 
-        container = encrypt_data_into_container(
+        cryptainer = encrypt_data_into_cryptainer(
             data=data,
            cryptoconf=cryptoconf,
             metadata=None,
@@ -460,28 +460,28 @@ def test_jsonrpc_escrow_encrypt_decrypt_container(live_server):
         frozen_datetime.tick(delta=timedelta(minutes=3))
 
         with pytest.raises(AuthorizationError):
-            decrypt_data_from_container(
-                container=container, key_storage_pool=None
+            decrypt_data_from_cryptainer(
+                cryptainer=cryptainer, key_storage_pool=None
             )
 
         # Access automatically granted for now, with this escrow, when keys are young
-        escrow_dependencies = gather_escrow_dependencies(containers=[container])
+        escrow_dependencies = gather_escrow_dependencies(cryptainers=[cryptainer])
         decryption_authorization_requests_result = request_decryption_authorizations(
             escrow_dependencies,
             key_storage_pool=None,
             request_message="I need access to this")
         print(">>>>> request_decryption_authorizations is", decryption_authorization_requests_result)
 
-        decrypted_data = decrypt_data_from_container(
-            container=container, key_storage_pool=None
+        decrypted_data = decrypt_data_from_cryptainer(
+            cryptainer=cryptainer, key_storage_pool=None
         )
         assert decrypted_data == data
 
         frozen_datetime.tick(
             delta=timedelta(hours=23)
         )  # Once authorization is granted, it stays so for a long time
-        decrypted_data = decrypt_data_from_container(
-            container=container, key_storage_pool=None
+        decrypted_data = decrypt_data_from_cryptainer(
+            cryptainer=cryptainer, key_storage_pool=None
         )
         assert decrypted_data == data
 
@@ -491,8 +491,8 @@ def test_jsonrpc_escrow_encrypt_decrypt_container(live_server):
         with pytest.raises(
                 AuthorizationError, match="Decryption authorization is only valid from"
         ):
-            decrypt_data_from_container(
-                container=container, key_storage_pool=None
+            decrypt_data_from_cryptainer(
+                cryptainer=cryptainer, key_storage_pool=None
             )
 
     # CASE 2: authorization request sent too late after creation of "keychain_uid" keypair, so decryption is rejected
@@ -502,7 +502,7 @@ def test_jsonrpc_escrow_encrypt_decrypt_container(live_server):
         data = get_random_bytes(101)
         local_key_storage = DummyKeyStorage()
 
-        container = encrypt_data_into_container(
+        cryptainer = encrypt_data_into_cryptainer(
             data=data,
            cryptoconf=cryptoconf,
             metadata=None,
@@ -514,8 +514,8 @@ def test_jsonrpc_escrow_encrypt_decrypt_container(live_server):
             delta=timedelta(minutes=6)
         )  # More than the 5 minutes grace period
         with pytest.raises(AuthorizationError, match="Decryption not authorized"):
-            decrypt_data_from_container(
-                container=container, key_storage_pool=None
+            decrypt_data_from_cryptainer(
+                cryptainer=cryptainer, key_storage_pool=None
             )
 
 
