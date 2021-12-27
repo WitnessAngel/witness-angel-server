@@ -2,7 +2,7 @@ import random
 import sys
 
 from wacryptolib.jsonrpc_client import JsonRpcProxy, status_slugs_response_error_handler
-from wacryptolib.key_generation import SUPPORTED_ASYMMETRIC_KEY_TYPES
+from wacryptolib.keygen import SUPPORTED_ASYMMETRIC_KEY_TYPES
 from wacryptolib.utilities import generate_uuid0
 
 

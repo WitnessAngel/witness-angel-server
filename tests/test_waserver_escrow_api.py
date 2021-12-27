@@ -16,36 +16,36 @@ from freezegun import freeze_time
 from rest_framework import status
 
 from wacryptolib.cryptainer import (
-    encrypt_data_into_cryptainer,
-    decrypt_data_from_cryptainer, gather_escrow_dependencies, request_decryption_authorizations,
+    encrypt_payload_into_cryptainer,
+    decrypt_payload_from_cryptainer, gather_escrow_dependencies, request_decryption_authorizations,
 )
 from wacryptolib.encryption import _encrypt_via_rsa_oaep
 from wacryptolib.escrow import generate_free_keypair_for_least_provisioned_key_type
 from wacryptolib.exceptions import KeyDoesNotExist, SignatureVerificationError, AuthorizationError, DecryptionError
 from wacryptolib.jsonrpc_client import JsonRpcProxy, status_slugs_response_error_handler
-from wacryptolib.key_generation import load_asymmetric_key_from_pem_bytestring
-from wacryptolib.key_storage import DummyKeyStorage
+from wacryptolib.keygen import load_asymmetric_key_from_pem_bytestring
+from wacryptolib.keystore import DummyKeystore
 from wacryptolib.scaffolding import (
-    check_key_storage_basic_get_set_api,
-    check_key_storage_free_keys_api,
-    check_key_storage_free_keys_concurrency,
+    check_keystore_basic_get_set_api,
+    check_keystore_free_keys_api,
+    check_keystore_free_keys_concurrency,
 )
 from wacryptolib.signature import verify_message_signature
 from wacryptolib.utilities import generate_uuid0, dump_to_json_str
-from waescrow.escrow import SqlKeyStorage, _fetch_key_object_or_raise, \
+from waescrow.escrow import SqlKeystore, _fetch_key_object_or_raise, \
     check_public_authenticator_sanity, set_public_authenticator
 from waescrow.models import EscrowKeypair, AuthenticatorUser, AuthenticatorPublicKey
 from waescrow.serializers import AuthenticatorUserSerializer
 
 
-def test_sql_key_storage_basic_and_free_keys_api(db):
-    sql_key_storage = SqlKeyStorage()
+def test_sql_keystore_basic_and_free_keys_api(db):
+    sql_keystore = SqlKeystore()
 
-    test_locals = check_key_storage_basic_get_set_api(sql_key_storage)
+    test_locals = check_keystore_basic_get_set_api(sql_keystore)
     keychain_uid = test_locals["keychain_uid"]
     key_type = test_locals["key_type"]
 
-    check_key_storage_free_keys_api(sql_key_storage)
+    check_keystore_free_keys_api(sql_keystore)
 
     representation = repr(EscrowKeypair.objects.first())
     assert "ui" in representation
@@ -62,10 +62,10 @@ def test_sql_key_storage_basic_and_free_keys_api(db):
 
 
 @pytest.mark.django_db(transaction=True)
-def test_sql_key_storage_free_keys_concurrent_transactions():
+def test_sql_keystore_free_keys_concurrent_transactions():
     """This test runs outside SQL transactions, and checks the handling of concurrency via threading locks."""
-    sql_key_storage = SqlKeyStorage()
-    check_key_storage_free_keys_concurrency(sql_key_storage)
+    sql_keystore = SqlKeystore()
+    check_keystore_free_keys_concurrency(sql_keystore)
 
 
 def test_jsonrpc_escrow_signature(live_server):
@@ -347,13 +347,13 @@ def test_jsonrpc_escrow_request_decryption_authorization_for_free_keys(live_serv
         dict(keychain_uid=keychain_uid_free, key_type=free_key_type2),
     ]
 
-    sql_key_storage = SqlKeyStorage()
+    sql_keystore = SqlKeystore()
 
     with freeze_time() as frozen_datetime:  # TEST RELATION WITH FREE KEYS ATTACHMENT
 
         for i in range(3):  # Generate 1 free keypair per type
             has_generated = generate_free_keypair_for_least_provisioned_key_type(
-                key_storage=sql_key_storage,
+                keystore=sql_keystore,
                 max_free_keys_per_type=1,
                 key_types=[free_key_type1, free_key_type2, free_key_type3]
             )
@@ -423,16 +423,16 @@ def test_jsonrpc_escrow_encrypt_decrypt_cryptainer(live_server):
     jsonrpc_url = live_server.url + "/json/"  # FIXME change url!!
 
     cryptoconf = dict(
-        data_encryption_layers=[
+        payload_encryption_layers=[
             # First we encrypt with local key and sign via main remote escrow
             dict(
-                data_encryption_algo="AES_EAX",
+                payload_encryption_algo="AES_EAX",
                 key_encryption_layers=[
                     dict(
                         key_encryption_algo="RSA_OAEP", key_escrow=dict(escrow_type="jsonrpc", url=jsonrpc_url)
                     )
                 ],
-                data_signatures=[
+                payload_signatures=[
                     dict(
                         message_digest_algo="SHA512",
                         signature_algo="DSA_DSS",
@@ -447,41 +447,41 @@ def test_jsonrpc_escrow_encrypt_decrypt_cryptainer(live_server):
 
     with freeze_time() as frozen_datetime:
         keychain_uid = generate_uuid0()
-        data = get_random_bytes(101)
+        payload = get_random_bytes(101)
 
-        cryptainer = encrypt_data_into_cryptainer(
-            data=data,
+        cryptainer = encrypt_payload_into_cryptainer(
+            payload=payload,
            cryptoconf=cryptoconf,
             metadata=None,
             keychain_uid=keychain_uid,
-            key_storage_pool=None,  # Unused by this config actually
+            keystore_pool=None,  # Unused by this config actually
         )
 
         frozen_datetime.tick(delta=timedelta(minutes=3))
 
         with pytest.raises(AuthorizationError):
-            decrypt_data_from_cryptainer(
-                cryptainer=cryptainer, key_storage_pool=None
+            decrypt_payload_from_cryptainer(
+                cryptainer=cryptainer, keystore_pool=None
             )
 
         # Access automatically granted for now, with this escrow, when keys are young
         escrow_dependencies = gather_escrow_dependencies(cryptainers=[cryptainer])
         decryption_authorization_requests_result = request_decryption_authorizations(
             escrow_dependencies,
-            key_storage_pool=None,
+            keystore_pool=None,
             request_message="I need access to this")
         print(">>>>> request_decryption_authorizations is", decryption_authorization_requests_result)
 
-        decrypted_data = decrypt_data_from_cryptainer(
-            cryptainer=cryptainer, key_storage_pool=None
+        decrypted_data = decrypt_payload_from_cryptainer(
+            cryptainer=cryptainer, keystore_pool=None
         )
         assert decrypted_data == data
 
         frozen_datetime.tick(
             delta=timedelta(hours=23)
         )  # Once authorization is granted, it stays so for a long time
-        decrypted_data = decrypt_data_from_cryptainer(
-            cryptainer=cryptainer, key_storage_pool=None
+        decrypted_data = decrypt_payload_from_cryptainer(
+            cryptainer=cryptainer, keystore_pool=None
         )
         assert decrypted_data == data
 
@@ -491,8 +491,8 @@ def test_jsonrpc_escrow_encrypt_decrypt_cryptainer(live_server):
         with pytest.raises(
                 AuthorizationError, match="Decryption authorization is only valid from"
         ):
-            decrypt_data_from_cryptainer(
-                cryptainer=cryptainer, key_storage_pool=None
+            decrypt_payload_from_cryptainer(
+                cryptainer=cryptainer, keystore_pool=None
             )
 
     # CASE 2: authorization request sent too late after creation of "keychain_uid" keypair, so decryption is rejected
@@ -500,22 +500,22 @@ def test_jsonrpc_escrow_encrypt_decrypt_cryptainer(live_server):
     with freeze_time() as frozen_datetime:
         keychain_uid = generate_uuid0()
         data = get_random_bytes(101)
-        local_key_storage = DummyKeyStorage()
+        local_keystore = DummyKeystore()
 
-        cryptainer = encrypt_data_into_cryptainer(
-            data=data,
+        cryptainer = encrypt_payload_into_cryptainer(
+            payload=payload,
            cryptoconf=cryptoconf,
             metadata=None,
             keychain_uid=keychain_uid,
-            key_storage_pool=None,  # Unused by this config actually
+            keystore_pool=None,  # Unused by this config actually
         )
 
         frozen_datetime.tick(
             delta=timedelta(minutes=6)
         )  # More than the 5 minutes grace period
         with pytest.raises(AuthorizationError, match="Decryption not authorized"):
-            decrypt_data_from_cryptainer(
-                cryptainer=cryptainer, key_storage_pool=None
+            decrypt_payload_from_cryptainer(
+                cryptainer=cryptainer, keystore_pool=None
             )
 
 

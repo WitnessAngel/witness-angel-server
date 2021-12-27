@@ -3,7 +3,7 @@ from django.core.management.base import BaseCommand
 from django.core.management.base import BaseCommand
 
 from wacryptolib.escrow import generate_free_keypair_for_least_provisioned_key_type
-from waescrow.escrow import SqlKeyStorage
+from waescrow.escrow import SqlKeystore
 
 
 class Command(BaseCommand):
@@ -16,7 +16,7 @@ class Command(BaseCommand):
 
         max_free_keys_per_type = options["max_free_keys_per_type"]
 
-        sql_key_storage = SqlKeyStorage()
+        sql_keystore = SqlKeystore()
 
         self.stdout.write(
             "Launching generate_free_keys.py script with max_free_keys_per_type=%s"
@@ -28,7 +28,7 @@ class Command(BaseCommand):
                 "New iteration of generate_free_keypair_for_least_provisioned_key_type()"
             )
             has_generated = generate_free_keypair_for_least_provisioned_key_type(
-                key_storage=sql_key_storage,
+                keystore=sql_keystore,
                 max_free_keys_per_type=max_free_keys_per_type,
             )
             if not has_generated:

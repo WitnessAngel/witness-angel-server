@@ -13,7 +13,7 @@ from jsonschema import validate
 from schema import And, Or, Regex, Const, Schema
 from wacryptolib.encryption import SUPPORTED_ENCRYPTION_ALGOS
 
-from wacryptolib.escrow import KeyStorageBase, EscrowApi
+from wacryptolib.escrow import KeystoreBase, EscrowApi
 from wacryptolib.exceptions import KeyDoesNotExist, KeyAlreadyExists, AuthorizationError, ExistenceError, \
     ValidationError
 from wacryptolib.utilities import synchronized
@@ -103,7 +103,7 @@ def check_public_authenticator_sanity(public_authenticator: dict):
         raise ValidationError("Error validating with {}".format(exc)) from exc
 
 
-class SqlKeyStorage(KeyStorageBase):
+class SqlKeystore(KeystoreBase):
     """
     Store keys in records of SQL DB.
 
@@ -286,4 +286,4 @@ class SqlEscrowApi(EscrowApi):
         )
 
 
-SQL_ESCROW_API = SqlEscrowApi(key_storage=SqlKeyStorage())
+SQL_ESCROW_API = SqlEscrowApi(keystore=SqlKeystore())

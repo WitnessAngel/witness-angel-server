@@ -2,14 +2,14 @@ from io import StringIO
 
 from django.core.management import call_command
 
-from waescrow.escrow import SqlKeyStorage
+from waescrow.escrow import SqlKeystore
 
 
 def test_generate_free_keys(db):
 
-    sql_key_storage = SqlKeyStorage()
+    sql_keystore = SqlKeystore()
 
-    assert sql_key_storage.get_free_keypairs_count("RSA_OAEP") == 0
+    assert sql_keystore.get_free_keypairs_count("RSA_OAEP") == 0
 
     out_stream = StringIO()
     call_command("generate_free_keys", "1", stdout=out_stream)
@@ -24,4 +24,4 @@ def test_generate_free_keys(db):
     assert (
         output.count("New iteration") == 5
     )  # 1 key x 4 key types, and final iteration for nothing
-    assert sql_key_storage.get_free_keypairs_count("RSA_OAEP") == 1
+    assert sql_keystore.get_free_keypairs_count("RSA_OAEP") == 1
