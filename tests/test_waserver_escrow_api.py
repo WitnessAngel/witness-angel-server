@@ -434,7 +434,7 @@ def test_jsonrpc_escrow_encrypt_decrypt_cryptainer(live_server):
                 ],
                 payload_signatures=[
                     dict(
-                        message_digest_algo="SHA512",
+                        payload_digest_algo="SHA512",
                         signature_algo="DSA_DSS",
                         signature_escrow=dict(escrow_type="jsonrpc", url=jsonrpc_url),
                     )
