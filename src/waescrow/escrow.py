@@ -11,7 +11,7 @@ from django.utils import timezone
 import jsonschema
 from jsonschema import validate
 from schema import And, Or, Regex, Const, Schema
-from wacryptolib.cipher import SUPPORTED_ENCRYPTION_ALGOS
+from wacryptolib.cipher import SUPPORTED_CIPHER_ALGOS
 
 from wacryptolib.trustee import KeystoreBase, TrusteeApi
 from wacryptolib.exceptions import KeyDoesNotExist, KeyAlreadyExists, AuthorizationError, ExistenceError, \
@@ -84,7 +84,7 @@ def _create_schema():
         "username": And(str, len),
         "public_keys": [
             {
-                'key_algo': Or(*SUPPORTED_ENCRYPTION_ALGOS),
+                'key_algo': Or(*SUPPORTED_CIPHER_ALGOS),
                 'keychain_uid': micro_schema_uid,
                 'payload': micro_schema_binary
             }
@@ -191,7 +191,7 @@ class SqlKeystore(KeystoreBase):
 class SqlTrusteeApi(TrusteeApi):
     DECRYPTION_AUTHORIZATION_GRACE_PERIOD_S = 5 * 60
 
-    def decrypt_with_private_key(self, keychain_uid, encryption_algo, cipherdict, passphrases: Optional[list] = None):
+    def decrypt_with_private_key(self, keychain_uid, cipher_algo, cipherdict, passphrases: Optional[list] = None):
         """
         This implementation checks for a dedicated timestamp flag on the keypair, in DB, and
         only allows decryption for a certain time after that timestamp.
@@ -200,7 +200,7 @@ class SqlTrusteeApi(TrusteeApi):
 
         # TODO - a redesign of the API could prevent the double DB lookup here, but not sure if it's useful on the long term...
         keypair_obj = _fetch_key_object_or_raise(
-            keychain_uid=keychain_uid, key_algo=encryption_algo
+            keychain_uid=keychain_uid, key_algo=cipher_algo
         )
         decryption_authorized_at = keypair_obj.decryption_authorized_at
 
@@ -228,7 +228,7 @@ class SqlTrusteeApi(TrusteeApi):
 
         return super().decrypt_with_private_key(
             keychain_uid=keychain_uid,
-            encryption_algo=encryption_algo,
+            cipher_algo=cipher_algo,
             cipherdict=cipherdict,
         )
 

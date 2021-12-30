@@ -121,16 +121,16 @@ def get_message_signature(request, keychain_uid, message, payload_signature_algo
 
 @jsonrpc_method("decrypt_with_private_key", site=extended_jsonrpc_site)
 @convert_exceptions_to_jsonrpc_status_slugs
-def decrypt_with_private_key(request, keychain_uid, encryption_algo, cipherdict, passphrases=None):
+def decrypt_with_private_key(request, keychain_uid, cipher_algo, cipherdict, passphrases=None):
     logger.info(
         "Got webservice request on decrypt_with_private_key() for encryption algo %s and keychain uid %s",
-        encryption_algo,
+        cipher_algo,
         keychain_uid,
     )
     del request
     return SQL_TRUSTEE_API.decrypt_with_private_key(
         keychain_uid=keychain_uid,
-        encryption_algo=encryption_algo,
+        cipher_algo=cipher_algo,
         cipherdict=cipherdict,
         passphrases=passphrases,
     )

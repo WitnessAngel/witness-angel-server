@@ -136,14 +136,14 @@ def test_jsonrpc_trustee_decryption_authorization_flags(live_server):
 
     keychain_uid = generate_uuid0()
     keychain_uid_bad = generate_uuid0()
-    key_encryption_algo = "RSA_OAEP"
+    key_cipher_algo = "RSA_OAEP"
     secret = get_random_bytes(101)
 
     public_key_encryption_pem = trustee_proxy.fetch_public_key(
-        keychain_uid=keychain_uid, key_algo=key_encryption_algo
+        keychain_uid=keychain_uid, key_algo=key_cipher_algo
     )
     public_key_encryption = load_asymmetric_key_from_pem_bytestring(
-        key_pem=public_key_encryption_pem, key_algo=key_encryption_algo
+        key_pem=public_key_encryption_pem, key_algo=key_cipher_algo
     )
 
     cipherdict = _encrypt_via_rsa_oaep(plaintext=secret, key_dict=dict(key=public_key_encryption))
@@ -151,7 +151,7 @@ def test_jsonrpc_trustee_decryption_authorization_flags(live_server):
     def _attempt_decryption():
         return trustee_proxy.decrypt_with_private_key(
             keychain_uid=keychain_uid,
-            encryption_algo=key_encryption_algo,
+            cipher_algo=key_cipher_algo,
             cipherdict=cipherdict,
         )
 
@@ -160,7 +160,7 @@ def test_jsonrpc_trustee_decryption_authorization_flags(live_server):
             _attempt_decryption()
 
         keypair_obj = TrusteeKeypair.objects.get(
-            keychain_uid=keychain_uid, key_algo=key_encryption_algo
+            keychain_uid=keychain_uid, key_algo=key_cipher_algo
         )
         keypair_obj.decryption_authorized_at = timezone.now() + timedelta(hours=2)
         keypair_obj.save()
@@ -178,7 +178,7 @@ def test_jsonrpc_trustee_decryption_authorization_flags(live_server):
         with pytest.raises(KeyDoesNotExist, match="not found"):
             trustee_proxy.decrypt_with_private_key(
                 keychain_uid=keychain_uid_bad,
-                encryption_algo=key_encryption_algo,
+                cipher_algo=key_cipher_algo,
                 cipherdict=cipherdict,
             )
 
@@ -186,7 +186,7 @@ def test_jsonrpc_trustee_decryption_authorization_flags(live_server):
         with pytest.raises(ValueError, match="Ciphertext with incorrect length"):
             trustee_proxy.decrypt_with_private_key(
                 keychain_uid=keychain_uid,
-                encryption_algo=key_encryption_algo,
+                cipher_algo=key_cipher_algo,
                 cipherdict=cipherdict,
             )
 
@@ -213,7 +213,7 @@ def test_jsonrpc_trustee_request_decryption_authorization_for_normal_keys(live_s
         url=jsonrpc_url, response_error_handler=status_slugs_response_error_handler
     )
 
-    key_encryption_algo = "RSA_OAEP"
+    key_cipher_algo = "RSA_OAEP"
 
     with freeze_time() as frozen_datetime:  # TEST AUTHORIZATION REQUEST HANDLING
 
@@ -224,24 +224,24 @@ def test_jsonrpc_trustee_request_decryption_authorization_for_normal_keys(live_s
         keychain_uid_unexisting = generate_uuid0()
 
         all_keypair_identifiers = [
-            dict(keychain_uid=keychain_uid1, key_algo=key_encryption_algo),
-            dict(keychain_uid=keychain_uid2, key_algo=key_encryption_algo),
-            dict(keychain_uid=keychain_uid3, key_algo=key_encryption_algo),
-            dict(keychain_uid=keychain_uid4, key_algo=key_encryption_algo),
-            dict(keychain_uid=keychain_uid_unexisting, key_algo=key_encryption_algo),
+            dict(keychain_uid=keychain_uid1, key_algo=key_cipher_algo),
+            dict(keychain_uid=keychain_uid2, key_algo=key_cipher_algo),
+            dict(keychain_uid=keychain_uid3, key_algo=key_cipher_algo),
+            dict(keychain_uid=keychain_uid4, key_algo=key_cipher_algo),
+            dict(keychain_uid=keychain_uid_unexisting, key_algo=key_cipher_algo),
         ]
 
         public_key_pem = trustee_proxy.fetch_public_key(
-            keychain_uid=keychain_uid1, key_algo=key_encryption_algo
+            keychain_uid=keychain_uid1, key_algo=key_cipher_algo
         )
         assert public_key_pem
         assert not _fetch_key_object_or_raise(
-            keychain_uid=keychain_uid1, key_algo=key_encryption_algo
+            keychain_uid=keychain_uid1, key_algo=key_cipher_algo
         ).decryption_authorized_at
 
         # Non-pregenerated keys don't have that field set!
         assert not _fetch_key_object_or_raise(
-            keychain_uid=keychain_uid1, key_algo=key_encryption_algo
+            keychain_uid=keychain_uid1, key_algo=key_cipher_algo
         ).attached_at
 
         result = trustee_proxy.request_decryption_authorization(
@@ -264,16 +264,16 @@ def test_jsonrpc_trustee_request_decryption_authorization_for_normal_keys(live_s
         )  # keychain_uid2 and keychain_uid3 not created yet
 
         old_decryption_authorized_at = _fetch_key_object_or_raise(
-            keychain_uid=keychain_uid1, key_algo=key_encryption_algo
+            keychain_uid=keychain_uid1, key_algo=key_cipher_algo
         ).decryption_authorized_at
         assert old_decryption_authorized_at
 
         public_key_pem = trustee_proxy.fetch_public_key(
-            keychain_uid=keychain_uid2, key_algo=key_encryption_algo
+            keychain_uid=keychain_uid2, key_algo=key_cipher_algo
         )
         assert public_key_pem
         public_key_pem = trustee_proxy.fetch_public_key(
-            keychain_uid=keychain_uid3, key_algo=key_encryption_algo
+            keychain_uid=keychain_uid3, key_algo=key_cipher_algo
         )
         assert public_key_pem
 
@@ -289,24 +289,24 @@ def test_jsonrpc_trustee_request_decryption_authorization_for_normal_keys(live_s
 
         assert (
                 _fetch_key_object_or_raise(
-                    keychain_uid=keychain_uid1, key_algo=key_encryption_algo
+                    keychain_uid=keychain_uid1, key_algo=key_cipher_algo
                 ).decryption_authorized_at
                 == old_decryption_authorized_at
         )  # Unchanged
         assert _fetch_key_object_or_raise(
-            keychain_uid=keychain_uid2, key_algo=key_encryption_algo
+            keychain_uid=keychain_uid2, key_algo=key_cipher_algo
         ).decryption_authorized_at
         assert _fetch_key_object_or_raise(
-            keychain_uid=keychain_uid3, key_algo=key_encryption_algo
+            keychain_uid=keychain_uid3, key_algo=key_cipher_algo
         ).decryption_authorized_at
 
         with pytest.raises(KeyDoesNotExist, match="not found"):
             _fetch_key_object_or_raise(
-                keychain_uid=keychain_uid_unexisting, key_algo=key_encryption_algo
+                keychain_uid=keychain_uid_unexisting, key_algo=key_cipher_algo
             )
 
         public_key_pem = trustee_proxy.fetch_public_key(
-            keychain_uid=keychain_uid4, key_algo=key_encryption_algo
+            keychain_uid=keychain_uid4, key_algo=key_cipher_algo
         )
         assert public_key_pem
 
@@ -322,7 +322,7 @@ def test_jsonrpc_trustee_request_decryption_authorization_for_normal_keys(live_s
 
         assert (
                 _fetch_key_object_or_raise(
-                    keychain_uid=keychain_uid1, key_algo=key_encryption_algo
+                    keychain_uid=keychain_uid1, key_algo=key_cipher_algo
                 ).decryption_authorized_at
                 == old_decryption_authorized_at
         )  # Unchanged
@@ -426,10 +426,10 @@ def test_jsonrpc_trustee_encrypt_decrypt_cryptainer(live_server):
         payload_encryption_layers=[
             # First we encrypt with local key and sign via main remote trustee
             dict(
-                payload_encryption_algo="AES_EAX",
+                payload_cipher_algo="AES_EAX",
                 key_encryption_layers=[
                     dict(
-                        key_encryption_algo="RSA_OAEP", key_encryption_trustee=dict(trustee_type="jsonrpc", url=jsonrpc_url)
+                        key_cipher_algo="RSA_OAEP", key_encryption_trustee=dict(trustee_type="jsonrpc", url=jsonrpc_url)
                     )
                 ],
                 payload_signatures=[
