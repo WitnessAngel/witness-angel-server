@@ -16,9 +16,9 @@ from wacryptolib import exceptions as wacryptolib_exceptions
 from wacryptolib.error_handling import StatusSlugsMapper
 from wacryptolib.utilities import load_from_json_str, dump_to_json_str
 
-from waescrow.escrow import SQL_ESCROW_API, get_public_authenticator, set_public_authenticator
-from waescrow.models import AuthenticatorUser, AuthenticatorPublicKey
-from waescrow.serializers import AuthenticatorUserSerializer
+from watrustee.trustee import SQL_TRUSTEE_API, get_public_authenticator, set_public_authenticator
+from watrustee.models import AuthenticatorUser, AuthenticatorPublicKey
+from watrustee.serializers import AuthenticatorUserSerializer
 
 logger = logging.getLogger(__name__)
 
@@ -102,7 +102,7 @@ def fetch_public_key(request, keychain_uid, key_algo, must_exist=False):
         must_exist,
     )
     del request
-    return SQL_ESCROW_API.fetch_public_key(keychain_uid=keychain_uid, key_algo=key_algo, must_exist=must_exist)
+    return SQL_TRUSTEE_API.fetch_public_key(keychain_uid=keychain_uid, key_algo=key_algo, must_exist=must_exist)
 
 
 @jsonrpc_method("get_message_signature", site=extended_jsonrpc_site)
@@ -114,7 +114,7 @@ def get_message_signature(request, keychain_uid, message, payload_signature_algo
         keychain_uid,
     )
     del request
-    return SQL_ESCROW_API.get_message_signature(
+    return SQL_TRUSTEE_API.get_message_signature(
         keychain_uid=keychain_uid, message=message, payload_signature_algo=payload_signature_algo
     )
 
@@ -128,7 +128,7 @@ def decrypt_with_private_key(request, keychain_uid, encryption_algo, cipherdict,
         keychain_uid,
     )
     del request
-    return SQL_ESCROW_API.decrypt_with_private_key(
+    return SQL_TRUSTEE_API.decrypt_with_private_key(
         keychain_uid=keychain_uid,
         encryption_algo=encryption_algo,
         cipherdict=cipherdict,
@@ -145,7 +145,7 @@ def request_decryption_authorization(request, keypair_identifiers, request_messa
         request_message,
     )
     del request
-    return SQL_ESCROW_API.request_decryption_authorization(
+    return SQL_TRUSTEE_API.request_decryption_authorization(
         keypair_identifiers=keypair_identifiers, request_message=request_message, passphrases=passphrases
     )
 
@@ -153,7 +153,7 @@ def request_decryption_authorization(request, keypair_identifiers, request_messa
 @csrf_exempt
 def crashdump_report_view(request):
     if request.method == "GET":
-        return HttpResponse(b"CRASHDUMP ENDPOINT OF WAESCROW")
+        return HttpResponse(b"CRASHDUMP ENDPOINT OF WATRUSTEE")
 
     crashdump = request.POST.get("crashdump")
     if not crashdump:

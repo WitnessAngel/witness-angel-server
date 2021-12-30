@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('waescrow', '0002_authenticatorpublickey'),
+        ('watrustee', '0002_authenticatorpublickey'),
     ]
 
     operations = [

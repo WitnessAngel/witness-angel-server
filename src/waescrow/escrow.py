@@ -13,20 +13,20 @@ from jsonschema import validate
 from schema import And, Or, Regex, Const, Schema
 from wacryptolib.cipher import SUPPORTED_ENCRYPTION_ALGOS
 
-from wacryptolib.escrow import KeystoreBase, EscrowApi
+from wacryptolib.trustee import KeystoreBase, TrusteeApi
 from wacryptolib.exceptions import KeyDoesNotExist, KeyAlreadyExists, AuthorizationError, ExistenceError, \
     ValidationError
 from wacryptolib.utilities import synchronized
 
-from waescrow.models import AuthenticatorUser, EscrowKeypair, DECRYPTION_AUTHORIZATION_LIFESPAN_H, \
+from watrustee.models import AuthenticatorUser, TrusteeKeypair, DECRYPTION_AUTHORIZATION_LIFESPAN_H, \
     AuthenticatorPublicKey
-from waescrow.serializers import AuthenticatorUserSerializer
+from watrustee.serializers import AuthenticatorUserSerializer
 
 
-def _fetch_key_object_or_raise(keychain_uid: uuid.UUID, key_algo: str) -> EscrowKeypair:
+def _fetch_key_object_or_raise(keychain_uid: uuid.UUID, key_algo: str) -> TrusteeKeypair:
     try:
-        return EscrowKeypair.objects.get(keychain_uid=keychain_uid, key_algo=key_algo)
-    except EscrowKeypair.DoesNotExist:
+        return TrusteeKeypair.objects.get(keychain_uid=keychain_uid, key_algo=key_algo)
+    except TrusteeKeypair.DoesNotExist:
         raise KeyDoesNotExist("Database keypair %s/%s not found" % (keychain_uid, key_algo))
 
 
@@ -132,7 +132,7 @@ class SqlKeystore(KeystoreBase):
         self._ensure_keypair_does_not_exist(
             keychain_uid=keychain_uid, key_algo=key_algo
         )
-        EscrowKeypair.objects.create(
+        TrusteeKeypair.objects.create(
             keychain_uid=keychain_uid,
             key_algo=key_algo,
             public_key=public_key,
@@ -156,13 +156,13 @@ class SqlKeystore(KeystoreBase):
     @synchronized
     def get_free_keypairs_count(self, key_algo: str) -> int:  # pragma: no cover
         assert key_algo, key_algo
-        return EscrowKeypair.objects.filter(
+        return TrusteeKeypair.objects.filter(
             keychain_uid=None, key_algo=key_algo
         ).count()
 
     @synchronized
     def add_free_keypair(self, *, key_algo: str, public_key: bytes, private_key: bytes):
-        EscrowKeypair.objects.create(
+        TrusteeKeypair.objects.create(
             keychain_uid=None,
             key_algo=key_algo,
             public_key=public_key,
@@ -176,7 +176,7 @@ class SqlKeystore(KeystoreBase):
         )
 
         # Beware, SPECIAL LOOKUP for the first available free key, here
-        keypair_obj_or_none = EscrowKeypair.objects.filter(
+        keypair_obj_or_none = TrusteeKeypair.objects.filter(
             keychain_uid=None, key_algo=key_algo
         ).first()
         if not keypair_obj_or_none:
@@ -188,7 +188,7 @@ class SqlKeystore(KeystoreBase):
         keypair_obj_or_none.save()
 
 
-class SqlEscrowApi(EscrowApi):
+class SqlTrusteeApi(TrusteeApi):
     DECRYPTION_AUTHORIZATION_GRACE_PERIOD_S = 5 * 60
 
     def decrypt_with_private_key(self, keychain_uid, encryption_algo, cipherdict, passphrases: Optional[list] = None):
@@ -241,7 +241,7 @@ class SqlEscrowApi(EscrowApi):
         even if a previously given authorization is still valid.
         """
 
-        del passphrases  # Unused in this kind of remote escrow
+        del passphrases  # Unused in this kind of remote trustee
 
         success_count = 0
         too_old_count = 0
@@ -286,4 +286,4 @@ class SqlEscrowApi(EscrowApi):
         )
 
 
-SQL_ESCROW_API = SqlEscrowApi(keystore=SqlKeystore())
+SQL_TRUSTEE_API = SqlTrusteeApi(keystore=SqlKeystore())

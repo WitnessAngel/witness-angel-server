@@ -17,10 +17,10 @@ from rest_framework import status
 
 from wacryptolib.cryptainer import (
     encrypt_payload_into_cryptainer,
-    decrypt_payload_from_cryptainer, gather_escrow_dependencies, request_decryption_authorizations,
+    decrypt_payload_from_cryptainer, gather_trustee_dependencies, request_decryption_authorizations,
 )
 from wacryptolib.cipher import _encrypt_via_rsa_oaep
-from wacryptolib.escrow import generate_free_keypair_for_least_provisioned_key_algo
+from wacryptolib.trustee import generate_free_keypair_for_least_provisioned_key_algo
 from wacryptolib.exceptions import KeyDoesNotExist, SignatureVerificationError, AuthorizationError, DecryptionError
 from wacryptolib.jsonrpc_client import JsonRpcProxy, status_slugs_response_error_handler
 from wacryptolib.keygen import load_asymmetric_key_from_pem_bytestring
@@ -32,10 +32,10 @@ from wacryptolib.scaffolding import (
 )
 from wacryptolib.signature import verify_message_signature
 from wacryptolib.utilities import generate_uuid0, dump_to_json_str
-from waescrow.escrow import SqlKeystore, _fetch_key_object_or_raise, \
+from watrustee.trustee import SqlKeystore, _fetch_key_object_or_raise, \
     check_public_authenticator_sanity, set_public_authenticator
-from waescrow.models import EscrowKeypair, AuthenticatorUser, AuthenticatorPublicKey
-from waescrow.serializers import AuthenticatorUserSerializer
+from watrustee.models import TrusteeKeypair, AuthenticatorUser, AuthenticatorPublicKey
+from watrustee.serializers import AuthenticatorUserSerializer
 
 
 def test_sql_keystore_basic_and_free_keys_api(db):
@@ -47,13 +47,13 @@ def test_sql_keystore_basic_and_free_keys_api(db):
 
     check_keystore_free_keys_api(sql_keystore)
 
-    representation = repr(EscrowKeypair.objects.first())
+    representation = repr(TrusteeKeypair.objects.first())
     assert "ui" in representation
 
     with pytest.raises(
             IntegrityError
     ):  # Final tests, since it breaks current DB transaction
-        EscrowKeypair.objects.create(
+        TrusteeKeypair.objects.create(
             keychain_uid=keychain_uid,
             key_algo=key_algo,
             public_key=b"hhhh",
@@ -68,10 +68,10 @@ def test_sql_keystore_free_keys_concurrent_transactions():
     check_keystore_free_keys_concurrency(sql_keystore)
 
 
-def test_jsonrpc_escrow_signature(live_server):
+def test_jsonrpc_trustee_signature(live_server):
     jsonrpc_url = live_server.url + "/json/"  # FIXME change url!!
 
-    escrow_proxy = JsonRpcProxy(
+    trustee_proxy = JsonRpcProxy(
         url=jsonrpc_url, response_error_handler=status_slugs_response_error_handler
     )
 
@@ -80,19 +80,19 @@ def test_jsonrpc_escrow_signature(live_server):
     secret = get_random_bytes(101)
     secret_too_big = get_random_bytes(150)
 
-    public_key_signature_pem = escrow_proxy.fetch_public_key(
+    public_key_signature_pem = trustee_proxy.fetch_public_key(
         keychain_uid=keychain_uid, key_algo=payload_signature_algo
     )
     public_key_signature = load_asymmetric_key_from_pem_bytestring(
         key_pem=public_key_signature_pem, key_algo=payload_signature_algo
     )
 
-    signature = escrow_proxy.get_message_signature(
+    signature = trustee_proxy.get_message_signature(
         keychain_uid=keychain_uid, message=secret, payload_signature_algo=payload_signature_algo
     )
 
     with pytest.raises(ValueError, match="too big"):
-        escrow_proxy.get_message_signature(
+        trustee_proxy.get_message_signature(
             keychain_uid=keychain_uid,
             message=secret_too_big,
             payload_signature_algo=payload_signature_algo,
@@ -127,10 +127,10 @@ def test_jsonrpc_get_request(live_server):
                       'name': 'InvalidRequestError'}, 'id': None}
 
 
-def test_jsonrpc_escrow_decryption_authorization_flags(live_server):
+def test_jsonrpc_trustee_decryption_authorization_flags(live_server):
     jsonrpc_url = live_server.url + "/json/"  # FIXME change url!!
 
-    escrow_proxy = JsonRpcProxy(
+    trustee_proxy = JsonRpcProxy(
         url=jsonrpc_url, response_error_handler=status_slugs_response_error_handler
     )
 
@@ -139,7 +139,7 @@ def test_jsonrpc_escrow_decryption_authorization_flags(live_server):
     key_encryption_algo = "RSA_OAEP"
     secret = get_random_bytes(101)
 
-    public_key_encryption_pem = escrow_proxy.fetch_public_key(
+    public_key_encryption_pem = trustee_proxy.fetch_public_key(
         keychain_uid=keychain_uid, key_algo=key_encryption_algo
     )
     public_key_encryption = load_asymmetric_key_from_pem_bytestring(
@@ -149,7 +149,7 @@ def test_jsonrpc_escrow_decryption_authorization_flags(live_server):
     cipherdict = _encrypt_via_rsa_oaep(plaintext=secret, key_dict=dict(key=public_key_encryption))
 
     def _attempt_decryption():
-        return escrow_proxy.decrypt_with_private_key(
+        return trustee_proxy.decrypt_with_private_key(
             keychain_uid=keychain_uid,
             encryption_algo=key_encryption_algo,
             cipherdict=cipherdict,
@@ -159,7 +159,7 @@ def test_jsonrpc_escrow_decryption_authorization_flags(live_server):
         with pytest.raises(AuthorizationError, match="Decryption not authorized"):
             _attempt_decryption()
 
-        keypair_obj = EscrowKeypair.objects.get(
+        keypair_obj = TrusteeKeypair.objects.get(
             keychain_uid=keychain_uid, key_algo=key_encryption_algo
         )
         keypair_obj.decryption_authorized_at = timezone.now() + timedelta(hours=2)
@@ -176,7 +176,7 @@ def test_jsonrpc_escrow_decryption_authorization_flags(live_server):
         assert decrypted == secret  # It works!
 
         with pytest.raises(KeyDoesNotExist, match="not found"):
-            escrow_proxy.decrypt_with_private_key(
+            trustee_proxy.decrypt_with_private_key(
                 keychain_uid=keychain_uid_bad,
                 encryption_algo=key_encryption_algo,
                 cipherdict=cipherdict,
@@ -184,7 +184,7 @@ def test_jsonrpc_escrow_decryption_authorization_flags(live_server):
 
         cipherdict["digest_list"].append(b"aaabbbccc")
         with pytest.raises(ValueError, match="Ciphertext with incorrect length"):
-            escrow_proxy.decrypt_with_private_key(
+            trustee_proxy.decrypt_with_private_key(
                 keychain_uid=keychain_uid,
                 encryption_algo=key_encryption_algo,
                 cipherdict=cipherdict,
@@ -206,10 +206,10 @@ def test_jsonrpc_escrow_decryption_authorization_flags(live_server):
             _attempt_decryption()  # No more authorization at all
 
 
-def test_jsonrpc_escrow_request_decryption_authorization_for_normal_keys(live_server):
+def test_jsonrpc_trustee_request_decryption_authorization_for_normal_keys(live_server):
     jsonrpc_url = live_server.url + "/json/"  # FIXME change url!!
 
-    escrow_proxy = JsonRpcProxy(
+    trustee_proxy = JsonRpcProxy(
         url=jsonrpc_url, response_error_handler=status_slugs_response_error_handler
     )
 
@@ -231,7 +231,7 @@ def test_jsonrpc_escrow_request_decryption_authorization_for_normal_keys(live_se
             dict(keychain_uid=keychain_uid_unexisting, key_algo=key_encryption_algo),
         ]
 
-        public_key_pem = escrow_proxy.fetch_public_key(
+        public_key_pem = trustee_proxy.fetch_public_key(
             keychain_uid=keychain_uid1, key_algo=key_encryption_algo
         )
         assert public_key_pem
@@ -244,7 +244,7 @@ def test_jsonrpc_escrow_request_decryption_authorization_for_normal_keys(live_se
             keychain_uid=keychain_uid1, key_algo=key_encryption_algo
         ).attached_at
 
-        result = escrow_proxy.request_decryption_authorization(
+        result = trustee_proxy.request_decryption_authorization(
             keypair_identifiers=[], request_message="I want decryption!"
         )
         assert result["success_count"] == 0
@@ -253,7 +253,7 @@ def test_jsonrpc_escrow_request_decryption_authorization_for_normal_keys(live_se
 
         frozen_datetime.tick(delta=timedelta(minutes=2))
 
-        result = escrow_proxy.request_decryption_authorization(
+        result = trustee_proxy.request_decryption_authorization(
             keypair_identifiers=all_keypair_identifiers,
             request_message="I want decryption!",
         )
@@ -268,18 +268,18 @@ def test_jsonrpc_escrow_request_decryption_authorization_for_normal_keys(live_se
         ).decryption_authorized_at
         assert old_decryption_authorized_at
 
-        public_key_pem = escrow_proxy.fetch_public_key(
+        public_key_pem = trustee_proxy.fetch_public_key(
             keychain_uid=keychain_uid2, key_algo=key_encryption_algo
         )
         assert public_key_pem
-        public_key_pem = escrow_proxy.fetch_public_key(
+        public_key_pem = trustee_proxy.fetch_public_key(
             keychain_uid=keychain_uid3, key_algo=key_encryption_algo
         )
         assert public_key_pem
 
         frozen_datetime.tick(delta=timedelta(minutes=4))
 
-        result = escrow_proxy.request_decryption_authorization(
+        result = trustee_proxy.request_decryption_authorization(
             keypair_identifiers=all_keypair_identifiers,
             request_message="I want decryption!",
         )
@@ -305,14 +305,14 @@ def test_jsonrpc_escrow_request_decryption_authorization_for_normal_keys(live_se
                 keychain_uid=keychain_uid_unexisting, key_algo=key_encryption_algo
             )
 
-        public_key_pem = escrow_proxy.fetch_public_key(
+        public_key_pem = trustee_proxy.fetch_public_key(
             keychain_uid=keychain_uid4, key_algo=key_encryption_algo
         )
         assert public_key_pem
 
         frozen_datetime.tick(delta=timedelta(minutes=6))
 
-        result = escrow_proxy.request_decryption_authorization(
+        result = trustee_proxy.request_decryption_authorization(
             keypair_identifiers=all_keypair_identifiers,
             request_message="I want decryption!",
         )
@@ -330,10 +330,10 @@ def test_jsonrpc_escrow_request_decryption_authorization_for_normal_keys(live_se
     del all_keypair_identifiers
 
 
-def test_jsonrpc_escrow_request_decryption_authorization_for_free_keys(live_server):
+def test_jsonrpc_trustee_request_decryption_authorization_for_free_keys(live_server):
     jsonrpc_url = live_server.url + "/json/"  # FIXME change url!!
 
-    escrow_proxy = JsonRpcProxy(
+    trustee_proxy = JsonRpcProxy(
         url=jsonrpc_url, response_error_handler=status_slugs_response_error_handler
     )
 
@@ -361,18 +361,18 @@ def test_jsonrpc_escrow_request_decryption_authorization_for_free_keys(live_serv
 
         keys_generated_before_datetime = timezone.now()
 
-        public_key_pem1 = escrow_proxy.fetch_public_key(
+        public_key_pem1 = trustee_proxy.fetch_public_key(
             keychain_uid=keychain_uid_free, key_algo=free_key_algo1
         )
         assert public_key_pem1
 
         # This key will not have early-enough request for authorization
-        public_key_pem3 = escrow_proxy.fetch_public_key(
+        public_key_pem3 = trustee_proxy.fetch_public_key(
             keychain_uid=keychain_uid_free, key_algo=free_key_algo3
         )
         assert public_key_pem3
 
-        result = escrow_proxy.request_decryption_authorization(
+        result = trustee_proxy.request_decryption_authorization(
             keypair_identifiers=all_requested_keypair_identifiers,
             request_message="I want early decryption!",
         )
@@ -382,12 +382,12 @@ def test_jsonrpc_escrow_request_decryption_authorization_for_free_keys(live_serv
 
         frozen_datetime.tick(delta=timedelta(minutes=6))
 
-        public_key_pem2 = escrow_proxy.fetch_public_key(
+        public_key_pem2 = trustee_proxy.fetch_public_key(
             keychain_uid=keychain_uid_free, key_algo=free_key_algo2
         )
         assert public_key_pem2
 
-        result = escrow_proxy.request_decryption_authorization(
+        result = trustee_proxy.request_decryption_authorization(
             keypair_identifiers=all_requested_keypair_identifiers,
             request_message="I want later decryption!",
         )
@@ -395,7 +395,7 @@ def test_jsonrpc_escrow_request_decryption_authorization_for_free_keys(live_serv
         assert result["too_old_count"] == 1  # First key is too old now
         assert result["not_found_count"] == 0
 
-        keypair_obj = EscrowKeypair.objects.get(
+        keypair_obj = TrusteeKeypair.objects.get(
             keychain_uid=keychain_uid_free, key_algo=free_key_algo1
         )
         assert keypair_obj.created_at <= keys_generated_before_datetime
@@ -403,7 +403,7 @@ def test_jsonrpc_escrow_request_decryption_authorization_for_free_keys(live_serv
         assert keypair_obj.decryption_authorized_at
         first_authorized_at = keypair_obj.decryption_authorized_at
 
-        keypair_obj = EscrowKeypair.objects.get(
+        keypair_obj = TrusteeKeypair.objects.get(
             keychain_uid=keychain_uid_free, key_algo=free_key_algo2
         )
         assert keypair_obj.created_at <= keys_generated_before_datetime
@@ -411,7 +411,7 @@ def test_jsonrpc_escrow_request_decryption_authorization_for_free_keys(live_serv
         assert keypair_obj.decryption_authorized_at
         assert keypair_obj.decryption_authorized_at >= first_authorized_at + timedelta(minutes=5)
 
-        keypair_obj = EscrowKeypair.objects.get(
+        keypair_obj = TrusteeKeypair.objects.get(
             keychain_uid=keychain_uid_free, key_algo=free_key_algo3
         )
         assert keypair_obj.created_at <= keys_generated_before_datetime
@@ -419,24 +419,24 @@ def test_jsonrpc_escrow_request_decryption_authorization_for_free_keys(live_serv
         assert not keypair_obj.decryption_authorized_at  # Never requested
 
 
-def test_jsonrpc_escrow_encrypt_decrypt_cryptainer(live_server):
+def test_jsonrpc_trustee_encrypt_decrypt_cryptainer(live_server):
     jsonrpc_url = live_server.url + "/json/"  # FIXME change url!!
 
     cryptoconf = dict(
         payload_encryption_layers=[
-            # First we encrypt with local key and sign via main remote escrow
+            # First we encrypt with local key and sign via main remote trustee
             dict(
                 payload_encryption_algo="AES_EAX",
                 key_encryption_layers=[
                     dict(
-                        key_encryption_algo="RSA_OAEP", key_encryption_escrow=dict(escrow_type="jsonrpc", url=jsonrpc_url)
+                        key_encryption_algo="RSA_OAEP", key_encryption_trustee=dict(trustee_type="jsonrpc", url=jsonrpc_url)
                     )
                 ],
                 payload_signatures=[
                     dict(
                         payload_digest_algo="SHA512",
                         payload_signature_algo="DSA_DSS",
-                        payload_signature_escrow=dict(escrow_type="jsonrpc", url=jsonrpc_url),
+                        payload_signature_trustee=dict(trustee_type="jsonrpc", url=jsonrpc_url),
                     )
                 ],
             )
@@ -464,10 +464,10 @@ def test_jsonrpc_escrow_encrypt_decrypt_cryptainer(live_server):
                 cryptainer=cryptainer, keystore_pool=None
             )
 
-        # Access automatically granted for now, with this escrow, when keys are young
-        escrow_dependencies = gather_escrow_dependencies(cryptainers=[cryptainer])
+        # Access automatically granted for now, with this trustee, when keys are young
+        trustee_dependencies = gather_trustee_dependencies(cryptainers=[cryptainer])
         decryption_authorization_requests_result = request_decryption_authorizations(
-            escrow_dependencies,
+            trustee_dependencies,
             keystore_pool=None,
             request_message="I need access to this")
         print(">>>>> request_decryption_authorizations is", decryption_authorization_requests_result)
@@ -526,7 +526,7 @@ def test_crashdump_reports(db):
 
     res = client.get("/crashdumps/")
     assert res.status_code == 200
-    assert res.content == b"CRASHDUMP ENDPOINT OF WAESCROW"
+    assert res.content == b"CRASHDUMP ENDPOINT OF WATRUSTEE"
 
     res = client.post("/crashdumps/")
     assert res.status_code == 400
@@ -542,8 +542,8 @@ def test_crashdump_reports(db):
     assert dump_file_content == crashdump
 
 
-def test_waescrow_wsgi_application(db):
-    from waescrow.wsgi import application
+def test_watrustee_wsgi_application(db):
+    from watrustee.wsgi import application
 
     with pytest.raises(KeyError, match="REQUEST_METHOD"):
         application(environ={}, start_response=lambda *args, **kwargs: None)
@@ -585,22 +585,22 @@ def _dump_to_raw_json_tree(data):
 def test_jsonrpc_get_authenticator(live_server):
     jsonrpc_url = live_server.url + "/json/"
 
-    escrow_proxy = JsonRpcProxy(
+    trustee_proxy = JsonRpcProxy(
         url=jsonrpc_url, response_error_handler=status_slugs_response_error_handler
     )
 
     parameters = _generate_authenticator_parameter_tree(2)
 
     with pytest.raises(DecryptionError):
-        escrow_proxy.get_public_authenticator_view(username=parameters["username"],
+        trustee_proxy.get_public_authenticator_view(username=parameters["username"],
                                                                           authenticator_secret=parameters[
                                                                               "authenticator_secret"])
 
-    escrow_proxy.set_public_authenticator_view(username=parameters["username"], description=parameters["description"],
+    trustee_proxy.set_public_authenticator_view(username=parameters["username"], description=parameters["description"],
                                                authenticator_secret=parameters["authenticator_secret"],
                                                public_keys=parameters["public_keys"])
 
-    public_authenticator = escrow_proxy.get_public_authenticator_view(username=parameters["username"],
+    public_authenticator = trustee_proxy.get_public_authenticator_view(username=parameters["username"],
                                                                       authenticator_secret=parameters[
                                                                           "authenticator_secret"])
 

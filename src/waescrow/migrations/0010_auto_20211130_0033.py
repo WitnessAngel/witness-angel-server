@@ -7,7 +7,7 @@ import uuid
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('waescrow', '0009_auto_20211130_0025'),
+        ('watrustee', '0009_auto_20211130_0025'),
     ]
 
     operations = [

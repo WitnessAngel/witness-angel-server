@@ -11,7 +11,7 @@ import model_utils.fields
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('waescrow', '0001_initial'),
+        ('watrustee', '0001_initial'),
     ]
 
     operations = [

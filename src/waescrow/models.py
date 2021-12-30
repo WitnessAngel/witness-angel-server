@@ -98,15 +98,15 @@ class Authenticator(TimeStampedModel):
 '''
 
 
-class EscrowKeypair(models.Model):
+class TrusteeKeypair(models.Model):
     """
     Stores key pairs attached to UUIDs.
     Free keys are inserted with keychain_uid=None.
     """
 
     class Meta:
-        verbose_name = _("escrow key pair")
-        verbose_name_plural = _("escrow key pairs")
+        verbose_name = _("trustee key pair")
+        verbose_name_plural = _("trustee key pairs")
         unique_together = [("keychain_uid", "key_algo")]
 
     created_at = models.DateTimeField(_("Creation of record"), auto_now_add=True)
@@ -125,4 +125,4 @@ class EscrowKeypair(models.Model):
     )
 
     def __repr__(self):
-        return "<EscrowKeypair (type=%s, uid=%s)>" % (self.key_algo, self.keychain_uid)
+        return "<TrusteeKeypair (type=%s, uid=%s)>" % (self.key_algo, self.keychain_uid)

@@ -1,9 +1,9 @@
 from django.contrib import admin
 
-from .models import EscrowKeypair, AuthenticatorUser, AuthenticatorPublicKey
+from .models import TrusteeKeypair, AuthenticatorUser, AuthenticatorPublicKey
 
 
-class EscrowKeypairAdmin(admin.ModelAdmin):
+class TrusteeKeypairAdmin(admin.ModelAdmin):
 
     list_display = (
         "created_at",
@@ -17,6 +17,6 @@ class EscrowKeypairAdmin(admin.ModelAdmin):
     readonly_fields = ("created_at",)
 
 
-admin.site.register(EscrowKeypair, EscrowKeypairAdmin)
+admin.site.register(TrusteeKeypair, TrusteeKeypairAdmin)
 admin.site.register(AuthenticatorUser)
 admin.site.register(AuthenticatorPublicKey)

@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from rest_framework.fields import UUIDField, Field
 
-from waescrow.models import AuthenticatorUser, AuthenticatorPublicKey
+from watrustee.models import AuthenticatorUser, AuthenticatorPublicKey
 
 """
 class AuthenticatorUserSerializer(serializers.ModelSerializer):

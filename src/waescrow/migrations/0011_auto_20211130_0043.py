@@ -7,7 +7,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('waescrow', '0010_auto_20211130_0033'),
+        ('watrustee', '0010_auto_20211130_0033'),
     ]
 
     operations = [

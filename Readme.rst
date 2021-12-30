@@ -1,10 +1,10 @@
-Witness Angel Escrow Webservices
+Witness Angel Trustee Webservices
 #################################
 
-.. image:: https://travis-ci.com/WitnessAngel/witness-angel-escrow.svg?branch=master
-    :target: https://travis-ci.com/WitnessAngel/witness-angel-escrow
+.. image:: https://travis-ci.com/WitnessAngel/witness-angel-trustee.svg?branch=master
+    :target: https://travis-ci.com/WitnessAngel/witness-angel-trustee
 
-This webservice exposes an Escrow API, so that Witness Angel devices may safely encrypt and sign their data in write-only mode.
+This webservice exposes an Trustee API, so that Witness Angel devices may safely encrypt and sign their data in write-only mode.
 
 
 

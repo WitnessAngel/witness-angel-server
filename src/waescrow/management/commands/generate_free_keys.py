@@ -2,12 +2,12 @@ from django.core.management.base import BaseCommand
 
 from django.core.management.base import BaseCommand
 
-from wacryptolib.escrow import generate_free_keypair_for_least_provisioned_key_algo
-from waescrow.escrow import SqlKeystore
+from wacryptolib.trustee import generate_free_keypair_for_least_provisioned_key_algo
+from watrustee.trustee import SqlKeystore
 
 
 class Command(BaseCommand):
-    help = "Pregenerate free keys for escrow webservices."
+    help = "Pregenerate free keys for trustee webservices."
 
     def add_arguments(self, parser):
         parser.add_argument("max_free_keys_per_type", nargs="?", type=int, default=10)

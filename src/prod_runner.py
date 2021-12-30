@@ -6,8 +6,8 @@ import sys
 
 
 def main():
-    print("WITNESS ANGEL ESCROW PROD RUNNER STARTED")
-    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "waescrow.settings")
+    print("WITNESS ANGEL TRUSTEE PROD RUNNER STARTED")
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "watrustee.settings")
     from django.core.management import execute_from_command_line
 
     execute_from_command_line(sys.argv)

@@ -17,7 +17,7 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name='EscrowKeypair',
+            name='TrusteeKeypair',
             fields=[
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('created_at', models.DateTimeField(auto_now_add=True, verbose_name='Creation of record')),
@@ -29,8 +29,8 @@ class Migration(migrations.Migration):
                 ('decryption_authorized_at', models.DateTimeField(blank=True, null=True)),
             ],
             options={
-                'verbose_name': 'escrow key pair',
-                'verbose_name_plural': 'escrow key pairs',
+                'verbose_name': 'trustee key pair',
+                'verbose_name_plural': 'trustee key pairs',
                 'unique_together': {('keychain_uid', 'key_algo')},
             },
         ),
