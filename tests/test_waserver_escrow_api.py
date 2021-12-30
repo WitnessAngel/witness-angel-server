@@ -76,33 +76,33 @@ def test_jsonrpc_escrow_signature(live_server):
     )
 
     keychain_uid = generate_uuid0()
-    signature_algo = "DSA_DSS"
+    payload_signature_algo = "DSA_DSS"
     secret = get_random_bytes(101)
     secret_too_big = get_random_bytes(150)
 
     public_key_signature_pem = escrow_proxy.fetch_public_key(
-        keychain_uid=keychain_uid, key_algo=signature_algo
+        keychain_uid=keychain_uid, key_algo=payload_signature_algo
     )
     public_key_signature = load_asymmetric_key_from_pem_bytestring(
-        key_pem=public_key_signature_pem, key_algo=signature_algo
+        key_pem=public_key_signature_pem, key_algo=payload_signature_algo
     )
 
     signature = escrow_proxy.get_message_signature(
-        keychain_uid=keychain_uid, message=secret, signature_algo=signature_algo
+        keychain_uid=keychain_uid, message=secret, payload_signature_algo=payload_signature_algo
     )
 
     with pytest.raises(ValueError, match="too big"):
         escrow_proxy.get_message_signature(
             keychain_uid=keychain_uid,
             message=secret_too_big,
-            signature_algo=signature_algo,
+            payload_signature_algo=payload_signature_algo,
         )
 
     verify_message_signature(
         message=secret,
         signature=signature,
         key=public_key_signature,
-        signature_algo=signature_algo,
+        payload_signature_algo=payload_signature_algo,
     )
 
     signature["digest"] += b"xyz"
@@ -111,7 +111,7 @@ def test_jsonrpc_escrow_signature(live_server):
             message=secret,
             signature=signature,
             key=public_key_signature,
-            signature_algo=signature_algo,
+            payload_signature_algo=payload_signature_algo,
         )
 
 
@@ -429,14 +429,14 @@ def test_jsonrpc_escrow_encrypt_decrypt_cryptainer(live_server):
                 payload_encryption_algo="AES_EAX",
                 key_encryption_layers=[
                     dict(
-                        key_encryption_algo="RSA_OAEP", key_escrow=dict(escrow_type="jsonrpc", url=jsonrpc_url)
+                        key_encryption_algo="RSA_OAEP", key_encryption_escrow=dict(escrow_type="jsonrpc", url=jsonrpc_url)
                     )
                 ],
                 payload_signatures=[
                     dict(
                         payload_digest_algo="SHA512",
-                        signature_algo="DSA_DSS",
-                        signature_escrow=dict(escrow_type="jsonrpc", url=jsonrpc_url),
+                        payload_signature_algo="DSA_DSS",
+                        payload_signature_escrow=dict(escrow_type="jsonrpc", url=jsonrpc_url),
                     )
                 ],
             )
