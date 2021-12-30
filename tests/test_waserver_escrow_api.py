@@ -105,7 +105,7 @@ def test_jsonrpc_escrow_signature(live_server):
         payload_signature_algo=payload_signature_algo,
     )
 
-    signature["digest"] += b"xyz"
+    signature["signature_value"] += b"xyz"
     with pytest.raises(SignatureVerificationError, match="not authentic|Incorrect signature"):
         verify_message_signature(
             message=secret,
