@@ -107,15 +107,15 @@ def fetch_public_key(request, keychain_uid, key_algo, must_exist=False):
 
 @jsonrpc_method("get_message_signature", site=extended_jsonrpc_site)
 @convert_exceptions_to_jsonrpc_status_slugs
-def get_message_signature(request, keychain_uid, message, payload_signature_algo):
+def get_message_signature(request, keychain_uid, message, signature_algo):
     logger.info(
         "Got webservice request on get_message_signature() for signature algo %s and keychain uid %s",
-        payload_signature_algo,
+        signature_algo,
         keychain_uid,
     )
     del request
     return SQL_TRUSTEE_API.get_message_signature(
-        keychain_uid=keychain_uid, message=message, payload_signature_algo=payload_signature_algo
+        keychain_uid=keychain_uid, message=message, payload_signature_algo=signature_algo
     )
 
 

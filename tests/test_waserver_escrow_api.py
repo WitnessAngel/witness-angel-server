@@ -88,14 +88,14 @@ def test_jsonrpc_trustee_signature(live_server):
     )
 
     signature = trustee_proxy.get_message_signature(
-        keychain_uid=keychain_uid, message=secret, payload_signature_algo=payload_signature_algo
+        keychain_uid=keychain_uid, message=secret, signature_algo=payload_signature_algo
     )
 
     with pytest.raises(ValueError, match="too big"):
         trustee_proxy.get_message_signature(
             keychain_uid=keychain_uid,
             message=secret_too_big,
-            payload_signature_algo=payload_signature_algo,
+            signature_algo=payload_signature_algo,
         )
 
     verify_message_signature(
