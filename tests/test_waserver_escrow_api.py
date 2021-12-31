@@ -139,14 +139,14 @@ def test_jsonrpc_trustee_decryption_authorization_flags(live_server):
     key_cipher_algo = "RSA_OAEP"
     secret = get_random_bytes(101)
 
-    public_key_encryption_pem = trustee_proxy.fetch_public_key(
+    public_encryption_key_pem = trustee_proxy.fetch_public_key(
         keychain_uid=keychain_uid, key_algo=key_cipher_algo
     )
-    public_key_encryption = load_asymmetric_key_from_pem_bytestring(
-        key_pem=public_key_encryption_pem, key_algo=key_cipher_algo
+    public_encryption_key = load_asymmetric_key_from_pem_bytestring(
+        key_pem=public_encryption_key_pem, key_algo=key_cipher_algo
     )
 
-    cipherdict = _encrypt_via_rsa_oaep(plaintext=secret, key_dict=dict(key=public_key_encryption))
+    cipherdict = _encrypt_via_rsa_oaep(plaintext=secret, key_dict=dict(key=public_encryption_key))
 
     def _attempt_decryption():
         return trustee_proxy.decrypt_with_private_key(
@@ -423,13 +423,13 @@ def test_jsonrpc_trustee_encrypt_decrypt_cryptainer(live_server):
     jsonrpc_url = live_server.url + "/json/"  # FIXME change url!!
 
     cryptoconf = dict(
-        payload_encryption_layers=[
+        payload_cipher_layers=[
             # First we encrypt with local key and sign via main remote trustee
             dict(
                 payload_cipher_algo="AES_EAX",
-                key_encryption_layers=[
+                key_cipher_layers=[
                     dict(
-                        key_cipher_algo="RSA_OAEP", key_encryption_trustee=dict(trustee_type="jsonrpc", url=jsonrpc_url)
+                        key_cipher_algo="RSA_OAEP", key_cipher_trustee=dict(trustee_type="jsonrpc", url=jsonrpc_url)
                     )
                 ],
                 payload_signatures=[
