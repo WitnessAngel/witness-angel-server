@@ -15,7 +15,7 @@ from wacryptolib.cipher import SUPPORTED_CIPHER_ALGOS
 
 from wacryptolib.trustee import KeystoreBase, TrusteeApi
 from wacryptolib.exceptions import KeyDoesNotExist, KeyAlreadyExists, AuthorizationError, ExistenceError, \
-    ValidationError
+    SchemaValidationError
 from wacryptolib.utilities import synchronized
 
 from watrustee.models import AuthenticatorUser, TrusteeKeypair, DECRYPTION_AUTHORIZATION_LIFESPAN_H, \
@@ -100,7 +100,7 @@ def check_public_authenticator_sanity(public_authenticator: dict):
     try:
         validate(instance=public_authenticator, schema=public_authenticator_schema_tree)
     except jsonschema.exceptions.ValidationError as exc:
-        raise ValidationError("Error validating with {}".format(exc)) from exc
+        raise SchemaValidationError("Error validating with {}".format(exc)) from exc
 
 
 class SqlKeystore(KeystoreBase):

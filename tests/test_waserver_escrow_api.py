@@ -102,7 +102,7 @@ def test_jsonrpc_trustee_signature(live_server):
         message=secret,
         signature=signature,
         key=public_key_signature,
-        payload_signature_algo=payload_signature_algo,
+        signature_algo=payload_signature_algo,
     )
 
     signature["signature_value"] += b"xyz"
@@ -111,7 +111,7 @@ def test_jsonrpc_trustee_signature(live_server):
             message=secret,
             signature=signature,
             key=public_key_signature,
-            payload_signature_algo=payload_signature_algo,
+            signature_algo=payload_signature_algo,
         )
 
 
@@ -568,7 +568,7 @@ def _generate_authenticator_parameter_tree(key_count):
     return parameters
 
 
-def _dump_to_raw_json_tree(data):
+def _convert_to_raw_extended_json_tree(data):  # FIXME deduplicate with wacryptolib container tests, using scaffolding??
     """
     Turn a python tree (including UUIDs, bytes etc.) into its representation
     as Pymongo extended json (with $binary, $numberInt etc.)
@@ -606,7 +606,7 @@ def test_jsonrpc_get_authenticator(live_server):
 
     del parameters["authenticator_secret"]
     assert parameters == public_authenticator
-    check_public_authenticator_sanity(_dump_to_raw_json_tree(public_authenticator))
+    check_public_authenticator_sanity(_convert_to_raw_extended_json_tree(public_authenticator))
     return public_authenticator
 
 

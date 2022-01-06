@@ -88,7 +88,7 @@ class AuthenticatorPublicKey(models.Model):
 '''
 class Authenticator(TimeStampedModel):
 
-    authenticator_uid = models.UUIDField(_("Authenticator uid"), db_index=True)
+    keystore_uid = models.UUIDField(_("Authenticator uid"), db_index=True)
 
     guardian_name = models.CharField(_("Guardian name"), max_length=100)
 
