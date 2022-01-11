@@ -1,7 +1,9 @@
 from rest_framework import serializers
 from rest_framework.fields import UUIDField, Field
 
-from watrustee.models import AuthenticatorUser, AuthenticatorPublicKey
+# from watrustee.models import AuthenticatorUser, AuthenticatorPublicKey
+
+from watrustee.models import PublicAuthenticator, AuthenticatorPublicKey
 
 """
 class AuthenticatorUserSerializer(serializers.ModelSerializer):
@@ -33,7 +35,7 @@ class TransparentRepresentationUUIDField(TransparentRepresentationMixin, UUIDFie
     pass
 
 
-class AuthenticatorPublicKey(serializers.ModelSerializer):
+class AuthenticatorPublicKeySerializer(serializers.ModelSerializer):
     keychain_uid = TransparentRepresentationUUIDField()
     payload = BinaryField()
 
@@ -42,9 +44,10 @@ class AuthenticatorPublicKey(serializers.ModelSerializer):
         fields = ['keychain_uid', 'key_algo', 'payload']
 
 
-class AuthenticatorUserSerializer(serializers.ModelSerializer):
-    public_keys = AuthenticatorPublicKey(many=True, read_only=True)
+class PublicAuthenticatorSerializer(serializers.ModelSerializer):
+    keystore_uid = TransparentRepresentationUUIDField()
+    public_keys = AuthenticatorPublicKeySerializer(many=True, read_only=True)
 
     class Meta:
-        model = AuthenticatorUser
-        fields = ['description', 'username', 'public_keys']
+        model = PublicAuthenticator
+        fields = ['keystore_owner', 'keystore_uid', 'public_keys']

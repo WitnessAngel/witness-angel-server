@@ -20,8 +20,9 @@ from wacryptolib.cryptainer import (
     decrypt_payload_from_cryptainer, gather_trustee_dependencies, request_decryption_authorizations,
 )
 from wacryptolib.cipher import _encrypt_via_rsa_oaep
-from wacryptolib.trustee import generate_free_keypair_for_least_provisioned_key_algo
-from wacryptolib.exceptions import KeyDoesNotExist, SignatureVerificationError, AuthorizationError, DecryptionError
+from wacryptolib.keystore import generate_free_keypair_for_least_provisioned_key_algo
+from wacryptolib.exceptions import KeyDoesNotExist, SignatureVerificationError, AuthorizationError, DecryptionError, \
+    ExistenceError
 from wacryptolib.jsonrpc_client import JsonRpcProxy, status_slugs_response_error_handler
 from wacryptolib.keygen import load_asymmetric_key_from_pem_bytestring
 from wacryptolib.keystore import DummyKeystore
@@ -34,8 +35,9 @@ from wacryptolib.signature import verify_message_signature
 from wacryptolib.utilities import generate_uuid0, dump_to_json_str
 from watrustee.trustee import SqlKeystore, _fetch_key_object_or_raise, \
     check_public_authenticator_sanity, set_public_authenticator
-from watrustee.models import TrusteeKeypair, AuthenticatorUser, AuthenticatorPublicKey
-from watrustee.serializers import AuthenticatorUserSerializer
+from watrustee.models import TrusteeKeypair
+
+from watrustee.views import set_public_authenticator_view
 
 
 def test_sql_keystore_basic_and_free_keys_api(db):
@@ -451,7 +453,7 @@ def test_jsonrpc_trustee_encrypt_decrypt_cryptainer(live_server):
 
         cryptainer = encrypt_payload_into_cryptainer(
             payload=payload,
-           cryptoconf=cryptoconf,
+            cryptoconf=cryptoconf,
             metadata=None,
             keychain_uid=keychain_uid,
             keystore_pool=None,  # Unused by this config actually
@@ -475,7 +477,7 @@ def test_jsonrpc_trustee_encrypt_decrypt_cryptainer(live_server):
         decrypted_data = decrypt_payload_from_cryptainer(
             cryptainer=cryptainer, keystore_pool=None
         )
-        assert decrypted_data == data
+        assert decrypted_data == payload
 
         frozen_datetime.tick(
             delta=timedelta(hours=23)
@@ -483,7 +485,7 @@ def test_jsonrpc_trustee_encrypt_decrypt_cryptainer(live_server):
         decrypted_data = decrypt_payload_from_cryptainer(
             cryptainer=cryptainer, keystore_pool=None
         )
-        assert decrypted_data == data
+        assert decrypted_data == payload
 
         frozen_datetime.tick(
             delta=timedelta(hours=2)
@@ -504,7 +506,7 @@ def test_jsonrpc_trustee_encrypt_decrypt_cryptainer(live_server):
 
         cryptainer = encrypt_payload_into_cryptainer(
             payload=payload,
-           cryptoconf=cryptoconf,
+            cryptoconf=cryptoconf,
             metadata=None,
             keychain_uid=keychain_uid,
             keystore_pool=None,  # Unused by this config actually
@@ -560,9 +562,9 @@ def _generate_authenticator_parameter_tree(key_count):
         })
 
     parameters = dict(
-        description="description",
-        authenticator_secret="authenticator_secret",
-        username="username",
+        keystore_owner="keystore_owner",
+        keystore_secret="keystore_secret",
+        keystore_uid=generate_uuid0(),
         public_keys=public_keys
     )
     return parameters
@@ -591,20 +593,21 @@ def test_jsonrpc_get_authenticator(live_server):
 
     parameters = _generate_authenticator_parameter_tree(2)
 
-    with pytest.raises(DecryptionError):
-        trustee_proxy.get_public_authenticator_view(username=parameters["username"],
-                                                                          authenticator_secret=parameters[
-                                                                              "authenticator_secret"])
+    with pytest.raises(ExistenceError):
+        trustee_proxy.get_public_authenticator_view(keystore_uid=parameters["keystore_uid"],
+                                                    keystore_secret=parameters[
+                                                        "keystore_secret"])
 
-    trustee_proxy.set_public_authenticator_view(username=parameters["username"], description=parameters["description"],
-                                               authenticator_secret=parameters["authenticator_secret"],
-                                               public_keys=parameters["public_keys"])
+    trustee_proxy.set_public_authenticator_view(keystore_uid=parameters["keystore_uid"],
+                                                keystore_owner=parameters["keystore_owner"],
+                                                keystore_secret=parameters["keystore_secret"],
+                                                public_keys=parameters["public_keys"])
 
-    public_authenticator = trustee_proxy.get_public_authenticator_view(username=parameters["username"],
-                                                                      authenticator_secret=parameters[
-                                                                          "authenticator_secret"])
+    public_authenticator = trustee_proxy.get_public_authenticator_view(keystore_uid=parameters["keystore_uid"],
+                                                    keystore_secret=parameters[
+                                                        "keystore_secret"])
 
-    del parameters["authenticator_secret"]
+    del parameters["keystore_secret"]
     assert parameters == public_authenticator
     check_public_authenticator_sanity(_convert_to_raw_extended_json_tree(public_authenticator))
     return public_authenticator
@@ -615,11 +618,12 @@ def test_rest_api_get_authenticator(live_server):
 
     for i in parameters["public_keys"]:
         i["payload"] = b"azertyuiopppp"
-    set_public_authenticator(username=parameters["username"], description=parameters["description"],
-                             authenticator_secret=parameters["authenticator_secret"],
-                             public_keys=parameters["public_keys"])
+    set_public_authenticator_view(keystore_uid=parameters["keystore_uid"],
+                                                keystore_owner=parameters["keystore_owner"],
+                                                keystore_secret=parameters["keystore_secret"],
+                                                public_keys=parameters["public_keys"])
 
-    url = live_server.url + "/authenticatorusers/"
+    url = live_server.url + "/publicauthenticator/"
     response = requests.get(url)
     assert response.status_code == status.HTTP_200_OK
     public_authenticator = response.json()

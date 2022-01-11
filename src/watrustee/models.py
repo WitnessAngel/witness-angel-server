@@ -14,7 +14,7 @@ DECRYPTION_AUTHORIZATION_LIFESPAN_H = (
 )  # Access remains only authorized for that duration
 
 
-class AuthenticatorUser(AbstractUser):
+class PublicAuthenticator(models.Model):
     """
     Published mirror of an authenticator device owned by a Key Guardian.
     Username is set as the authenticator's UUID.
@@ -27,40 +27,44 @@ class AuthenticatorUser(AbstractUser):
         verbose_name_plural = _("authenticator users")
         # unique_together = [("keychain_uid", "key_algo")]
 
-    description = models.CharField(_("Identity/role of the key guardian"), max_length=100)
+    keystore_uid = models.UUIDField(_("Keystore uid"), unique=True)
+
+    keystore_owner = models.CharField(_("Keystore owner"), max_length=100)
+
+    keystore_secret = models.CharField(_('Keystore secret'), max_length=128)
 
     # Todo add real mobile_phone field later!
     # username = models.UUIDField(_("keychain uid"), default=uuid.uuid4, null=True)
 
     #: Hash of the secret string of the authenticator
-    authenticator_secret = models.CharField(_('authenticator secret'), max_length=128)
+    # authenticator_secret = models.CharField(_('authenticator secret'), max_length=128)
 
     # API mimicking AbstractBaseUser password management
-    def set_authenticator_secret(self, authenticator_secret):
-        self.authenticator_secret = make_password(authenticator_secret)
+    def set_keystore_secret(self, keystore_secret):
+        self.keystore_secret = make_password(keystore_secret)
 
-    def check_authenticator_secret(self, authenticator_secret):
+    def check_keystore_secret(self, keystore_secret):
         """
-        Return a boolean of whether the authenticator_secret was correct. Handles
+        Return a boolean of whether the keystore_secret was correct. Handles
         hashing formats behind the scenes.
         """
 
-        def setter(authenticator_secret):
-            self.set_password(authenticator_secret)
+        def setter(keystore_secret):
+            self.set_password(keystore_secret)
             # Password hash upgrades shouldn't be considered password changes.
-            self.save(update_fields=["authenticator_secret"])
+            self.save(update_fields=["keystore_secret"])
 
-        return check_password(authenticator_secret, self.authenticator_secret, setter)
+        return check_password(keystore_secret, self.keystore_secret, setter)
 
-    def set_unusable_authenticator_secret(self):
+    def set_unusable_keystore_secret(self):
         # Set a value that will never be a valid hash
-        self.authenticator_secret = make_password(None)
+        self.keystore_secret = make_password(None)
 
-    def has_usable_authenticator_secret(self):
+    def has_usable_keystore_secret(self):
         """
-        Return False if set_unusable_authenticator_secret() has been called for this user.
+        Return False if set_unusable_keystore_secret() has been called for this user.
         """
-        return is_password_usable(self.authenticator_secret)
+        return is_password_usable(self.keystore_secret)
 
 
 def authenticate_authenticator_user(username, password, authenticathor_secret):
@@ -76,7 +80,7 @@ class AuthenticatorPublicKey(models.Model):
     # authenticator_user = models.ForeignKey(AuthenticatorUser, on_delete=models.CASCADE, verbose_name=_(
     # 'authenticator user'))
 
-    authenticator_user = models.ForeignKey(AuthenticatorUser, related_name='public_keys',
+    authenticator_user = models.ForeignKey(PublicAuthenticator, related_name='public_keys',
                                            on_delete=models.CASCADE)
 
     active = models.BooleanField(_("active"), default=True)  # If this public key might be used for new containers

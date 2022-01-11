@@ -2,7 +2,7 @@ from django.core.management.base import BaseCommand
 
 from django.core.management.base import BaseCommand
 
-from wacryptolib.trustee import generate_free_keypair_for_least_provisioned_key_algo
+from wacryptolib.keystore import generate_free_keypair_for_least_provisioned_key_algo
 from watrustee.trustee import SqlKeystore
 
 

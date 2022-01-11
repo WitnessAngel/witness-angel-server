@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import TrusteeKeypair, AuthenticatorUser, AuthenticatorPublicKey
+from .models import TrusteeKeypair, PublicAuthenticator, AuthenticatorPublicKey
 
 
 class TrusteeKeypairAdmin(admin.ModelAdmin):
@@ -18,5 +18,5 @@ class TrusteeKeypairAdmin(admin.ModelAdmin):
 
 
 admin.site.register(TrusteeKeypair, TrusteeKeypairAdmin)
-admin.site.register(AuthenticatorUser)
+admin.site.register(PublicAuthenticator)
 admin.site.register(AuthenticatorPublicKey)

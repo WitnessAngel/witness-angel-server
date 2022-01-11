@@ -18,9 +18,9 @@ from wacryptolib.exceptions import KeyDoesNotExist, KeyAlreadyExists, Authorizat
     SchemaValidationError
 from wacryptolib.utilities import synchronized
 
-from watrustee.models import AuthenticatorUser, TrusteeKeypair, DECRYPTION_AUTHORIZATION_LIFESPAN_H, \
-    AuthenticatorPublicKey
-from watrustee.serializers import AuthenticatorUserSerializer
+from watrustee.models import TrusteeKeypair, DECRYPTION_AUTHORIZATION_LIFESPAN_H, \
+    AuthenticatorPublicKey, PublicAuthenticator
+from watrustee.serializers import PublicAuthenticatorSerializer
 
 
 def _fetch_key_object_or_raise(keychain_uid: uuid.UUID, key_algo: str) -> TrusteeKeypair:
@@ -30,29 +30,30 @@ def _fetch_key_object_or_raise(keychain_uid: uuid.UUID, key_algo: str) -> Truste
         raise KeyDoesNotExist("Database keypair %s/%s not found" % (keychain_uid, key_algo))
 
 
-def get_public_authenticator(username, authenticator_secret):
+def get_public_authenticator(keystore_uid, keystore_secret=None):
     try:
-        authenticator_user = AuthenticatorUser.objects.get(username=username)
-        assert authenticator_secret == authenticator_user.authenticator_secret
-        return AuthenticatorUserSerializer(authenticator_user).data
-    except Exception as exc:
-        print(exc)
+        authenticator_user = PublicAuthenticator.objects.get(keystore_uid=keystore_uid)
+        if keystore_secret:
+            if keystore_secret != authenticator_user.keystore_secret:
+                raise RuntimeError("Wrong authenticator secret")
+        return PublicAuthenticatorSerializer(authenticator_user).data
+    except PublicAuthenticator.DoesNotExist:
         raise ExistenceError("Authenticator User does not exist")  # TODO change this exception error
 
 
-def set_public_authenticator(description: str, authenticator_secret: str, username: str, public_keys: list):
+def set_public_authenticator(keystore_owner: str, keystore_secret: str, keystore_uid: uuid.UUID, public_keys: list):
     with transaction.atomic():
-        authenticator_user_or_none = AuthenticatorUser.objects.filter(username=username).first()
+        authenticator_user_or_none = PublicAuthenticator.objects.filter(keystore_uid=keystore_uid).first()
 
         if authenticator_user_or_none:
             # for public_key in public_keys: AuthenticatorPublicKey.objects.create(
             # authenticator_user=authenticator_user_exist_or_none,keychain_uid=public_key["keychain_uid"],
             # key_algo=public_key["key_algo"], payload=public_key["payload"])
 
-            raise KeyDoesNotExist("Authenticator already exists in sql storage" % username)
+            raise KeyDoesNotExist("Authenticator already exists in sql storage" % keystore_uid)
 
-        user = AuthenticatorUser.objects.create(description=description,
-                                                authenticator_secret=authenticator_secret, username=username)
+        user = PublicAuthenticator.objects.create(keystore_owner=keystore_owner,
+                                                  keystore_secret=keystore_secret, keystore_uid=keystore_uid)
         for public_key in public_keys:
             AuthenticatorPublicKey.objects.create(authenticator_user=user,
                                                   keychain_uid=public_key["keychain_uid"],
@@ -80,8 +81,8 @@ def _create_schema():
     }
 
     SCHEMA_PUBLIC_AUTHENTICATOR = Schema({
-        "description": And(str, len),
-        "username": And(str, len),
+        "keystore_owner": And(str, len),
+        "keystore_uid": micro_schema_uid,
         "public_keys": [
             {
                 'key_algo': Or(*SUPPORTED_CIPHER_ALGOS),
@@ -187,6 +188,9 @@ class SqlKeystore(KeystoreBase):
         keypair_obj_or_none.attached_at = timezone.now()
         keypair_obj_or_none.save()
 
+    def _list_unordered_keypair_identifiers(self):
+        raise NotImplementedError
+
 
 class SqlTrusteeApi(TrusteeApi):
     DECRYPTION_AUTHORIZATION_GRACE_PERIOD_S = 5 * 60
@@ -284,6 +288,7 @@ class SqlTrusteeApi(TrusteeApi):
             too_old_count=too_old_count,
             not_found_count=not_found_count,
         )
+
 
 
 SQL_TRUSTEE_API = SqlTrusteeApi(keystore=SqlKeystore())

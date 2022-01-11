@@ -16,9 +16,11 @@ from wacryptolib import exceptions as wacryptolib_exceptions
 from wacryptolib.error_handling import StatusSlugsMapper
 from wacryptolib.utilities import load_from_json_str, dump_to_json_str
 
-from watrustee.trustee import SQL_TRUSTEE_API, get_public_authenticator, set_public_authenticator
-from watrustee.models import AuthenticatorUser, AuthenticatorPublicKey
-from watrustee.serializers import AuthenticatorUserSerializer
+# from watrustee.trustee import SQL_TRUSTEE_API, get_public_authenticator, set_public_authenticator
+
+from watrustee.trustee import get_public_authenticator, set_public_authenticator, SQL_TRUSTEE_API
+from watrustee.models import PublicAuthenticator
+from watrustee.serializers import PublicAuthenticatorSerializer
 
 logger = logging.getLogger(__name__)
 
@@ -172,20 +174,20 @@ def crashdump_report_view(request):
     return HttpResponse(b"OK")
 
 
-class AuthenticatorUserViewSet(viewsets.ModelViewSet):
-    queryset = AuthenticatorUser.objects.all()
-    serializer_class = AuthenticatorUserSerializer
+class PublicAuthenticatorViewSet(viewsets.ModelViewSet):
+    queryset = PublicAuthenticator.objects.all()
+    serializer_class = PublicAuthenticatorSerializer
 
 
 @jsonrpc_method("get_public_authenticator_view", site=extended_jsonrpc_site)
 @convert_exceptions_to_jsonrpc_status_slugs
-def get_public_authenticator_view(self, username, authenticator_secret):
-    return get_public_authenticator(username=username, authenticator_secret=authenticator_secret)
+def get_public_authenticator_view(keystore_uid, keystore_secret=None):
+    return get_public_authenticator(keystore_uid, keystore_secret=keystore_secret)
 
 
 @jsonrpc_method("set_public_authenticator_view", site=extended_jsonrpc_site)
 @convert_exceptions_to_jsonrpc_status_slugs
-def set_public_authenticator_view(self, username, description, authenticator_secret, public_keys):
-    return set_public_authenticator(username=username, description=description,
-                                    authenticator_secret=authenticator_secret,
+def set_public_authenticator_view(keystore_owner, keystore_uid, keystore_secret, public_keys):
+    return set_public_authenticator(keystore_owner=keystore_owner, keystore_uid=keystore_uid,
+                                    keystore_secret=keystore_secret,
                                     public_keys=public_keys)
