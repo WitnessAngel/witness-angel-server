@@ -181,13 +181,13 @@ class PublicAuthenticatorViewSet(viewsets.ModelViewSet):
 
 @jsonrpc_method("get_public_authenticator_view", site=extended_jsonrpc_site)
 @convert_exceptions_to_jsonrpc_status_slugs
-def get_public_authenticator_view(keystore_uid, keystore_secret=None):
+def get_public_authenticator_view(self, keystore_uid, keystore_secret=None):
     return get_public_authenticator(keystore_uid, keystore_secret=keystore_secret)
 
 
 @jsonrpc_method("set_public_authenticator_view", site=extended_jsonrpc_site)
 @convert_exceptions_to_jsonrpc_status_slugs
-def set_public_authenticator_view(keystore_owner, keystore_uid, keystore_secret, public_keys):
+def set_public_authenticator_view(self, keystore_owner, keystore_uid, keystore_secret, public_keys):
     return set_public_authenticator(keystore_owner=keystore_owner, keystore_uid=keystore_uid,
                                     keystore_secret=keystore_secret,
                                     public_keys=public_keys)

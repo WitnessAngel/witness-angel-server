@@ -594,18 +594,14 @@ def test_jsonrpc_get_authenticator(live_server):
     parameters = _generate_authenticator_parameter_tree(2)
 
     with pytest.raises(ExistenceError):
-        trustee_proxy.get_public_authenticator_view(keystore_uid=parameters["keystore_uid"],
-                                                    keystore_secret=parameters[
-                                                        "keystore_secret"])
+        trustee_proxy.get_public_authenticator_view(keystore_uid=parameters["keystore_uid"])
 
     trustee_proxy.set_public_authenticator_view(keystore_uid=parameters["keystore_uid"],
                                                 keystore_owner=parameters["keystore_owner"],
                                                 keystore_secret=parameters["keystore_secret"],
                                                 public_keys=parameters["public_keys"])
 
-    public_authenticator = trustee_proxy.get_public_authenticator_view(keystore_uid=parameters["keystore_uid"],
-                                                    keystore_secret=parameters[
-                                                        "keystore_secret"])
+    public_authenticator = trustee_proxy.get_public_authenticator_view(keystore_uid=parameters["keystore_uid"])
 
     del parameters["keystore_secret"]
     assert parameters == public_authenticator
