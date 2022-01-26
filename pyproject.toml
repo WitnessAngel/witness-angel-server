@@ -9,7 +9,7 @@ description = "Witness Angel Escrow Webservices"
 version = "0.1"
 license = "MIT"
 readme = "Readme.rst"
-authors = ["Pascal Chambon", "Manon Michelet"]
+authors = ["Pascal Chambon", "Manon Michelet", "Francinette Atchade"]
 homepage = "https://github.com/WitnessAngel/witness-angel-escrow"
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -28,10 +28,10 @@ include = ["CHANGELOG", "tox.ini", "settings.ini", "docs/*", "docs/api/*", "test
 exclude = ["_build"]
 
 [tool.poetry.dependencies]
-python = ">=3.6"
+python = ">=3.7, <=3.10"
 
 # Witness Angel system
-wacryptolib = "^0.5.2"
+wacryptolib = "^0.7"
 
 # Django & Bson
 Django = "^2.2"
@@ -40,6 +40,7 @@ schema = "^0.7.0"
 django_cryptography = "^0.3.0"
 python-decouple = "^3.3"
 django-model-utils = "^4.1.1"
+django-rest-framework = "^0.1.0"
 
 [tool.poetry.dev-dependencies]
 
@@ -56,20 +57,20 @@ freezegun = "^0.3.12"
 typeguard = "^2.10.0"
 
 # Linters and formatters
-black = {version = "^18.3-alpha.0",allow-prereleases = true}
+black = {version = "^18.3-alpha.0", allow-prereleases = true}
 pylint = "^2.3"
 safety = "^1.8"
 yamllint = "^1.15"
 xenon = "^0.5"
 mypy = "^0.910"
 doc8 = "^0.8"
-typed-ast = "^1.4.0"  # Recent version necessay for python3.8 and pylint/mypy
+typed-ast = ">=1.4.0"  # Recent version necessay for python3.8 and pylint/mypy
 
 # Documentation
 sphinx = "^2.0"
 sphinx-autodoc-typehints = "^1.6"
 sphinx_rtd_theme = "^0.4.3"
-toml = "^0.10.0"
+toml = ">=0.10.0"
 
 # Frozen executable building
 pyinstaller = "^3.5"
