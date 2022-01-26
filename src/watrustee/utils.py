@@ -18,10 +18,15 @@ from wacryptolib.error_handling import StatusSlugsMapper
 # This is for the REST API only #
 
 class ExtendedDRFJSONEncoder(DRFJSONEncoder):
+
     def default(self, o):
         if isinstance(o, bytes):
-            return base64.b64encode(o)  # Use B64 instead of brutal ASCII bytes.decode()
+            # Use B64 instead of brutal ASCII bytes.decode()
+            # Beware, convert to str else INFINITE LOOP!
+            res =  base64.b64encode(o).decode("ascii")
+            return res
         return super().default(o)
+
 
 class ExtendedDRFJSONRenderer(DRFJSONRenderer):
     encoder_class = ExtendedDRFJSONEncoder
