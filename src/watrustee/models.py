@@ -121,7 +121,7 @@ class TrusteeKeypair(models.Model):
     keychain_uid = models.UUIDField(_("Keychain uid"), null=True)  # Null for free keys
     key_algo = models.CharField(_("Key type"), max_length=20)
     public_key = encrypt(models.BinaryField(_("Public key (PEM format)")))
-    private_key = encrypt(models.BinaryField(_("Private key (PEM format)")))  # MUST exist
+    private_key = encrypt(models.BinaryField(_("Private key (PEM format)"), null=True))  # Might NOT exist
 
     # When set, the private key can be accessed for DECRYPTION_AUTHORIZATION_LIFESPAN_H hours after this datetime
     decryption_authorized_at = models.DateTimeField(

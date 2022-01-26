@@ -12,10 +12,11 @@ import jsonschema
 from jsonschema import validate
 from schema import And, Or, Regex, Const, Schema
 from wacryptolib.cipher import SUPPORTED_CIPHER_ALGOS
+from wacryptolib.keystore import KeystoreReadWriteBase
 
-from wacryptolib.trustee import KeystoreBase, TrusteeApi
+from wacryptolib.trustee import TrusteeApi
 from wacryptolib.exceptions import KeyDoesNotExist, KeyAlreadyExists, AuthorizationError, ExistenceError, \
-    SchemaValidationError
+    SchemaValidationError, OperationNotSupported
 from wacryptolib.utilities import synchronized
 
 from watrustee.models import TrusteeKeypair, DECRYPTION_AUTHORIZATION_LIFESPAN_H, \
@@ -23,11 +24,15 @@ from watrustee.models import TrusteeKeypair, DECRYPTION_AUTHORIZATION_LIFESPAN_H
 from watrustee.serializers import PublicAuthenticatorSerializer
 
 
+def _fetch_key_object_or_none(keychain_uid: uuid.UUID, key_algo: str) -> TrusteeKeypair:
+    return TrusteeKeypair.objects.filter(keychain_uid=keychain_uid, key_algo=key_algo).first()
+
+
 def _fetch_key_object_or_raise(keychain_uid: uuid.UUID, key_algo: str) -> TrusteeKeypair:
-    try:
-        return TrusteeKeypair.objects.get(keychain_uid=keychain_uid, key_algo=key_algo)
-    except TrusteeKeypair.DoesNotExist:
-        raise KeyDoesNotExist("Database keypair %s/%s not found" % (keychain_uid, key_algo))
+    keypair_obj = _fetch_key_object_or_none(keychain_uid=keychain_uid, key_algo=key_algo)
+    if not keypair_obj:
+        raise KeyDoesNotExist("Keypair %s/%s not found in database" % (keychain_uid, key_algo))
+    return keypair_obj
 
 
 def get_public_authenticator(keystore_uid, keystore_secret=None):
@@ -104,7 +109,7 @@ def check_public_authenticator_sanity(public_authenticator: dict):
         raise SchemaValidationError("Error validating with {}".format(exc)) from exc
 
 
-class SqlKeystore(KeystoreBase):
+class SqlKeystore(KeystoreReadWriteBase):
     """
     Store keys in records of SQL DB.
 
@@ -115,54 +120,48 @@ class SqlKeystore(KeystoreBase):
 
     # TODO - ensure the secret key of Django DB storage is given by environment variable for security?
 
-    _lock = threading.Lock()  # Process-wide lock
+    def _public_key_exists(self, *, keychain_uid, key_algo):
+        keypair_obj = _fetch_key_object_or_none(keychain_uid=keychain_uid, key_algo=key_algo)
+        return bool(keypair_obj)
 
-    def _ensure_keypair_does_not_exist(self, keychain_uid: uuid.UUID, key_algo: str):
-        # program might still raise IntegrityError if the same key is inserted concurrently
-        try:
-            _fetch_key_object_or_raise(keychain_uid=keychain_uid, key_algo=key_algo)
-        except KeyDoesNotExist:
-            pass  # All is fine
-        else:
-            raise KeyAlreadyExists(
-                "Already existing sql keypair %s/%s" % (keychain_uid, key_algo)
-            )
+    def _private_key_exists(self, *, keychain_uid, key_algo):
+        keypair_obj = _fetch_key_object_or_none(keychain_uid=keychain_uid, key_algo=key_algo)
+        return bool(keypair_obj and keypair_obj.private_key)
 
-    @synchronized
-    def set_keypair(self, *, keychain_uid: uuid.UUID, key_algo: str, public_key: bytes, private_key: bytes, ):
-        self._ensure_keypair_does_not_exist(
-            keychain_uid=keychain_uid, key_algo=key_algo
-        )
+    def _get_public_key(self, *, keychain_uid, key_algo):
+        keypair_obj = _fetch_key_object_or_none(keychain_uid=keychain_uid, key_algo=key_algo)
+        assert keypair_obj and keypair_obj.public_key  # Non nullable
+        return keypair_obj.public_key
+
+    def _get_private_key(self, *, keychain_uid, key_algo):
+        keypair_obj = _fetch_key_object_or_none(keychain_uid=keychain_uid, key_algo=key_algo)
+        assert keypair_obj and keypair_obj.private_key
+        return keypair_obj.private_key
+
+    def _list_unordered_keypair_identifiers(self):
+        raise OperationNotSupported
+
+    def _set_public_key(self, *, keychain_uid, key_algo, public_key):
         TrusteeKeypair.objects.create(
             keychain_uid=keychain_uid,
             key_algo=key_algo,
             public_key=public_key,
-            private_key=private_key,
+            private_key=None,
         )
 
-    @synchronized
-    def get_public_key(self, *, keychain_uid: uuid.UUID, key_algo: str) -> bytes:
-        keypair_obj = _fetch_key_object_or_raise(
-            keychain_uid=keychain_uid, key_algo=key_algo
-        )
-        return keypair_obj.public_key
+    def _set_private_key(self, *, keychain_uid, key_algo, private_key):
+        keypair_obj = _fetch_key_object_or_none(keychain_uid=keychain_uid, key_algo=key_algo)
+        assert keypair_obj and keypair_obj.private_key
+        keypair_obj.private_key = private_key
+        keypair_obj.save()
 
-    @synchronized
-    def get_private_key(self, *, keychain_uid: uuid.UUID, key_algo: str) -> bytes:
-        keypair_obj = _fetch_key_object_or_raise(
-            keychain_uid=keychain_uid, key_algo=key_algo
-        )
-        return keypair_obj.private_key
-
-    @synchronized
-    def get_free_keypairs_count(self, key_algo: str) -> int:
+    def _get_free_keypairs_count(self, key_algo):
         assert key_algo, key_algo
         return TrusteeKeypair.objects.filter(
             keychain_uid=None, key_algo=key_algo
         ).count()
 
-    @synchronized
-    def add_free_keypair(self, *, key_algo: str, public_key: bytes, private_key: bytes):
+    def _add_free_keypair(self, *, key_algo, public_key, private_key):
         TrusteeKeypair.objects.create(
             keychain_uid=None,
             key_algo=key_algo,
@@ -170,8 +169,7 @@ class SqlKeystore(KeystoreBase):
             private_key=private_key,
         )
 
-    @synchronized
-    def attach_free_keypair_to_uuid(self, *, keychain_uid: uuid.UUID, key_algo: str):
+    def _attach_free_keypair_to_uuid(self, *, keychain_uid, key_algo):
         self._ensure_keypair_does_not_exist(
             keychain_uid=keychain_uid, key_algo=key_algo
         )
@@ -187,9 +185,6 @@ class SqlKeystore(KeystoreBase):
         keypair_obj_or_none.keychain_uid = keychain_uid
         keypair_obj_or_none.attached_at = timezone.now()
         keypair_obj_or_none.save()
-
-    def _list_unordered_keypair_identifiers(self):
-        raise NotImplementedError
 
 
 class SqlTrusteeApi(TrusteeApi):
