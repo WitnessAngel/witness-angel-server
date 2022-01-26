@@ -70,6 +70,18 @@ def test_sql_keystore_free_keys_concurrent_transactions():
     check_keystore_free_keys_concurrency(sql_keystore)
 
 
+def test_jsonrpc_invalid_http_get_request(live_server):
+    jsonrpc_url = live_server.url + "/json/"
+
+    response = requests.get(jsonrpc_url)
+    assert response.headers["Content-Type"] == "application/json"
+    assert response.json() == \
+           {'error': {'code': {'$numberInt': '-32600'},
+                      'data': None,
+                      'message': 'InvalidRequestError: The method you are trying to access is not available by GET requests',
+                      'name': 'InvalidRequestError'}, 'id': None}
+
+
 def test_jsonrpc_trustee_signature(live_server):
     jsonrpc_url = live_server.url + "/json/"  # FIXME change url!!
 
@@ -115,18 +127,6 @@ def test_jsonrpc_trustee_signature(live_server):
             key=public_key_signature,
             signature_algo=payload_signature_algo,
         )
-
-
-def test_jsonrpc_get_request(live_server):
-    jsonrpc_url = live_server.url + "/json/"
-
-    response = requests.get(jsonrpc_url)
-    assert response.headers["Content-Type"] == "application/json"
-    assert response.json() == \
-           {'error': {'code': {'$numberInt': '-32600'},
-                      'data': None,
-                      'message': 'InvalidRequestError: The method you are trying to access is not available by GET requests',
-                      'name': 'InvalidRequestError'}, 'id': None}
 
 
 def test_jsonrpc_trustee_decryption_authorization_flags(live_server):
@@ -584,7 +584,7 @@ def _convert_to_raw_extended_json_tree(data):  # FIXME deduplicate with wacrypto
     return json_str_lib
 
 
-def test_jsonrpc_get_authenticator(live_server):
+def test_jsonrpc_set_and_get_public_authenticator(live_server):
     jsonrpc_url = live_server.url + "/json/"
 
     trustee_proxy = JsonRpcProxy(
@@ -606,21 +606,21 @@ def test_jsonrpc_get_authenticator(live_server):
     del parameters["keystore_secret"]
     assert parameters == public_authenticator
     check_public_authenticator_sanity(_convert_to_raw_extended_json_tree(public_authenticator))
-    return public_authenticator
 
 
-def test_rest_api_get_authenticator(live_server):
+def test_rest_api_get_public_authenticator(live_server):
     parameters = _generate_authenticator_parameter_tree(2)
 
-    for i in parameters["public_keys"]:
-        i["payload"] = b"azertyuiopppp"
-    set_public_authenticator_view(keystore_uid=parameters["keystore_uid"],
-                                                keystore_owner=parameters["keystore_owner"],
-                                                keystore_secret=parameters["keystore_secret"],
-                                                public_keys=parameters["public_keys"])
+    #for i in parameters["public_keys"]:
+    #    i["payload"] = b"azertyuiopppp"
+    set_public_authenticator_view(None,
+                                  keystore_uid=parameters["keystore_uid"],
+                                    keystore_owner=parameters["keystore_owner"],
+                                    keystore_secret=parameters["keystore_secret"],
+                                    public_keys=parameters["public_keys"])
 
     url = live_server.url + "/publicauthenticator/"
     response = requests.get(url)
     assert response.status_code == 200
     public_authenticator = response.json()
-    return public_authenticator
+    check_public_authenticator_sanity(_convert_to_raw_extended_json_tree(public_authenticator))

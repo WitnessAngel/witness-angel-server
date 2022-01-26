@@ -65,27 +65,25 @@ def set_public_authenticator(keystore_owner: str, keystore_secret: str, keystore
                                                   key_algo=public_key["key_algo"], payload=public_key["payload"])
 
 
-def _create_schema():
-    """Create validation schema for confs and containers.
+def _create_public_authenticator_extended_json_schema():
+    """Create validation schema for public authenticator tree
 
     :return: a schema.
     """
 
-    _micro_schema_hex_uid = And(str, Or(Regex(
-        '^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{4})$'), Regex(
-        '[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}')))
+    # FIXME deduplicate that from wacryptolib!
+    _micro_schema_base64 = And(str, Regex(r'(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{4})'))
     micro_schema_uid = {
         "$binary": {
-            "base64": _micro_schema_hex_uid,
+            "base64": _micro_schema_base64,
             "subType": "03"}}
     micro_schema_binary = {
         "$binary": {
-            "base64": And(str,
-                          Regex('r^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{4})$')),
+            "base64": _micro_schema_base64,
             "subType": "00"}
     }
 
-    SCHEMA_PUBLIC_AUTHENTICATOR = Schema({
+    schema_public_authenticator = Schema({
         "keystore_owner": And(str, len),
         "keystore_uid": micro_schema_uid,
         "public_keys": [
@@ -97,16 +95,16 @@ def _create_schema():
         ]
     })
 
-    return SCHEMA_PUBLIC_AUTHENTICATOR
+    return schema_public_authenticator
 
 
 def check_public_authenticator_sanity(public_authenticator: dict):
     assert isinstance(public_authenticator, dict)
-    public_authenticator_schema_tree = _create_schema().json_schema("schema_test")
+    public_authenticator_schema_tree = _create_public_authenticator_extended_json_schema().json_schema("schema_public_authenticator")
     try:
         validate(instance=public_authenticator, schema=public_authenticator_schema_tree)
     except jsonschema.exceptions.ValidationError as exc:
-        raise SchemaValidationError("Error validating with {}".format(exc)) from exc
+        raise SchemaValidationError("Error validating public authenticator: {}".format(exc)) from exc
 
 
 class SqlKeystore(KeystoreReadWriteBase):
