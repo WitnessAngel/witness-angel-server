@@ -117,7 +117,7 @@ def get_message_signature(request, keychain_uid, message, signature_algo):
     )
     del request
     return SQL_TRUSTEE_API.get_message_signature(
-        keychain_uid=keychain_uid, message=message, payload_signature_algo=signature_algo
+        keychain_uid=keychain_uid, message=message, signature_algo=signature_algo
     )
 
 

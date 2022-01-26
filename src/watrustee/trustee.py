@@ -151,7 +151,7 @@ class SqlKeystore(KeystoreReadWriteBase):
 
     def _set_private_key(self, *, keychain_uid, key_algo, private_key):
         keypair_obj = _fetch_key_object_or_none(keychain_uid=keychain_uid, key_algo=key_algo)
-        assert keypair_obj and keypair_obj.private_key
+        assert keypair_obj and keypair_obj.public_key
         keypair_obj.private_key = private_key
         keypair_obj.save()
 
@@ -170,10 +170,6 @@ class SqlKeystore(KeystoreReadWriteBase):
         )
 
     def _attach_free_keypair_to_uuid(self, *, keychain_uid, key_algo):
-        self._ensure_keypair_does_not_exist(
-            keychain_uid=keychain_uid, key_algo=key_algo
-        )
-
         # Beware, SPECIAL LOOKUP for the first available free key, here
         keypair_obj_or_none = TrusteeKeypair.objects.filter(
             keychain_uid=None, key_algo=key_algo

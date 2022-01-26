@@ -17,7 +17,7 @@ def test_generate_free_keys(db):
     print(output)
 
     assert (
-        "Launching generate_free_keys.py script with max_free_keys_per_type=1" in output
+        "Launching generate_free_keys.py script with max_free_keys_per_algo=1" in output
     )
     assert "No more need for additional free keys" in output
 

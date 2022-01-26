@@ -10,17 +10,17 @@ class Command(BaseCommand):
     help = "Pregenerate free keys for trustee webservices."
 
     def add_arguments(self, parser):
-        parser.add_argument("max_free_keys_per_type", nargs="?", type=int, default=10)
+        parser.add_argument("max_free_keys_per_algo", nargs="?", type=int, default=10)
 
     def handle(self, *args, **options):
 
-        max_free_keys_per_type = options["max_free_keys_per_type"]
+        max_free_keys_per_algo = options["max_free_keys_per_algo"]
 
         sql_keystore = SqlKeystore()
 
         self.stdout.write(
-            "Launching generate_free_keys.py script with max_free_keys_per_type=%s"
-            % max_free_keys_per_type
+            "Launching generate_free_keys.py script with max_free_keys_per_algo=%s"
+            % max_free_keys_per_algo
         )
 
         while True:
@@ -29,7 +29,7 @@ class Command(BaseCommand):
             )
             has_generated = generate_free_keypair_for_least_provisioned_key_algo(
                 keystore=sql_keystore,
-                max_free_keys_per_type=max_free_keys_per_type,
+                max_free_keys_per_algo=max_free_keys_per_algo,
             )
             if not has_generated:
                 self.stdout.write(

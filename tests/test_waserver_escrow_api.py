@@ -13,11 +13,11 @@ from django.db import IntegrityError
 from django.test import Client
 from django.utils import timezone
 from freezegun import freeze_time
-from rest_framework import status
 
 from wacryptolib.cryptainer import (
     encrypt_payload_into_cryptainer,
     decrypt_payload_from_cryptainer, gather_trustee_dependencies, request_decryption_authorizations,
+    CRYPTAINER_TRUSTEE_TYPES,
 )
 from wacryptolib.cipher import _encrypt_via_rsa_oaep
 from wacryptolib.keystore import generate_free_keypair_for_least_provisioned_key_algo
@@ -356,7 +356,7 @@ def test_jsonrpc_trustee_request_decryption_authorization_for_free_keys(live_ser
         for i in range(3):  # Generate 1 free keypair per type
             has_generated = generate_free_keypair_for_least_provisioned_key_algo(
                 keystore=sql_keystore,
-                max_free_keys_per_type=1,
+                max_free_keys_per_algo=1,
                 key_algos=[free_key_algo1, free_key_algo2, free_key_algo3]
             )
             assert has_generated
@@ -431,14 +431,14 @@ def test_jsonrpc_trustee_encrypt_decrypt_cryptainer(live_server):
                 payload_cipher_algo="AES_EAX",
                 key_cipher_layers=[
                     dict(
-                        key_cipher_algo="RSA_OAEP", key_cipher_trustee=dict(trustee_type="jsonrpc", url=jsonrpc_url)
+                        key_cipher_algo="RSA_OAEP", key_cipher_trustee=dict(trustee_type=CRYPTAINER_TRUSTEE_TYPES.JSONRPC_API_TRUSTEE, url=jsonrpc_url)
                     )
                 ],
                 payload_signatures=[
                     dict(
                         payload_digest_algo="SHA512",
                         payload_signature_algo="DSA_DSS",
-                        payload_signature_trustee=dict(trustee_type="jsonrpc", url=jsonrpc_url),
+                        payload_signature_trustee=dict(trustee_type=CRYPTAINER_TRUSTEE_TYPES.JSONRPC_API_TRUSTEE, url=jsonrpc_url),
                     )
                 ],
             )
@@ -454,7 +454,7 @@ def test_jsonrpc_trustee_encrypt_decrypt_cryptainer(live_server):
         cryptainer = encrypt_payload_into_cryptainer(
             payload=payload,
             cryptoconf=cryptoconf,
-            metadata=None,
+            cryptainer_metadata=None,
             keychain_uid=keychain_uid,
             keystore_pool=None,  # Unused by this config actually
         )
@@ -507,7 +507,7 @@ def test_jsonrpc_trustee_encrypt_decrypt_cryptainer(live_server):
         cryptainer = encrypt_payload_into_cryptainer(
             payload=payload,
             cryptoconf=cryptoconf,
-            metadata=None,
+            cryptainer_metadata=None,
             keychain_uid=keychain_uid,
             keystore_pool=None,  # Unused by this config actually
         )
@@ -621,6 +621,6 @@ def test_rest_api_get_authenticator(live_server):
 
     url = live_server.url + "/publicauthenticator/"
     response = requests.get(url)
-    assert response.status_code == status.HTTP_200_OK
+    assert response.status_code == 200
     public_authenticator = response.json()
     return public_authenticator
