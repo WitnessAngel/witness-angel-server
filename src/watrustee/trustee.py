@@ -49,7 +49,7 @@ def set_public_authenticator(keystore_owner: str, keystore_secret: str, keystore
         authenticator_user_or_none = PublicAuthenticator.objects.filter(keystore_uid=keystore_uid).first()
 
         if authenticator_user_or_none:
-            raise KeystoreAlreadyExists("Authenticator already exists in sql storage" % keystore_uid)
+            raise KeystoreAlreadyExists("Authenticator %s already exists in sql storage" % keystore_uid)
 
         user = PublicAuthenticator.objects.create(keystore_owner=keystore_owner,
                                                   keystore_secret=keystore_secret, keystore_uid=keystore_uid)
