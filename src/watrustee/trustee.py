@@ -14,7 +14,7 @@ from wacryptolib.keystore import KeystoreReadWriteBase
 
 from wacryptolib.trustee import TrusteeApi
 from wacryptolib.exceptions import KeyDoesNotExist, AuthorizationError, ExistenceError, \
-    SchemaValidationError, OperationNotSupported
+    SchemaValidationError, OperationNotSupported, KeystoreAlreadyExists, KeystoreDoesNotExist
 from wacryptolib.utilities import get_validation_micro_schemas
 
 from watrustee.models import TrusteeKeypair, DECRYPTION_AUTHORIZATION_LIFESPAN_H, \
@@ -41,7 +41,7 @@ def get_public_authenticator(keystore_uid, keystore_secret=None):
                 raise RuntimeError("Wrong authenticator secret")
         return PublicAuthenticatorSerializer(authenticator_user).data
     except PublicAuthenticator.DoesNotExist:
-        raise ExistenceError("Authenticator User does not exist")  # TODO change this exception error
+        raise KeystoreDoesNotExist("Authenticator User does not exist")  # TODO change this exception error
 
 
 def set_public_authenticator(keystore_owner: str, keystore_secret: str, keystore_uid: uuid.UUID, public_keys: list):
@@ -49,11 +49,7 @@ def set_public_authenticator(keystore_owner: str, keystore_secret: str, keystore
         authenticator_user_or_none = PublicAuthenticator.objects.filter(keystore_uid=keystore_uid).first()
 
         if authenticator_user_or_none:
-            # for public_key in public_keys: AuthenticatorPublicKey.objects.create(
-            # authenticator_user=authenticator_user_exist_or_none,keychain_uid=public_key["keychain_uid"],
-            # key_algo=public_key["key_algo"], payload=public_key["payload"])
-
-            raise KeyDoesNotExist("Authenticator already exists in sql storage" % keystore_uid)
+            raise KeystoreAlreadyExists("Authenticator already exists in sql storage" % keystore_uid)
 
         user = PublicAuthenticator.objects.create(keystore_owner=keystore_owner,
                                                   keystore_secret=keystore_secret, keystore_uid=keystore_uid)

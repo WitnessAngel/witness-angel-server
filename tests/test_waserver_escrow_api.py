@@ -22,7 +22,7 @@ from wacryptolib.cryptainer import (
 from wacryptolib.cipher import _encrypt_via_rsa_oaep
 from wacryptolib.keystore import generate_free_keypair_for_least_provisioned_key_algo
 from wacryptolib.exceptions import KeyDoesNotExist, SignatureVerificationError, AuthorizationError, DecryptionError, \
-    ExistenceError
+    ExistenceError, KeystoreDoesNotExist, KeystoreAlreadyExists
 from wacryptolib.jsonrpc_client import JsonRpcProxy, status_slugs_response_error_handler
 from wacryptolib.keygen import load_asymmetric_key_from_pem_bytestring
 from wacryptolib.keystore import DummyKeystore
@@ -579,13 +579,19 @@ def test_jsonrpc_set_and_get_public_authenticator(live_server):
 
     parameters = _generate_authenticator_parameter_tree(2)
 
-    with pytest.raises(ExistenceError):
+    with pytest.raises(KeystoreDoesNotExist):
         trustee_proxy.get_public_authenticator_view(keystore_uid=parameters["keystore_uid"])
 
     trustee_proxy.set_public_authenticator_view(keystore_uid=parameters["keystore_uid"],
                                                 keystore_owner=parameters["keystore_owner"],
                                                 keystore_secret=parameters["keystore_secret"],
                                                 public_keys=parameters["public_keys"])
+
+    with pytest.raises(KeystoreAlreadyExists):
+        trustee_proxy.set_public_authenticator_view(keystore_uid=parameters["keystore_uid"],
+                                                    keystore_owner=parameters["keystore_owner"],
+                                                    keystore_secret="whatever",
+                                                    public_keys=parameters["public_keys"])
 
     public_authenticator = trustee_proxy.get_public_authenticator_view(keystore_uid=parameters["keystore_uid"])
 
