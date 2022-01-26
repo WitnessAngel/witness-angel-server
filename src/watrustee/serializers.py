@@ -1,3 +1,4 @@
+import base64
 from rest_framework import serializers
 from rest_framework.fields import UUIDField, Field
 
@@ -16,14 +17,18 @@ class AuthenticatorUserSerializer(serializers.ModelSerializer):
 class BinaryField(Field):
     def run_validation(self, data):
         if not isinstance(data, bytes):
-            self.fail('xx')  # TODO
+            self.fail('Unsupported data type in BinaryField: %s' % type(data))  # TODO
         return super(BinaryField, self).run_validation(data)
 
     def to_internal_value(self, data):
+        if isinstance(data, bytes):
+            return data
+        elif isinstance(data, bytes):
+            return base64.b64decode(data)
         return data
 
     def to_representation(self, value):
-        return value
+        return base64.b64encode(value).decode("ascii")
 
 
 class TransparentRepresentationMixin:

@@ -68,7 +68,7 @@ def _create_public_authenticator_schema():
 
     :return: a schema.
     """
-    micro_schema = get_validation_micro_schemas()
+    micro_schema = get_validation_micro_schemas(extended_json_format=False)
 
     schema_public_authenticator = Schema({
         "keystore_owner": And(str, len),
@@ -90,8 +90,8 @@ def check_public_authenticator_sanity(public_authenticator: dict):
 
     Raise SchemaValidationError on error
     """
-    assert isinstance(public_authenticator, dict)
-    public_authenticator_schema = _create_public_authenticator_schema
+    assert isinstance(public_authenticator, dict), public_authenticator
+    public_authenticator_schema = _create_public_authenticator_schema()
     try:
         public_authenticator_schema.validate(public_authenticator)
     except SchemaError as exc:

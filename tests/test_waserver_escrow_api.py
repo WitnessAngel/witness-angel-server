@@ -551,14 +551,14 @@ def test_watrustee_wsgi_application(db):
         application(environ={}, start_response=lambda *args, **kwargs: None)
 
 
-def _generate_authenticator_parameter_tree(key_count):
+def _generate_authenticator_parameter_tree(key_count, payload=None):
     public_keys = []
 
     for count in range(key_count):
         public_keys.append({
             "keychain_uid": generate_uuid0(),
             "key_algo": "RSA_OAEP",
-            "payload": get_random_bytes(20)
+            "payload": payload or get_random_bytes(20)
         })
 
     parameters = dict(
@@ -591,14 +591,12 @@ def test_jsonrpc_set_and_get_public_authenticator(live_server):
 
     del parameters["keystore_secret"]
     assert parameters == public_authenticator
-    check_public_authenticator_sanity(convert_native_tree_to_extended_json_tree(public_authenticator))
+    check_public_authenticator_sanity(public_authenticator)
 
 
 def test_rest_api_get_public_authenticator(live_server):
-    parameters = _generate_authenticator_parameter_tree(2)
+    parameters = _generate_authenticator_parameter_tree(2, payload="aé$£é&ö".encode("utf8"))
 
-    #for i in parameters["public_keys"]:
-    #    i["payload"] = b"azertyuiopppp"
     set_public_authenticator_view(None,
                                   keystore_uid=parameters["keystore_uid"],
                                     keystore_owner=parameters["keystore_owner"],
@@ -608,5 +606,19 @@ def test_rest_api_get_public_authenticator(live_server):
     url = live_server.url + "/publicauthenticator/"
     response = requests.get(url)
     assert response.status_code == 200
-    public_authenticator = response.json()
-    check_public_authenticator_sanity(convert_native_tree_to_extended_json_tree(public_authenticator))
+    public_authenticators = response.json()
+    assert len(public_authenticators) == 1
+    public_authenticator = public_authenticators[0]
+    #from pprint import pprint
+    #pprint(public_authenticator)
+
+    # FIXME later add a new pythonschema for this "raw json" format?
+    assert public_authenticator == {'keystore_owner': 'keystore_owner',
+     'keystore_uid': str(parameters["keystore_uid"]),  # Uses standard string representation of UUIDs
+     'public_keys': [{'key_algo': 'RSA_OAEP',
+                      'keychain_uid': str(parameters["public_keys"][0]["keychain_uid"]),
+                      'payload': 'YcOpJMKjw6kmw7Y='},  # Direct base64 is used instead of $binary dict
+                     {'key_algo': 'RSA_OAEP',
+                      'keychain_uid': str(parameters["public_keys"][1]["keychain_uid"]),
+                      'payload': 'YcOpJMKjw6kmw7Y='}]}
+
