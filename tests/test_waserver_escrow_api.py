@@ -32,7 +32,7 @@ from wacryptolib.scaffolding import (
     check_keystore_free_keys_concurrency,
 )
 from wacryptolib.signature import verify_message_signature
-from wacryptolib.utilities import generate_uuid0, dump_to_json_str
+from wacryptolib.utilities import generate_uuid0, dump_to_json_str, convert_native_tree_to_extended_json_tree
 from watrustee.trustee import SqlKeystore, _fetch_key_object_or_raise, \
     check_public_authenticator_sanity, set_public_authenticator
 from watrustee.models import TrusteeKeypair
@@ -570,20 +570,6 @@ def _generate_authenticator_parameter_tree(key_count):
     return parameters
 
 
-def _convert_to_raw_extended_json_tree(data):  # FIXME deduplicate with wacryptolib container tests, using scaffolding??
-    """
-    Turn a python tree (including UUIDs, bytes etc.) into its representation
-    as Pymongo extended json (with $binary, $numberInt etc.)
-    """
-    # Export in pymongo extended json format
-    json_std_lib = dump_to_json_str(data)
-
-    # Parse Json from string
-    json_str_lib = json.loads(json_std_lib)
-
-    return json_str_lib
-
-
 def test_jsonrpc_set_and_get_public_authenticator(live_server):
     jsonrpc_url = live_server.url + "/json/"
 
@@ -605,7 +591,7 @@ def test_jsonrpc_set_and_get_public_authenticator(live_server):
 
     del parameters["keystore_secret"]
     assert parameters == public_authenticator
-    check_public_authenticator_sanity(_convert_to_raw_extended_json_tree(public_authenticator))
+    check_public_authenticator_sanity(convert_native_tree_to_extended_json_tree(public_authenticator))
 
 
 def test_rest_api_get_public_authenticator(live_server):
@@ -623,4 +609,4 @@ def test_rest_api_get_public_authenticator(live_server):
     response = requests.get(url)
     assert response.status_code == 200
     public_authenticator = response.json()
-    check_public_authenticator_sanity(_convert_to_raw_extended_json_tree(public_authenticator))
+    check_public_authenticator_sanity(convert_native_tree_to_extended_json_tree(public_authenticator))

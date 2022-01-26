@@ -8,16 +8,14 @@ from typing import Optional
 from django.db import transaction
 from django.utils import timezone
 
-import jsonschema
-from jsonschema import validate
-from schema import And, Or, Regex, Const, Schema
+from schema import And, Or, Schema, SchemaError
 from wacryptolib.cipher import SUPPORTED_CIPHER_ALGOS
 from wacryptolib.keystore import KeystoreReadWriteBase
 
 from wacryptolib.trustee import TrusteeApi
-from wacryptolib.exceptions import KeyDoesNotExist, KeyAlreadyExists, AuthorizationError, ExistenceError, \
+from wacryptolib.exceptions import KeyDoesNotExist, AuthorizationError, ExistenceError, \
     SchemaValidationError, OperationNotSupported
-from wacryptolib.utilities import synchronized
+from wacryptolib.utilities import get_validation_micro_schemas
 
 from watrustee.models import TrusteeKeypair, DECRYPTION_AUTHORIZATION_LIFESPAN_H, \
     AuthenticatorPublicKey, PublicAuthenticator
@@ -65,32 +63,21 @@ def set_public_authenticator(keystore_owner: str, keystore_secret: str, keystore
                                                   key_algo=public_key["key_algo"], payload=public_key["payload"])
 
 
-def _create_public_authenticator_extended_json_schema():
+def _create_public_authenticator_schema():
     """Create validation schema for public authenticator tree
 
     :return: a schema.
     """
-
-    # FIXME deduplicate that from wacryptolib!
-    _micro_schema_base64 = And(str, Regex(r'(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{4})'))
-    micro_schema_uid = {
-        "$binary": {
-            "base64": _micro_schema_base64,
-            "subType": "03"}}
-    micro_schema_binary = {
-        "$binary": {
-            "base64": _micro_schema_base64,
-            "subType": "00"}
-    }
+    micro_schema = get_validation_micro_schemas()
 
     schema_public_authenticator = Schema({
         "keystore_owner": And(str, len),
-        "keystore_uid": micro_schema_uid,
+        "keystore_uid": micro_schema.schema_uid,
         "public_keys": [
             {
                 'key_algo': Or(*SUPPORTED_CIPHER_ALGOS),
-                'keychain_uid': micro_schema_uid,
-                'payload': micro_schema_binary
+                'keychain_uid': micro_schema.schema_uid,
+                'payload': micro_schema.schema_binary
             }
         ]
     })
@@ -99,11 +86,15 @@ def _create_public_authenticator_extended_json_schema():
 
 
 def check_public_authenticator_sanity(public_authenticator: dict):
+    """Validate a native python tree of public_authenticator data.
+
+    Raise SchemaValidationError on error
+    """
     assert isinstance(public_authenticator, dict)
-    public_authenticator_schema_tree = _create_public_authenticator_extended_json_schema().json_schema("schema_public_authenticator")
+    public_authenticator_schema = _create_public_authenticator_schema
     try:
-        validate(instance=public_authenticator, schema=public_authenticator_schema_tree)
-    except jsonschema.exceptions.ValidationError as exc:
+        public_authenticator_schema.validate(public_authenticator)
+    except SchemaError as exc:
         raise SchemaValidationError("Error validating public authenticator: {}".format(exc)) from exc
 
 
