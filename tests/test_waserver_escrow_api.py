@@ -71,7 +71,7 @@ def test_sql_keystore_free_keys_concurrent_transactions():
 
 
 def test_jsonrpc_invalid_http_get_request(live_server):
-    jsonrpc_url = live_server.url + "/json/"
+    jsonrpc_url = live_server.url + "/jsonrpc/"
 
     response = requests.get(jsonrpc_url)
     assert response.headers["Content-Type"] == "application/json"
@@ -83,7 +83,7 @@ def test_jsonrpc_invalid_http_get_request(live_server):
 
 
 def test_jsonrpc_trustee_signature(live_server):
-    jsonrpc_url = live_server.url + "/json/"  # FIXME change url!!
+    jsonrpc_url = live_server.url + "/jsonrpc/"
 
     trustee_proxy = JsonRpcProxy(
         url=jsonrpc_url, response_error_handler=status_slugs_response_error_handler
@@ -130,7 +130,7 @@ def test_jsonrpc_trustee_signature(live_server):
 
 
 def test_jsonrpc_trustee_decryption_authorization_flags(live_server):
-    jsonrpc_url = live_server.url + "/json/"  # FIXME change url!!
+    jsonrpc_url = live_server.url + "/jsonrpc/"
 
     trustee_proxy = JsonRpcProxy(
         url=jsonrpc_url, response_error_handler=status_slugs_response_error_handler
@@ -209,7 +209,7 @@ def test_jsonrpc_trustee_decryption_authorization_flags(live_server):
 
 
 def test_jsonrpc_trustee_request_decryption_authorization_for_normal_keys(live_server):
-    jsonrpc_url = live_server.url + "/json/"  # FIXME change url!!
+    jsonrpc_url = live_server.url + "/jsonrpc/"
 
     trustee_proxy = JsonRpcProxy(
         url=jsonrpc_url, response_error_handler=status_slugs_response_error_handler
@@ -333,7 +333,7 @@ def test_jsonrpc_trustee_request_decryption_authorization_for_normal_keys(live_s
 
 
 def test_jsonrpc_trustee_request_decryption_authorization_for_free_keys(live_server):
-    jsonrpc_url = live_server.url + "/json/"  # FIXME change url!!
+    jsonrpc_url = live_server.url + "/jsonrpc/"
 
     trustee_proxy = JsonRpcProxy(
         url=jsonrpc_url, response_error_handler=status_slugs_response_error_handler
@@ -422,7 +422,7 @@ def test_jsonrpc_trustee_request_decryption_authorization_for_free_keys(live_ser
 
 
 def test_jsonrpc_trustee_encrypt_decrypt_cryptainer(live_server):
-    jsonrpc_url = live_server.url + "/json/"  # FIXME change url!!
+    jsonrpc_url = live_server.url + "/jsonrpc/"
 
     cryptoconf = dict(
         payload_cipher_layers=[
@@ -571,7 +571,7 @@ def _generate_authenticator_parameter_tree(key_count, payload=None):
 
 
 def test_jsonrpc_set_and_get_public_authenticator(live_server):
-    jsonrpc_url = live_server.url + "/json/"
+    jsonrpc_url = live_server.url + "/jsonrpc/"
 
     trustee_proxy = JsonRpcProxy(
         url=jsonrpc_url, response_error_handler=status_slugs_response_error_handler
@@ -603,7 +603,7 @@ def test_rest_api_get_public_authenticator(live_server):
                                     keystore_secret=parameters["keystore_secret"],
                                     public_keys=parameters["public_keys"])
 
-    url = live_server.url + "/publicauthenticator/"
+    url = live_server.url + "/rest/public-authenticators/"
     response = requests.get(url)
     assert response.status_code == 200
     public_authenticators = response.json()

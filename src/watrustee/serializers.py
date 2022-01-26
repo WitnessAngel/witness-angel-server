@@ -21,14 +21,10 @@ class BinaryField(Field):
         return super(BinaryField, self).run_validation(data)
 
     def to_internal_value(self, data):
-        if isinstance(data, bytes):
-            return data
-        elif isinstance(data, bytes):
-            return base64.b64decode(data)
         return data
 
     def to_representation(self, value):
-        return base64.b64encode(value).decode("ascii")
+        return value
 
 
 class TransparentRepresentationMixin:

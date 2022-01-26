@@ -181,6 +181,14 @@ LOGGING = {
     },
 }
 
+REST_FRAMEWORK = {
+    'DEFAULT_RENDERER_CLASSES': [
+        'watrustee.utils.ExtendedDRFJSONRenderer',
+        'rest_framework.renderers.BrowsableAPIRenderer',
+    ]
+}
+
+
 try:
     from watrustee_prod_settings import *
 except ImportError:

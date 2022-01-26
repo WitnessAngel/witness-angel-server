@@ -25,19 +25,16 @@ from . import views  # Register methods
 from .views import extended_jsonrpc_site
 
 router = routers.DefaultRouter()
-router.register(r'publicauthenticator', views.PublicAuthenticatorViewSet)
+router.register(r'rest/public-authenticators', views.PublicAuthenticatorViewSet)
 # router.register(r'publicauthenticator', views.PublicAuthenticatorViewSet)
 
 urlpatterns = [
     path('', include(router.urls)),
-    path('api-auth/', include('rest_framework.urls', namespace='rest_framework')),
+    path('rest-auth/', include('rest_framework.urls', namespace='rest_framework')),
+
     # url(r"^json/browse/", jsonrpc.views.browse, name="jsonrpc_browser"),
-    url(r"^json/", extended_jsonrpc_site.dispatch, name="jsonrpc_mountpoint"),
-    # url(
-    #    r"^json/(?P<method>[a-zA-Z0-9.]+)$",
-    #        extended_jsonrpc_site.dispatch,
-    #    name="jsonrpc_getter_mountpoint",
-    # ),
+    url(r"^jsonrpc/", extended_jsonrpc_site.dispatch, name="jsonrpc_mountpoint"),
+
     url(r"^crashdumps/", views.crashdump_report_view),
     url(r"^admin/", admin.site.urls)
 ]
