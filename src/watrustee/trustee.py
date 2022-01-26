@@ -76,7 +76,7 @@ def _create_schema():
     micro_schema_binary = {
         "$binary": {
             "base64": And(str,
-                          Regex('^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{4})$')),
+                          Regex('r^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{4})$')),
             "subType": "00"}
     }
 
@@ -129,7 +129,7 @@ class SqlKeystore(KeystoreBase):
             )
 
     @synchronized
-    def set_keys(self, *, keychain_uid: uuid.UUID, key_algo: str, public_key: bytes, private_key: bytes, ):
+    def set_keypair(self, *, keychain_uid: uuid.UUID, key_algo: str, public_key: bytes, private_key: bytes, ):
         self._ensure_keypair_does_not_exist(
             keychain_uid=keychain_uid, key_algo=key_algo
         )
@@ -155,7 +155,7 @@ class SqlKeystore(KeystoreBase):
         return keypair_obj.private_key
 
     @synchronized
-    def get_free_keypairs_count(self, key_algo: str) -> int:  # pragma: no cover
+    def get_free_keypairs_count(self, key_algo: str) -> int:
         assert key_algo, key_algo
         return TrusteeKeypair.objects.filter(
             keychain_uid=None, key_algo=key_algo
