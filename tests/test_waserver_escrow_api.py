@@ -1,13 +1,10 @@
-import json
 import random
-from uuid import UUID
 
 import requests
 from datetime import timedelta
 
 import pytest
 from Crypto.Random import get_random_bytes
-from bson.json_util import dumps, loads
 from django.conf import settings
 from django.db import IntegrityError
 from django.test import Client
@@ -21,8 +18,7 @@ from wacryptolib.cryptainer import (
 )
 from wacryptolib.cipher import _encrypt_via_rsa_oaep
 from wacryptolib.keystore import generate_free_keypair_for_least_provisioned_key_algo
-from wacryptolib.exceptions import KeyDoesNotExist, SignatureVerificationError, AuthorizationError, DecryptionError, \
-    ExistenceError, KeystoreDoesNotExist, KeystoreAlreadyExists
+from wacryptolib.exceptions import KeyDoesNotExist, SignatureVerificationError, AuthorizationError, KeystoreDoesNotExist, KeystoreAlreadyExists
 from wacryptolib.jsonrpc_client import JsonRpcProxy, status_slugs_response_error_handler
 from wacryptolib.keygen import load_asymmetric_key_from_pem_bytestring
 from wacryptolib.keystore import DummyKeystore
@@ -32,12 +28,12 @@ from wacryptolib.scaffolding import (
     check_keystore_free_keys_concurrency,
 )
 from wacryptolib.signature import verify_message_signature
-from wacryptolib.utilities import generate_uuid0, dump_to_json_str, convert_native_tree_to_extended_json_tree
-from watrustee.trustee import SqlKeystore, _fetch_key_object_or_raise, \
-    check_public_authenticator_sanity, set_public_authenticator
-from watrustee.models import TrusteeKeypair
+from wacryptolib.utilities import generate_uuid0
+from waserver.apps.watrustee import SqlKeystore, _fetch_key_object_or_raise, \
+    check_public_authenticator_sanity
+from waserver.apps.watrustee.models import TrusteeKeypair
 
-from watrustee.views import set_public_authenticator_view
+from waserver.apps.watrustee.views import set_public_authenticator_view
 
 
 def test_sql_keystore_basic_and_free_keys_api(db):
@@ -545,7 +541,7 @@ def test_crashdump_reports(db):
 
 
 def test_watrustee_wsgi_application(db):
-    from watrustee.wsgi import application
+    from waserver.apps.watrustee import application
 
     with pytest.raises(KeyError, match="REQUEST_METHOD"):
         application(environ={}, start_response=lambda *args, **kwargs: None)

@@ -14,7 +14,7 @@ if not executable_is_frozen:
 
 
 def main():
-    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "watrustee.settings")
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "waserver.settings")
     try:
         from django.core.management import execute_from_command_line
     except ImportError as exc:

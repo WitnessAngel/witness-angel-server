@@ -2,7 +2,7 @@ from io import StringIO
 
 from django.core.management import call_command
 
-from watrustee.trustee import SqlKeystore
+from waserver.apps.watrustee import SqlKeystore
 
 
 def test_generate_free_keys(db):
