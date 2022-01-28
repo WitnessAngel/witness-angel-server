@@ -1,7 +1,7 @@
 from django.core.management.base import BaseCommand
 
 from wacryptolib.keystore import generate_free_keypair_for_least_provisioned_key_algo
-from waserver.apps.watrustee.trustee import SqlKeystore
+from waserver.apps.watrustee.core import SqlKeystore
 
 
 class Command(BaseCommand):

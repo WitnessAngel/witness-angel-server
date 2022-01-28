@@ -1,3 +1,6 @@
+from django.core.management import call_command
+from io import StringIO
+
 import random
 
 import requests
@@ -29,11 +32,12 @@ from wacryptolib.scaffolding import (
 )
 from wacryptolib.signature import verify_message_signature
 from wacryptolib.utilities import generate_uuid0
-from waserver.apps.watrustee import SqlKeystore, _fetch_key_object_or_raise, \
-    check_public_authenticator_sanity
+from waserver.apps.watrustee.core import SqlKeystore, _fetch_key_object_or_raise
 from waserver.apps.watrustee.models import TrusteeKeypair
 
-from waserver.apps.watrustee.views import set_public_authenticator_view
+
+def _get_trustee_jsonrpc_url(live_server):
+    return live_server.url + "/trustee/jsonrpc/"
 
 
 def test_sql_keystore_basic_and_free_keys_api(db):
@@ -66,20 +70,8 @@ def test_sql_keystore_free_keys_concurrent_transactions():
     check_keystore_free_keys_concurrency(sql_keystore)
 
 
-def test_jsonrpc_invalid_http_get_request(live_server):
-    jsonrpc_url = live_server.url + "/jsonrpc/"
-
-    response = requests.get(jsonrpc_url)
-    assert response.headers["Content-Type"] == "application/json"
-    assert response.json() == \
-           {'error': {'code': {'$numberInt': '-32600'},
-                      'data': None,
-                      'message': 'InvalidRequestError: The method you are trying to access is not available by GET requests',
-                      'name': 'InvalidRequestError'}, 'id': None}
-
-
 def test_jsonrpc_trustee_signature(live_server):
-    jsonrpc_url = live_server.url + "/jsonrpc/"
+    jsonrpc_url = _get_trustee_jsonrpc_url(live_server)
 
     trustee_proxy = JsonRpcProxy(
         url=jsonrpc_url, response_error_handler=status_slugs_response_error_handler
@@ -126,7 +118,7 @@ def test_jsonrpc_trustee_signature(live_server):
 
 
 def test_jsonrpc_trustee_decryption_authorization_flags(live_server):
-    jsonrpc_url = live_server.url + "/jsonrpc/"
+    jsonrpc_url = _get_trustee_jsonrpc_url(live_server)
 
     trustee_proxy = JsonRpcProxy(
         url=jsonrpc_url, response_error_handler=status_slugs_response_error_handler
@@ -205,7 +197,7 @@ def test_jsonrpc_trustee_decryption_authorization_flags(live_server):
 
 
 def test_jsonrpc_trustee_request_decryption_authorization_for_normal_keys(live_server):
-    jsonrpc_url = live_server.url + "/jsonrpc/"
+    jsonrpc_url = jsonrpc_url = _get_trustee_jsonrpc_url(live_server)
 
     trustee_proxy = JsonRpcProxy(
         url=jsonrpc_url, response_error_handler=status_slugs_response_error_handler
@@ -329,7 +321,7 @@ def test_jsonrpc_trustee_request_decryption_authorization_for_normal_keys(live_s
 
 
 def test_jsonrpc_trustee_request_decryption_authorization_for_free_keys(live_server):
-    jsonrpc_url = live_server.url + "/jsonrpc/"
+    jsonrpc_url = jsonrpc_url = _get_trustee_jsonrpc_url(live_server)
 
     trustee_proxy = JsonRpcProxy(
         url=jsonrpc_url, response_error_handler=status_slugs_response_error_handler
@@ -418,7 +410,7 @@ def test_jsonrpc_trustee_request_decryption_authorization_for_free_keys(live_ser
 
 
 def test_jsonrpc_trustee_encrypt_decrypt_cryptainer(live_server):
-    jsonrpc_url = live_server.url + "/jsonrpc/"
+    jsonrpc_url = jsonrpc_url = _get_trustee_jsonrpc_url(live_server)
 
     cryptoconf = dict(
         payload_cipher_layers=[
@@ -517,110 +509,23 @@ def test_jsonrpc_trustee_encrypt_decrypt_cryptainer(live_server):
             )
 
 
-def test_crashdump_reports(db):
-    client = Client(enforce_csrf_checks=True)
+def test_management_command_generate_free_keys(db):
 
-    crashdump = "sòme dâta %s" % random.randint(1, 10000)
+    sql_keystore = SqlKeystore()
 
-    res = client.get("/crashdumps/")
-    assert res.status_code == 200
-    assert res.content == b"CRASHDUMP ENDPOINT OF WATRUSTEE"
+    assert sql_keystore.get_free_keypairs_count("RSA_OAEP") == 0
 
-    res = client.post("/crashdumps/")
-    assert res.status_code == 400
-    assert res.content == b"Missing crashdump field"
+    out_stream = StringIO()
+    call_command("generate_free_keys", "1", stdout=out_stream)
+    output = out_stream.getvalue()
+    print(output)
 
-    res = client.post("/crashdumps/", data=dict(crashdump=crashdump))
-    assert res.status_code == 200
-    assert res.content == b"OK"
-
-    dump_files = sorted(settings.CRASHDUMPS_DIR.iterdir())
-    assert dump_files
-    dump_file_content = dump_files[-1].read_text(encoding="utf8")
-    assert dump_file_content == crashdump
-
-
-def test_watrustee_wsgi_application(db):
-    from waserver.apps.watrustee import application
-
-    with pytest.raises(KeyError, match="REQUEST_METHOD"):
-        application(environ={}, start_response=lambda *args, **kwargs: None)
-
-
-def _generate_authenticator_parameter_tree(key_count, payload=None):
-    public_keys = []
-
-    for count in range(key_count):
-        public_keys.append({
-            "keychain_uid": generate_uuid0(),
-            "key_algo": "RSA_OAEP",
-            "payload": payload or get_random_bytes(20)
-        })
-
-    parameters = dict(
-        keystore_owner="keystore_owner",
-        keystore_secret="keystore_secret",
-        keystore_uid=generate_uuid0(),
-        public_keys=public_keys
+    assert (
+        "Launching generate_free_keys.py script with max_free_keys_per_algo=1" in output
     )
-    return parameters
+    assert "No more need for additional free keys" in output
 
-
-def test_jsonrpc_set_and_get_public_authenticator(live_server):
-    jsonrpc_url = live_server.url + "/jsonrpc/"
-
-    trustee_proxy = JsonRpcProxy(
-        url=jsonrpc_url, response_error_handler=status_slugs_response_error_handler
-    )
-
-    parameters = _generate_authenticator_parameter_tree(2)
-
-    with pytest.raises(KeystoreDoesNotExist):
-        trustee_proxy.get_public_authenticator_view(keystore_uid=parameters["keystore_uid"])
-
-    trustee_proxy.set_public_authenticator_view(keystore_uid=parameters["keystore_uid"],
-                                                keystore_owner=parameters["keystore_owner"],
-                                                keystore_secret=parameters["keystore_secret"],
-                                                public_keys=parameters["public_keys"])
-
-    with pytest.raises(KeystoreAlreadyExists):
-        trustee_proxy.set_public_authenticator_view(keystore_uid=parameters["keystore_uid"],
-                                                    keystore_owner=parameters["keystore_owner"],
-                                                    keystore_secret="whatever",
-                                                    public_keys=parameters["public_keys"])
-
-    public_authenticator = trustee_proxy.get_public_authenticator_view(keystore_uid=parameters["keystore_uid"])
-
-    del parameters["keystore_secret"]
-    assert parameters == public_authenticator
-    check_public_authenticator_sanity(public_authenticator)
-
-
-def test_rest_api_get_public_authenticator(live_server):
-    parameters = _generate_authenticator_parameter_tree(2, payload="aé$£é&ö".encode("utf8"))
-
-    set_public_authenticator_view(None,
-                                  keystore_uid=parameters["keystore_uid"],
-                                    keystore_owner=parameters["keystore_owner"],
-                                    keystore_secret=parameters["keystore_secret"],
-                                    public_keys=parameters["public_keys"])
-
-    url = live_server.url + "/rest/public-authenticators/"
-    response = requests.get(url)
-    assert response.status_code == 200
-    public_authenticators = response.json()
-    assert len(public_authenticators) == 1
-    public_authenticator = public_authenticators[0]
-    #from pprint import pprint
-    #pprint(public_authenticator)
-
-    # FIXME later add a new pythonschema for this "raw json" format?
-    assert public_authenticator == {'keystore_owner': 'keystore_owner',
-     'keystore_uid': str(parameters["keystore_uid"]),  # Uses standard string representation of UUIDs
-     'public_keys': [{'key_algo': 'RSA_OAEP',
-                      'keychain_uid': str(parameters["public_keys"][0]["keychain_uid"]),
-                      'payload': 'YcOpJMKjw6kmw7Y='},  # Direct base64 is used instead of $binary dict
-                     {'key_algo': 'RSA_OAEP',
-                      'keychain_uid': str(parameters["public_keys"][1]["keychain_uid"]),
-                      'payload': 'YcOpJMKjw6kmw7Y='}]}
-
+    assert (
+        output.count("New iteration") == 5
+    )  # 1 key x 4 key types, and final iteration for nothing
+    assert sql_keystore.get_free_keypairs_count("RSA_OAEP") == 1

@@ -10,7 +10,7 @@ admin.autodiscover()
 
 urlpatterns = [
     # django-admin:
-    path("admin/doc/", include(admindocs_urls)),  # noqa: DJ05
+    #path("admin/doc/", include(admindocs_urls)),
     path("admin/", admin.site.urls),
     # Text and xml static files:
     path(

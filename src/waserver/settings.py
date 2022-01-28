@@ -80,7 +80,7 @@ TEMPLATES = [
         "BACKEND": "django.template.backends.django.DjangoTemplates",
         "DIRS": [
             # Contains plain text templates, like `robots.txt`:
-            BASE_DIR.joinpath("templates")
+            BASE_DIR.joinpath( "src", "waserver", "templates")
         ],
         "APP_DIRS": True,
         "OPTIONS": {
