@@ -41,6 +41,7 @@ django_cryptography = "^0.3.0"
 python-decouple = "^3.3"
 django-model-utils = "^4.1.1"
 django-rest-framework = "^0.1.0"
+django-changeset = "^1.1.0"
 
 [tool.poetry.dev-dependencies]
 
