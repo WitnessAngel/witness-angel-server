@@ -23,6 +23,7 @@ class PublicAuthenticatorAdmin(admin.ModelAdmin):
     #change_links = ["public_keys"]
     inlines = [AuthenticatorPublicKeyInline]
     readonly_fields = ["created_at"]
+    ordering = ["-pk"]
 
     #@display(description='Public keys')
     def public_key_count(self, obj):
