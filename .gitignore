@@ -11,7 +11,6 @@
 # Icon must end with two \r
 Icon
 
-
 # Thumbnails
 ._*
 
@@ -230,6 +229,7 @@ cert.key
 
 # Local settings files:
 *local.py
+settings.ini
 
 # Deploy files for Docker:
 docker-compose.deploy.yml

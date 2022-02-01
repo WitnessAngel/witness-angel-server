@@ -1,0 +1,6 @@
+# Fill this and rename file as settings.ini #
+[settings]
+SECRET_KEY=
+DEBUG=True
+ALLOWED_HOSTS=
+SECURE_SSL_REDIRECT=False
