@@ -14,14 +14,14 @@ from waserver.apps.wagateway.views import set_public_authenticator_view
 
 
 
-def _generate_authenticator_parameter_tree(key_count, payload=None):
+def _generate_authenticator_parameter_tree(key_count, key_value=None):
     public_keys = []
 
     for count in range(key_count):
         public_keys.append({
             "keychain_uid": generate_uuid0(),
             "key_algo": "RSA_OAEP",
-            "payload": payload or get_random_bytes(20)
+            "key_value": key_value or get_random_bytes(20)
         })
 
     parameters = dict(
@@ -64,7 +64,7 @@ def test_jsonrpc_set_and_get_public_authenticator(live_server):
 
 
 def test_rest_api_get_public_authenticator(live_server):
-    parameters = _generate_authenticator_parameter_tree(2, payload="aé$£é&ö".encode("utf8"))
+    parameters = _generate_authenticator_parameter_tree(2, key_value="aé$£é&ö".encode("utf8"))
 
     set_public_authenticator_view(None,
                                   keystore_uid=parameters["keystore_uid"],
@@ -86,8 +86,8 @@ def test_rest_api_get_public_authenticator(live_server):
      'keystore_uid': str(parameters["keystore_uid"]),  # Uses standard string representation of UUIDs
      'public_keys': [{'key_algo': 'RSA_OAEP',
                       'keychain_uid': str(parameters["public_keys"][0]["keychain_uid"]),
-                      'payload': 'YcOpJMKjw6kmw7Y='},  # Direct base64 is used instead of $binary dict
+                      'key_value': 'YcOpJMKjw6kmw7Y='},  # Direct base64 is used instead of $binary dict
                      {'key_algo': 'RSA_OAEP',
                       'keychain_uid': str(parameters["public_keys"][1]["keychain_uid"]),
-                      'payload': 'YcOpJMKjw6kmw7Y='}]}
+                      'key_value': 'YcOpJMKjw6kmw7Y='}]}
 
