@@ -36,7 +36,8 @@ def set_public_authenticator(keystore_owner: str, keystore_secret: str, keystore
         for public_key in public_keys:
             AuthenticatorPublicKey.objects.create(authenticator_user=user,
                                                   keychain_uid=public_key["keychain_uid"],
-                                                  key_algo=public_key["key_algo"], payload=public_key["payload"])
+                                                  key_algo=public_key["key_algo"],
+                                                  key_value=public_key["key_value"])
 
 
 def _create_public_authenticator_schema():
@@ -53,7 +54,7 @@ def _create_public_authenticator_schema():
             {
                 'key_algo': Or(*SUPPORTED_CIPHER_ALGOS),
                 'keychain_uid': micro_schema.schema_uid,
-                'payload': micro_schema.schema_binary
+                'key_value': micro_schema.schema_binary
             }
         ]
     })

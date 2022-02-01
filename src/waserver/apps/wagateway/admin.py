@@ -8,12 +8,12 @@ from .models import PublicAuthenticator, AuthenticatorPublicKey
 class AuthenticatorPublicKeyInline(admin.StackedInline):
     model = AuthenticatorPublicKey
     extra = 0
-    fields = ["keychain_uid", "key_algo", "payload_length", "created_at"]
+    fields = ["keychain_uid", "key_algo", "key_value_length", "created_at"]
 
-    readonly_fields = ['payload_length', "created_at"]
+    readonly_fields = ['key_value_length', "created_at"]
 
-    def payload_length(self, obj):
-        return len(obj.payload)
+    def key_value_length(self, obj):
+        return len(obj.key_value)
 
 
 class PublicAuthenticatorAdmin(admin.ModelAdmin):

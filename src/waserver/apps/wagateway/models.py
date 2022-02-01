@@ -75,5 +75,5 @@ class AuthenticatorPublicKey(CreatedModifiedByMixin):
 
     keychain_uid = models.UUIDField(_("Keychain uid"), null=True)
     key_algo = models.CharField(_("Key algo"), max_length=20)
-    payload = encrypt(models.BinaryField(_("Public key (PEM format)")))
+    key_value = encrypt(models.BinaryField(_("Public key (PEM format)")))
 

@@ -31,11 +31,11 @@ class TransparentRepresentationUUIDField(TransparentRepresentationMixin, UUIDFie
 
 class AuthenticatorPublicKeySerializer(serializers.ModelSerializer):
     keychain_uid = TransparentRepresentationUUIDField()
-    payload = BinaryField()
+    key_value = BinaryField()
 
     class Meta:
         model = AuthenticatorPublicKey
-        fields = ['keychain_uid', 'key_algo', 'payload']
+        fields = ['keychain_uid', 'key_algo', 'key_value']
 
 
 class PublicAuthenticatorSerializer(serializers.ModelSerializer):
