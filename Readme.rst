@@ -1,4 +1,4 @@
-Witness Angel Trustee Webservices
+Witness Angel Server
 #################################
 
 .. image:: https://travis-ci.com/WitnessAngel/witness-angel-trustee.svg?branch=master
@@ -6,9 +6,14 @@ Witness Angel Trustee Webservices
 
 This webservice exposes an Trustee API, so that Witness Angel devices may safely encrypt and sign their data in write-only mode.
 
+This Django application exposes 3 webservices:
+
+- WAGateway, which handles communication between WitnessAngel devices and their KeyGuardians
+- WATrustee, which acts as a standlone key guardian delivering encryption keys and message signatures on demand
+- WASupport, which logs application crashes for debigging purposes
 
 
-First steps
+Quick start
 ===================
 
 The interpreter for `python3.7` (see `pyproject.toml` for full version) must be installed.
