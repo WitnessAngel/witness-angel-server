@@ -31,10 +31,13 @@ def set_public_authenticator(keystore_owner: str, keystore_secret: str, keystore
         if authenticator_user_or_none:
             raise KeystoreAlreadyExists("Authenticator %s already exists in sql storage" % keystore_uid)
 
-        user = PublicAuthenticator.objects.create(keystore_owner=keystore_owner,
-                                                  keystore_secret=keystore_secret, keystore_uid=keystore_uid)
+        public_authenticator = PublicAuthenticator.objects.create(
+            keystore_owner=keystore_owner, keystore_uid=keystore_uid)
+        public_authenticator.set_keystore_secret(keystore_secret)
+        public_authenticator.save()
+
         for public_key in public_keys:
-            AuthenticatorPublicKey.objects.create(authenticator_user=user,
+            AuthenticatorPublicKey.objects.create(authenticator_user=public_authenticator,
                                                   keychain_uid=public_key["keychain_uid"],
                                                   key_algo=public_key["key_algo"],
                                                   key_value=public_key["key_value"])

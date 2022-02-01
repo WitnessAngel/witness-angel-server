@@ -8,6 +8,7 @@ from wacryptolib.exceptions import KeystoreDoesNotExist, KeystoreAlreadyExists
 from wacryptolib.jsonrpc_client import JsonRpcProxy, status_slugs_response_error_handler
 from wacryptolib.utilities import generate_uuid0
 from waserver.apps.wagateway.core import check_public_authenticator_sanity
+from waserver.apps.wagateway.models import PublicAuthenticator
 
 from waserver.apps.wagateway.views import set_public_authenticator_view
 
@@ -56,8 +57,21 @@ def test_jsonrpc_set_and_get_public_authenticator(live_server):
                                                     keystore_secret="whatever",
                                                     public_keys=parameters["public_keys"])
 
-    public_authenticator = trustee_proxy.get_public_authenticator_view(keystore_uid=parameters["keystore_uid"])
+    # Check handling of secret hash, similar to a password!
+    public_authenticator_obj: PublicAuthenticator = PublicAuthenticator.objects.get(keystore_uid=parameters["keystore_uid"])
+    _keystore_secret_hash = public_authenticator_obj.keystore_secret_hash
+    assert _keystore_secret_hash
+    assert _keystore_secret_hash != parameters["keystore_secret"]
+    assert _keystore_secret_hash.startswith("pbkdf2_")
+    assert public_authenticator_obj.has_usable_keystore_secret()
+    assert public_authenticator_obj.check_keystore_secret(parameters["keystore_secret"])
+    assert not public_authenticator_obj.check_keystore_secret("whatever")
+    public_authenticator_obj.set_unusable_keystore_secret()
+    assert not public_authenticator_obj.has_usable_keystore_secret()
+    public_authenticator_obj.refresh_from_db()  # Unusable password was NOT saved
+    assert public_authenticator_obj.has_usable_keystore_secret()
 
+    public_authenticator = trustee_proxy.get_public_authenticator_view(keystore_uid=parameters["keystore_uid"])
     del parameters["keystore_secret"]
     assert parameters == public_authenticator
     check_public_authenticator_sanity(public_authenticator)

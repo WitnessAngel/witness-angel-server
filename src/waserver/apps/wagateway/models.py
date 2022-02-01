@@ -24,46 +24,32 @@ class PublicAuthenticator(CreatedModifiedByMixin):
 
     keystore_owner = models.CharField(_("Keystore owner"), max_length=100)
 
-    keystore_secret = models.CharField(_('Keystore secret'), max_length=128)
+    keystore_secret_hash = models.CharField(_('Keystore secret hash'), max_length=128)
 
     def __str__(self):
         return self.keystore_owner or self.pk
 
     # API mimicking AbstractBaseUser password management
+
     def set_keystore_secret(self, keystore_secret):
-        self.keystore_secret = make_password(keystore_secret)
+        self.keystore_secret_hash = make_password(keystore_secret)
 
     def check_keystore_secret(self, keystore_secret):
         """
-        Return a boolean of whether the keystore_secret was correct. Handles
-        hashing formats behind the scenes.
+        Return a boolean of whether the keystore_secret was correct.
+        Handles hashing formats behind the scenes.
         """
-
-        def setter(keystore_secret):
-            self.set_password(keystore_secret)
-            # Password hash upgrades shouldn't be considered password changes.
-            self.save(update_fields=["keystore_secret"])
-
-        return check_password(keystore_secret, self.keystore_secret, setter)
+        return check_password(keystore_secret, self.keystore_secret_hash, setter=None)
 
     def set_unusable_keystore_secret(self):
         # Set a value that will never be a valid hash
-        self.keystore_secret = make_password(None)
+        self.keystore_secret_hash = make_password(None)
 
     def has_usable_keystore_secret(self):
         """
         Return False if set_unusable_keystore_secret() has been called for this user.
         """
-        return is_password_usable(self.keystore_secret)
-
-
-def authenticate_authenticator_user(username, password, authenticathor_secret):
-    user = authenticate(username=username, password=password)
-    if not user:
-        raise ValueError("bad credentials")  # FIXME use custom exceptions!
-    if not user.check_authenticator_secret(authenticathor_secret):
-        raise ValueError("bad authenticator secret")  # FIXME use custom exceptions!
-    return user
+        return is_password_usable(self.keystore_secret_hash)
 
 
 class AuthenticatorPublicKey(CreatedModifiedByMixin):
