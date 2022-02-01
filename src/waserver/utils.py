@@ -16,6 +16,7 @@ from wacryptolib.error_handling import StatusSlugsMapper
 
 
 # This is for the REST API only #
+from wacryptolib.exceptions import FunctionalError
 from wacryptolib.utilities import load_from_json_str, dump_to_json_str
 
 
@@ -71,11 +72,9 @@ def bugfixed_dispatched(*args, **kwargs):
 
 JsonRpcSite.dispatch = csrf_exempt(bugfixed_dispatched)
 
-# TODO refine translated exceptions later - FIXME DEDUPLICATE THIS WITH WACRYPTOLIB JSONRPC CLIENT!!!
+
+# ONLY list FunctionalError subclasses, not python built-in exceptions!
 _exception_classes = StatusSlugsMapper.gather_exception_subclasses(
-    builtins, parent_classes=[Exception]
-)
-_exception_classes += StatusSlugsMapper.gather_exception_subclasses(
     wacryptolib_exceptions, parent_classes=[wacryptolib_exceptions.FunctionalError]
 )
 
@@ -88,7 +87,7 @@ exception_mapper = StatusSlugsMapper(
 def convert_exceptions_to_jsonrpc_status_slugs(f, *args, **kwargs):
     try:
         return f(*args, **kwargs)
-    except Exception as exc:  # FIXME - do not convert ALL exceptions, some classes are to be unhandled!
+    except FunctionalError as exc:
         status_slugs = exception_mapper.slugify_exception_class(exc.__class__)
         jsonrpc_error = jsonrpc.Error(
             "Server-side exception occurred, see error data for details"
