@@ -22,13 +22,13 @@ class PublicAuthenticatorViewSet(viewsets.ModelViewSet):
     serializer_class = PublicAuthenticatorSerializer
 
 
-@jsonrpc_method("get_public_authenticator_view", site=wagateway_extended_jsonrpc_site)
+@jsonrpc_method("get_public_authenticator", site=wagateway_extended_jsonrpc_site)
 @convert_exceptions_to_jsonrpc_status_slugs
 def get_public_authenticator_view(self, keystore_uid, keystore_secret=None):
     return get_public_authenticator(keystore_uid, keystore_secret=keystore_secret)
 
 
-@jsonrpc_method("set_public_authenticator_view", site=wagateway_extended_jsonrpc_site)
+@jsonrpc_method("set_public_authenticator", site=wagateway_extended_jsonrpc_site)
 @convert_exceptions_to_jsonrpc_status_slugs
 def set_public_authenticator_view(self, keystore_owner, keystore_uid, keystore_secret, public_keys):
     return set_public_authenticator(keystore_owner=keystore_owner, keystore_uid=keystore_uid,

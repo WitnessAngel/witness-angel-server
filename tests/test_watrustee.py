@@ -21,7 +21,8 @@ from wacryptolib.cryptainer import (
 )
 from wacryptolib.cipher import _encrypt_via_rsa_oaep
 from wacryptolib.keystore import generate_free_keypair_for_least_provisioned_key_algo
-from wacryptolib.exceptions import KeyDoesNotExist, SignatureVerificationError, AuthorizationError, KeystoreDoesNotExist, KeystoreAlreadyExists
+from wacryptolib.exceptions import KeyDoesNotExist, SignatureVerificationError, AuthorizationError, \
+    KeystoreDoesNotExist, KeystoreAlreadyExists, ValidationError, DecryptionError
 from wacryptolib.jsonrpc_client import JsonRpcProxy, status_slugs_response_error_handler
 from wacryptolib.keygen import load_asymmetric_key_from_pem_bytestring
 from wacryptolib.keystore import DummyKeystore
@@ -93,7 +94,7 @@ def test_jsonrpc_trustee_signature(live_server):
         keychain_uid=keychain_uid, message=secret, signature_algo=payload_signature_algo
     )
 
-    with pytest.raises(ValueError, match="too big"):
+    with pytest.raises(ValidationError, match="too big"):
         trustee_proxy.get_message_signature(
             keychain_uid=keychain_uid,
             message=secret_too_big,
@@ -173,7 +174,7 @@ def test_jsonrpc_trustee_decryption_authorization_flags(live_server):
             )
 
         cipherdict["digest_list"].append(b"aaabbbccc")
-        with pytest.raises(ValueError, match="Ciphertext with incorrect length"):
+        with pytest.raises(DecryptionError, match="Ciphertext with incorrect length"):
             trustee_proxy.decrypt_with_private_key(
                 keychain_uid=keychain_uid,
                 cipher_algo=key_cipher_algo,

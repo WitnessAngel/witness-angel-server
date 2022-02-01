@@ -13,8 +13,6 @@ from waserver.apps.wagateway.models import PublicAuthenticator
 from waserver.apps.wagateway.views import set_public_authenticator_view
 
 
-
-
 def _generate_authenticator_parameter_tree(key_count, key_value=None):
     public_keys = []
 
@@ -37,22 +35,22 @@ def _generate_authenticator_parameter_tree(key_count, key_value=None):
 def test_jsonrpc_set_and_get_public_authenticator(live_server):
     jsonrpc_url = live_server.url + "/gateway/jsonrpc/"
 
-    trustee_proxy = JsonRpcProxy(
+    gateway_proxy = JsonRpcProxy(
         url=jsonrpc_url, response_error_handler=status_slugs_response_error_handler
     )
 
     parameters = _generate_authenticator_parameter_tree(2)
 
     with pytest.raises(KeystoreDoesNotExist):
-        trustee_proxy.get_public_authenticator_view(keystore_uid=parameters["keystore_uid"])
+        gateway_proxy.get_public_authenticator(keystore_uid=parameters["keystore_uid"])
 
-    trustee_proxy.set_public_authenticator_view(keystore_uid=parameters["keystore_uid"],
+    gateway_proxy.set_public_authenticator(keystore_uid=parameters["keystore_uid"],
                                                 keystore_owner=parameters["keystore_owner"],
                                                 keystore_secret=parameters["keystore_secret"],
                                                 public_keys=parameters["public_keys"])
 
     with pytest.raises(KeystoreAlreadyExists):
-        trustee_proxy.set_public_authenticator_view(keystore_uid=parameters["keystore_uid"],
+        gateway_proxy.set_public_authenticator(keystore_uid=parameters["keystore_uid"],
                                                     keystore_owner=parameters["keystore_owner"],
                                                     keystore_secret="whatever",
                                                     public_keys=parameters["public_keys"])
@@ -71,7 +69,7 @@ def test_jsonrpc_set_and_get_public_authenticator(live_server):
     public_authenticator_obj.refresh_from_db()  # Unusable password was NOT saved
     assert public_authenticator_obj.has_usable_keystore_secret()
 
-    public_authenticator = trustee_proxy.get_public_authenticator_view(keystore_uid=parameters["keystore_uid"])
+    public_authenticator = gateway_proxy.get_public_authenticator(keystore_uid=parameters["keystore_uid"])
     del parameters["keystore_secret"]
     assert parameters == public_authenticator
     check_public_authenticator_sanity(public_authenticator)
