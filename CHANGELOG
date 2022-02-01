@@ -1,4 +1,11 @@
 
+Version 0.2
+==================
+
+* Added wagateway webservices (jsonrpc + rest)
+* Separated watrustee, wagateway and wasupport as django apps
+
+
 Version 0.1
 ==================
 

@@ -6,7 +6,7 @@ build-backend = "poetry.core.masonry.api"
 [tool.poetry]
 name = "waescrow"
 description = "Witness Angel Escrow Webservices"
-version = "0.1"
+version = "0.2"
 license = "MIT"
 readme = "Readme.rst"
 authors = ["Pascal Chambon", "Manon Michelet", "Francinette Atchade"]
