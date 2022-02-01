@@ -1199,27 +1199,34 @@ pybase62 = "*"
 
 [[package]]
 name = "wacryptolib"
-version = "0.7"
+version = "0.8dev"
 description = "Witness Angel Cryptolib"
 category = "main"
 optional = false
-python-versions = ">=3.7,<=3.10"
+python-versions = ">=3.7, <=3.10"
+develop = false
 
 [package.dependencies]
-click = ">=7.1.2,<8.0.0"
-decorator = ">=4.4.2,<5.0.0"
-jsonrpc-requests = ">=0.4.0,<0.5.0"
-jsonschema = ">=4.1.2,<5.0.0"
-multitimer = ">=0.3,<0.4"
-psutil = {version = ">=5.8.0,<6.0.0", markers = "sys_platform == \"linux\""}
-pycryptodome = ">=3.9.9,<4.0.0"
-pymongo = ">=3.11.2,<4.0.0"
-pytz = ">=2020.5,<2021.0"
-pyudev = {version = ">=0.22.0,<0.23.0", markers = "sys_platform == \"linux\""}
+click = "^7.1.2"
+decorator = "^4.4.2"
+jsonrpc-requests = "^0.4.0"
+jsonschema = "^4.1.2"
+multitimer = "^0.3"
+psutil = {version = "^5.8.0", markers = "sys_platform == \"linux\""}
+pycryptodome = "^3.9.9"
+pymongo = "^3.11.2"
+pytz = "^2020.5"
+pyudev = {version = "^0.22.0 ", markers = "sys_platform == \"linux\""}
 pywin32 = {version = ">=300", markers = "sys_platform == \"win32\""}
-schema = ">=0.7.2,<0.8.0"
-uuid0 = ">=0.2.7,<0.3.0"
-wmi = {version = ">=1.5.1,<2.0.0", markers = "sys_platform == \"win32\""}
+schema = "^0.7.2"
+uuid0 = "^0.2.7"
+wmi = {version = "^1.5.1 ", markers = "sys_platform == \"win32\""}
+
+[package.source]
+type = "git"
+url = "https://github.com/WitnessAngel/witness-angel-cryptolib.git"
+reference = "waserver_stable"
+resolved_reference = "db9c9a90a69df8255c828a2c80beeb5bae2d2cc5"
 
 [[package]]
 name = "wcwidth"
@@ -1295,7 +1302,7 @@ testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytest-
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.7, <=3.10"
-content-hash = "b406ced7e0091bd3a3c181b8f66abb051046e7970992dfdd3b40940b07f6b3ee"
+content-hash = "b192a822325125497c8effaf037a54fae38fcf78b187cce26ef67bb376e0c718"
 
 [metadata.files]
 alabaster = [
@@ -2161,10 +2168,7 @@ uuid0 = [
     {file = "uuid0-0.2.7-py2.py3-none-any.whl", hash = "sha256:b200bd88098010cef5f4445ac0f1c6fe60e021f0478fb3968e943adc1e89b902"},
     {file = "uuid0-0.2.7.tar.gz", hash = "sha256:835da1b868078eadfd63de24d17b9ea3bd1c655497f99e1b8b84f6e4117e6c2b"},
 ]
-wacryptolib = [
-    {file = "wacryptolib-0.7-py3-none-any.whl", hash = "sha256:dc7a75634d6467e61e74ff15da0e21db7ac525910771ce50f38ec1b75c1e9023"},
-    {file = "wacryptolib-0.7.tar.gz", hash = "sha256:8f48664a9348a6f0536a5226628d54beaf4916b1506fb08795256e0a3c111f9a"},
-]
+wacryptolib = []
 wcwidth = [
     {file = "wcwidth-0.2.5-py2.py3-none-any.whl", hash = "sha256:beb4802a9cebb9144e99086eff703a642a13d6a0052920003a230f3294bbe784"},
     {file = "wcwidth-0.2.5.tar.gz", hash = "sha256:c4d647b99872929fdb7bdcaa4fbe7f01413ed3d98077df798530e5b04f116c83"},

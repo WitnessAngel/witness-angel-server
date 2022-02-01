@@ -31,7 +31,7 @@ exclude = ["_build"]
 python = ">=3.7, <=3.10"
 
 # Witness Angel system
-wacryptolib = "^0.7"
+wacryptolib = { git = "https://github.com/WitnessAngel/witness-angel-cryptolib.git", branch = "waserver_stable" }
 
 # Django & Bson
 Django = "^2.2"
