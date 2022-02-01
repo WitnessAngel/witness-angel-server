@@ -20,13 +20,14 @@ executable_is_frozen = getattr(sys, "frozen", False)
 
 if not executable_is_frozen:
     _parents = Path(__file__).resolve().parents  # handle several setup structures
+    THIS_DIR = _parents[0]
     BASE_DIR = _parents[1]
     if not BASE_DIR.joinpath("settings.ini").exists():
         BASE_DIR = _parents[2]
     assert BASE_DIR.joinpath("settings.ini").exists(), BASE_DIR
 else:
     BASE_DIR = Path(sys.executable).parent  # pragma: no cover
-
+    THIS_DIR = BASE_DIR  # Find a way to place templates there...
 
 config = AutoConfig(search_path=str(BASE_DIR))
 
@@ -80,7 +81,7 @@ TEMPLATES = [
         "BACKEND": "django.template.backends.django.DjangoTemplates",
         "DIRS": [
             # Contains plain text templates, like `robots.txt`:
-            BASE_DIR.joinpath( "src", "waserver", "templates")
+            THIS_DIR.joinpath("templates")
         ],
         "APP_DIRS": True,
         "OPTIONS": {

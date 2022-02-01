@@ -18,6 +18,11 @@ def test_waserver_wsgi_application(db):
         application(environ={}, start_response=lambda *args, **kwargs: None)
 
 
+def test_robots_txt(client):
+    response = client.get("/robots.txt")
+    assert response.status_code == 200
+    assert "User-agent" in response.content.decode("utf8")
+
 
 def test_jsonrpc_invalid_http_get_request(live_server):
     jsonrpc_url = live_server.url + random.choice(["/gateway/jsonrpc/", "/trustee/jsonrpc/"])
