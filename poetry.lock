@@ -1226,7 +1226,7 @@ wmi = {version = "^1.5.1 ", markers = "sys_platform == \"win32\""}
 type = "git"
 url = "https://github.com/WitnessAngel/witness-angel-cryptolib.git"
 reference = "waserver_stable"
-resolved_reference = "db9c9a90a69df8255c828a2c80beeb5bae2d2cc5"
+resolved_reference = "68d074800209e3b5d3a1c19964a9d9096f43fe92"
 
 [[package]]
 name = "wcwidth"
