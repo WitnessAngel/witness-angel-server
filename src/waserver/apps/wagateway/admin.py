@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.db.models import Count
 #from django.contrib.admin import display
 
-from .models import PublicAuthenticator, AuthenticatorPublicKey
+from .models import PublicAuthenticator, AuthenticatorPublicKey, SymkeyDecryption, DecryptionRequest
 
 
 class AuthenticatorPublicKeyInline(admin.StackedInline):
@@ -36,6 +36,12 @@ class PublicAuthenticatorAdmin(admin.ModelAdmin):
 
 
 admin.site.register(PublicAuthenticator, PublicAuthenticatorAdmin)
+
 #admin.site.register(AuthenticatorPublicKey)  # Not needed
+admin.site.register(DecryptionRequest)
+admin.site.register(SymkeyDecryption)
+
+
+
 
 

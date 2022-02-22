@@ -3,8 +3,7 @@ from rest_framework.fields import UUIDField, Field
 
 # from watrustee.models import AuthenticatorUser, AuthenticatorPublicKey
 
-from waserver.apps.wagateway.models import PublicAuthenticator, AuthenticatorPublicKey
-
+from waserver.apps.wagateway.models import PublicAuthenticator, AuthenticatorPublicKey, DecryptionRequest
 
 
 class BinaryField(Field):
@@ -29,19 +28,41 @@ class TransparentRepresentationUUIDField(TransparentRepresentationMixin, UUIDFie
     pass
 
 
+class SymkeyDecryptionSerializer(serializers.ModelSerializer):
+    requester_uid = TransparentRepresentationUUIDField()
+    request_data = BinaryField()
+    response_data = BinaryField()
+
+    class Meta:
+        model = DecryptionRequest
+        fields = ['cryptainer_metadata', 'request_data', 'response_data', 'decryption_status']
+
+
+class DecryptionRequestSerializer(serializers.ModelSerializer):
+    requester_uid = TransparentRepresentationUUIDField()
+    response_public_key = BinaryField()
+    symkey_decryption = SymkeyDecryptionSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = DecryptionRequest
+        fields = ['requester_uid', 'description', 'response_public_key', 'request_status', 'symkey_decryption' ]
+
+
 class AuthenticatorPublicKeySerializer(serializers.ModelSerializer):
     keychain_uid = TransparentRepresentationUUIDField()
     key_value = BinaryField()
+    symkey_decryption = SymkeyDecryptionSerializer(many=True, read_only=True)
 
     class Meta:
         model = AuthenticatorPublicKey
-        fields = ['keychain_uid', 'key_algo', 'key_value']
+        fields = ['keychain_uid', 'key_algo', 'key_value', 'symkey_decryption']
 
 
 class PublicAuthenticatorSerializer(serializers.ModelSerializer):
     keystore_uid = TransparentRepresentationUUIDField()
     public_keys = AuthenticatorPublicKeySerializer(many=True, read_only=True)
+    decryption_request = DecryptionRequestSerializer(many=True, read_only=True)
 
     class Meta:
         model = PublicAuthenticator
-        fields = ['keystore_owner', 'keystore_uid', 'public_keys']
+        fields = ['keystore_owner', 'keystore_uid', 'public_keys', 'decryption_request']
