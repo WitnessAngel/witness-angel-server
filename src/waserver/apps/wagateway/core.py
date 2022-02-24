@@ -6,9 +6,10 @@ from django.db import transaction
 
 from schema import And, Or, Schema, SchemaError
 from wacryptolib.cipher import SUPPORTED_CIPHER_ALGOS
-from wacryptolib.exceptions import SchemaValidationError, KeystoreAlreadyExists, KeystoreDoesNotExist
+from wacryptolib.exceptions import SchemaValidationError, KeystoreAlreadyExists, KeystoreDoesNotExist, ValidationError
 from wacryptolib.utilities import get_validation_micro_schemas
-from waserver.apps.wagateway.models import PublicAuthenticator, AuthenticatorPublicKey
+from waserver.apps.wagateway.models import PublicAuthenticator, AuthenticatorPublicKey, DecryptionRequest, \
+    SymkeyDecryption
 
 from waserver.apps.wagateway.serializers import PublicAuthenticatorSerializer
 
@@ -41,6 +42,27 @@ def set_public_authenticator(keystore_owner: str, keystore_secret: str, keystore
                                                   keychain_uid=public_key["keychain_uid"],
                                                   key_algo=public_key["key_algo"],
                                                   key_value=public_key["key_value"])
+
+
+def submit_decryption_request(authenticator_user, requester_uid, description, response_public_key, request_status,
+                              list_Symkey_Decryption: list):
+    with transaction.atomic():
+        queryset = DecryptionRequest.objects.filter(requester_uid=requester_uid)
+        for symkey_decryption in list_Symkey_Decryption:
+            if symkey_decryption["request_data"] == SymkeyDecryption.objects.filter(
+                    request_data=symkey_decryption["request_data"]):
+                raise ValidationError('Une demande à déja été effectué pour cette clé')
+            DecryptionRequest.objects.create(authenticator_user, requester_uid, description, response_public_key,
+                                             request_status)
+            SymkeyDecryption.objects.create(symkey_decryption["decryption_request"],
+                                            symkey_decryption["symkey_decryption"],
+                                            symkey_decryption["cryptainer_metadata"], symkey_decryption["request_data"],
+                                            symkey_decryption["response_data"], symkey_decryption["decryption_status"])
+
+
+def list_wadevice_decryption_requests(requester_uid):
+    queryset = DecryptionRequest.objects.filter(requester_uid=requester_uid)
+    return queryset
 
 
 def _create_public_authenticator_schema():
@@ -76,4 +98,3 @@ def check_public_authenticator_sanity(public_authenticator: dict):
         public_authenticator_schema.validate(public_authenticator)
     except SchemaError as exc:
         raise SchemaValidationError("Error validating public authenticator: {}".format(exc)) from exc
-

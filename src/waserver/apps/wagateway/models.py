@@ -87,7 +87,7 @@ class SymkeyDecryption(CreatedModifiedByMixin):
     decryption_request = models.ForeignKey(DecryptionRequest, on_delete=models.CASCADE)
     authenticator_public_keys = models.ForeignKey(AuthenticatorPublicKey, on_delete=models.CASCADE)
 
-    cryptainer_metadata = JSONField()
+    cryptainer_metadata = models.JSONField(_("Cryptainer data)"))
     request_data = encrypt(models.BinaryField(_("Request data (PEM format)")))
     response_data = encrypt(models.BinaryField(_("Response data (PEM format)")))
     decryption_status = models.CharField(max_length=128, choices=DECRYPTION_STATUS_CHOICES, default=DECRYPTED)
