@@ -3,7 +3,8 @@ from rest_framework.fields import UUIDField, Field
 
 # from watrustee.models import AuthenticatorUser, AuthenticatorPublicKey
 
-from waserver.apps.wagateway.models import PublicAuthenticator, AuthenticatorPublicKey, DecryptionRequest
+from waserver.apps.wagateway.models import PublicAuthenticator, AuthenticatorPublicKey, DecryptionRequest, \
+    SymkeyDecryption
 
 
 class BinaryField(Field):
@@ -29,13 +30,12 @@ class TransparentRepresentationUUIDField(TransparentRepresentationMixin, UUIDFie
 
 
 class SymkeyDecryptionSerializer(serializers.ModelSerializer):
-    requester_uid = TransparentRepresentationUUIDField()
     request_data = BinaryField()
     response_data = BinaryField()
 
     class Meta:
-        model = DecryptionRequest
-        fields = ['cryptainer_metadata', 'request_data', 'response_data', 'decryption_status']
+        model = SymkeyDecryption
+        fields = ['request_data', 'response_data', 'decryption_status']
 
 
 class DecryptionRequestSerializer(serializers.ModelSerializer):

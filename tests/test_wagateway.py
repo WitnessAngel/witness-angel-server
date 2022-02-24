@@ -1,13 +1,13 @@
-
 import requests
 
 import pytest
 from Crypto.Random import get_random_bytes
 
-from wacryptolib.exceptions import KeystoreDoesNotExist, KeystoreAlreadyExists
+from wacryptolib.exceptions import KeystoreDoesNotExist, KeystoreAlreadyExists, KeyDoesNotExist
 from wacryptolib.jsonrpc_client import JsonRpcProxy, status_slugs_response_error_handler
 from wacryptolib.utilities import generate_uuid0
-from waserver.apps.wagateway.core import check_public_authenticator_sanity
+from waserver.apps.wagateway.core import check_public_authenticator_sanity, submit_decryption_request, \
+    list_wadevice_decryption_requests
 from waserver.apps.wagateway.models import PublicAuthenticator
 
 from waserver.apps.wagateway.views import set_public_authenticator_view
@@ -45,18 +45,19 @@ def test_jsonrpc_set_and_get_public_authenticator(live_server):
         gateway_proxy.get_public_authenticator(keystore_uid=parameters["keystore_uid"])
 
     gateway_proxy.set_public_authenticator(keystore_uid=parameters["keystore_uid"],
-                                                keystore_owner=parameters["keystore_owner"],
-                                                keystore_secret=parameters["keystore_secret"],
-                                                public_keys=parameters["public_keys"])
+                                           keystore_owner=parameters["keystore_owner"],
+                                           keystore_secret=parameters["keystore_secret"],
+                                           public_keys=parameters["public_keys"])
 
     with pytest.raises(KeystoreAlreadyExists):
         gateway_proxy.set_public_authenticator(keystore_uid=parameters["keystore_uid"],
-                                                    keystore_owner=parameters["keystore_owner"],
-                                                    keystore_secret="whatever",
-                                                    public_keys=parameters["public_keys"])
+                                               keystore_owner=parameters["keystore_owner"],
+                                               keystore_secret="whatever",
+                                               public_keys=parameters["public_keys"])
 
     # Check handling of secret hash, similar to a password!
-    public_authenticator_obj: PublicAuthenticator = PublicAuthenticator.objects.get(keystore_uid=parameters["keystore_uid"])
+    public_authenticator_obj: PublicAuthenticator = PublicAuthenticator.objects.get(
+        keystore_uid=parameters["keystore_uid"])
     _keystore_secret_hash = public_authenticator_obj.keystore_secret_hash
     assert _keystore_secret_hash
     assert _keystore_secret_hash != parameters["keystore_secret"]
@@ -80,9 +81,9 @@ def test_rest_api_get_public_authenticator(live_server):
 
     set_public_authenticator_view(None,
                                   keystore_uid=parameters["keystore_uid"],
-                                    keystore_owner=parameters["keystore_owner"],
-                                    keystore_secret=parameters["keystore_secret"],
-                                    public_keys=parameters["public_keys"])
+                                  keystore_owner=parameters["keystore_owner"],
+                                  keystore_secret=parameters["keystore_secret"],
+                                  public_keys=parameters["public_keys"])
 
     url = live_server.url + "/gateway/rest/public-authenticators/"
     response = requests.get(url)
@@ -90,16 +91,64 @@ def test_rest_api_get_public_authenticator(live_server):
     public_authenticators = response.json()
     assert len(public_authenticators) == 1
     public_authenticator = public_authenticators[0]
-    #from pprint import pprint
-    #pprint(public_authenticator)
+    # from pprint import pprint
+    # pprint(public_authenticator)
 
     # FIXME later add a new pythonschema for this "raw json" format?
     assert public_authenticator == {'keystore_owner': 'keystore_owner',
-     'keystore_uid': str(parameters["keystore_uid"]),  # Uses standard string representation of UUIDs
-     'public_keys': [{'key_algo': 'RSA_OAEP',
-                      'keychain_uid': str(parameters["public_keys"][0]["keychain_uid"]),
-                      'key_value': 'YcOpJMKjw6kmw7Y='},  # Direct base64 is used instead of $binary dict
-                     {'key_algo': 'RSA_OAEP',
-                      'keychain_uid': str(parameters["public_keys"][1]["keychain_uid"]),
-                      'key_value': 'YcOpJMKjw6kmw7Y='}]}
+                                    'keystore_uid': str(parameters["keystore_uid"]),
+                                    # Uses standard string representation of UUIDs
+                                    'public_keys': [{'key_algo': 'RSA_OAEP',
+                                                     'keychain_uid': str(parameters["public_keys"][0]["keychain_uid"]),
+                                                     'key_value': 'YcOpJMKjw6kmw7Y='},
+                                                    # Direct base64 is used instead of $binary dict
+                                                    {'key_algo': 'RSA_OAEP',
+                                                     'keychain_uid': str(parameters["public_keys"][1]["keychain_uid"]),
+                                                     'key_value': 'YcOpJMKjw6kmw7Y='}]}
 
+
+def test_decryption_request(live_server):
+    jsonrpc_url = live_server.url + "/gateway/jsonrpc/"
+
+    gateway_proxy = JsonRpcProxy(
+        url=jsonrpc_url, response_error_handler=status_slugs_response_error_handler
+    )
+
+    parameters = _generate_authenticator_parameter_tree(2)
+
+    with pytest.raises(KeystoreDoesNotExist):  # TODO change this exception to keyDoesNotExist
+        gateway_proxy.get_public_authenticator(keystore_uid=parameters["keystore_uid"])
+
+    gateway_proxy.set_public_authenticator(keystore_uid=parameters["keystore_uid"],
+                                           keystore_owner=parameters["keystore_owner"],
+                                           keystore_secret=parameters["keystore_secret"],
+                                           public_keys=parameters["public_keys"])
+
+    public_authenticator = gateway_proxy.get_public_authenticator(keystore_uid=parameters["keystore_uid"])
+
+    symkeys_decryption = []
+
+    for public_key in public_authenticator["public_keys"]:
+        symkeys_decryption.append(
+            dict(
+                symkey_ciphertext=public_key["key_value"],
+                keychain_uid=public_key["keychain_uid"],
+                key_algo=public_key["key_algo"]
+            )
+        )
+
+    decryption_request_parameter = {
+        "keystore_uid": parameters["keystore_uid"],
+        "requester_uid": generate_uuid0(),
+        "description": "Bien vouloir nous aider pour le dechiffrement de cette clé.",
+        "response_public_key": get_random_bytes(20),
+        "symkeys_decryption": symkeys_decryption
+    }
+    submit_decryption_request(keystore_uid=decryption_request_parameter["keystore_uid"],
+                              requester_uid=decryption_request_parameter["requester_uid"],
+                              description=decryption_request_parameter["description"],
+                              response_public_key=decryption_request_parameter["response_public_key"],
+                              symkeys_decryption=decryption_request_parameter["symkeys_decryption"])
+
+    k=list_wadevice_decryption_requests(requester_uid=decryption_request_parameter["requester_uid"])
+ 

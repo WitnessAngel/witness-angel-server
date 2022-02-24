@@ -69,7 +69,7 @@ class DecryptionRequest(CreatedModifiedByMixin):
     REJECTED = "Rejected"
     REQUEST_STATUS_CHOICES = [(PENDING, "PENDING"), (ACCEPTED, "ACCEPTED"), (REJECTED, "REJECTED")]
 
-    authenticator_user = models.ForeignKey(PublicAuthenticator, on_delete=models.CASCADE)
+    authenticator_user = models.ForeignKey(PublicAuthenticator, related_name='decryption_request', on_delete=models.CASCADE)
 
     requester_uid = models.UUIDField(_("Requester uid"), db_index=True)
     description = models.TextField(_("Description"), blank=True)
@@ -84,11 +84,11 @@ class SymkeyDecryption(CreatedModifiedByMixin):
     MISMATCH = "Mismatch"
     DECRYPTION_STATUS_CHOICES = [(DECRYPTED, "DECRYPTED"), (NOT_FOUND, "NOT_FOUND"), (CORRUPTED, "CORRUPTED"), (MISMATCH, "MISMATCH")]
 
-    decryption_request = models.ForeignKey(DecryptionRequest, on_delete=models.CASCADE)
-    authenticator_public_keys = models.ForeignKey(AuthenticatorPublicKey, on_delete=models.CASCADE)
+    decryption_request = models.ForeignKey(DecryptionRequest, related_name='symkey_decryption', on_delete=models.CASCADE)
+    authenticator_public_key = models.ForeignKey(AuthenticatorPublicKey, related_name='symkey_decryption', on_delete=models.CASCADE)
 
-    cryptainer_metadata = models.JSONField(_("Cryptainer data)"))
+    #cryptainer_metadata = models.JSONField(_("Cryptainer data)"), default={})
     request_data = encrypt(models.BinaryField(_("Request data (PEM format)")))
-    response_data = encrypt(models.BinaryField(_("Response data (PEM format)")))
+    response_data = encrypt(models.BinaryField(_("Response data (PEM format)"), default=b''))
     decryption_status = models.CharField(max_length=128, choices=DECRYPTION_STATUS_CHOICES, default=DECRYPTED)
 

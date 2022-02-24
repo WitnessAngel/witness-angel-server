@@ -6,12 +6,13 @@ from django.db import transaction
 
 from schema import And, Or, Schema, SchemaError
 from wacryptolib.cipher import SUPPORTED_CIPHER_ALGOS
-from wacryptolib.exceptions import SchemaValidationError, KeystoreAlreadyExists, KeystoreDoesNotExist, ValidationError
+from wacryptolib.exceptions import SchemaValidationError, KeystoreAlreadyExists, KeystoreDoesNotExist, ValidationError, \
+    KeyDoesNotExist, ExistenceError
 from wacryptolib.utilities import get_validation_micro_schemas
 from waserver.apps.wagateway.models import PublicAuthenticator, AuthenticatorPublicKey, DecryptionRequest, \
     SymkeyDecryption
 
-from waserver.apps.wagateway.serializers import PublicAuthenticatorSerializer
+from waserver.apps.wagateway.serializers import PublicAuthenticatorSerializer, DecryptionRequestSerializer
 
 
 def get_public_authenticator(keystore_uid, keystore_secret=None):
@@ -36,7 +37,6 @@ def set_public_authenticator(keystore_owner: str, keystore_secret: str, keystore
             keystore_owner=keystore_owner, keystore_uid=keystore_uid)
         public_authenticator.set_keystore_secret(keystore_secret)
         public_authenticator.save()
-
         for public_key in public_keys:
             AuthenticatorPublicKey.objects.create(authenticator_user=public_authenticator,
                                                   keychain_uid=public_key["keychain_uid"],
@@ -44,25 +44,42 @@ def set_public_authenticator(keystore_owner: str, keystore_secret: str, keystore
                                                   key_value=public_key["key_value"])
 
 
-def submit_decryption_request(authenticator_user, requester_uid, description, response_public_key, request_status,
-                              list_Symkey_Decryption: list):
+def submit_decryption_request(keystore_uid: uuid.UUID, requester_uid: uuid.UUID, description: str, response_public_key: bytes,
+                              symkeys_decryption: list):
+    #symkey_decryption: liste de dict qui ont chacun des champs symkey_ciphertext, key_algo et keychain_uid
+
+    #Todo valider le schema
+
     with transaction.atomic():
-        queryset = DecryptionRequest.objects.filter(requester_uid=requester_uid)
-        for symkey_decryption in list_Symkey_Decryption:
-            if symkey_decryption["request_data"] == SymkeyDecryption.objects.filter(
-                    request_data=symkey_decryption["request_data"]):
-                raise ValidationError('Une demande à déja été effectué pour cette clé')
-            DecryptionRequest.objects.create(authenticator_user, requester_uid, description, response_public_key,
-                                             request_status)
-            SymkeyDecryption.objects.create(symkey_decryption["decryption_request"],
-                                            symkey_decryption["symkey_decryption"],
-                                            symkey_decryption["cryptainer_metadata"], symkey_decryption["request_data"],
-                                            symkey_decryption["response_data"], symkey_decryption["decryption_status"])
+
+        public_authenticator = PublicAuthenticator.objects.filter(keystore_uid=keystore_uid).first()
+
+        if not public_authenticator:
+            raise KeyDoesNotExist("Authenticator %s does not exists in sql storage" % keystore_uid)
+
+        decryption_request = DecryptionRequest.objects.create(
+            authenticator_user=public_authenticator, requester_uid=requester_uid, description=description,
+                                                              response_public_key=response_public_key)
+
+        #authenticator_public_keys = AuthenticatorPublicKey.objects.filter(authenticator_user=public_authenticator)
+
+        for symkey_decryption in symkeys_decryption:
+            # TODO vérifier que la clé à déchiffrer est présent dans authenticator_public_keys
+
+            authenticator_public_key = public_authenticator.public_keys.get(keychain_uid=symkey_decryption['keychain_uid'], key_algo=symkey_decryption['key_algo'])
+            #recuperer la bonne clé publique avec public_authenticator.puybli_keys.filter(keychain/keyalgo)....
+
+            SymkeyDecryption.objects.create(decryption_request=decryption_request, authenticator_public_key=authenticator_public_key, request_data=symkey_decryption["symkey_ciphertext"])
 
 
 def list_wadevice_decryption_requests(requester_uid):
-    queryset = DecryptionRequest.objects.filter(requester_uid=requester_uid)
-    return queryset
+    try:
+        queryset = DecryptionRequest.objects.get(requester_uid=requester_uid)
+        # queryset = DecryptionRequest.objects.filter(requester_uid=requester_uid).values('request_status')
+        return DecryptionRequestSerializer(queryset).data
+    except DecryptionRequest.DoesNotExist:
+        raise ExistenceError("Authenticator User does not exist") # TODO Change this exception
+
 
 
 def _create_public_authenticator_schema():
