@@ -3,11 +3,12 @@ import requests
 import pytest
 from Crypto.Random import get_random_bytes
 
-from wacryptolib.exceptions import KeystoreDoesNotExist, KeystoreAlreadyExists, KeyDoesNotExist
+from wacryptolib.exceptions import KeystoreDoesNotExist, KeystoreAlreadyExists, KeyDoesNotExist, ExistenceError, \
+    SchemaValidationError
 from wacryptolib.jsonrpc_client import JsonRpcProxy, status_slugs_response_error_handler
 from wacryptolib.utilities import generate_uuid0
-from waserver.apps.wagateway.core import check_public_authenticator_sanity, submit_decryption_request, \
-    list_wadevice_decryption_requests
+from waserver.apps.wagateway.core import submit_decryption_request, \
+    list_wadevice_decryption_requests, validate_data_tree_with_pythonschema, PUBLIC_AUTHENTICATOR_SCHEMA
 from waserver.apps.wagateway.models import PublicAuthenticator
 
 from waserver.apps.wagateway.views import set_public_authenticator_view
@@ -73,7 +74,10 @@ def test_jsonrpc_set_and_get_public_authenticator(live_server):
     public_authenticator = gateway_proxy.get_public_authenticator(keystore_uid=parameters["keystore_uid"])
     del parameters["keystore_secret"]
     assert parameters == public_authenticator
-    check_public_authenticator_sanity(public_authenticator)
+
+    validate_data_tree_with_pythonschema(public_authenticator, PUBLIC_AUTHENTICATOR_SCHEMA)
+
+    #check_public_authenticator_sanity(public_authenticator)
 
 
 def test_rest_api_get_public_authenticator(live_server):
@@ -133,7 +137,7 @@ def test_decryption_request(live_server):
             dict(
                 symkey_ciphertext=public_key["key_value"],
                 keychain_uid=public_key["keychain_uid"],
-                key_algo=public_key["key_algo"]
+                key_algo=public_key["key_algo"],
             )
         )
 
@@ -150,5 +154,42 @@ def test_decryption_request(live_server):
                               response_public_key=decryption_request_parameter["response_public_key"],
                               symkeys_decryption=decryption_request_parameter["symkeys_decryption"])
 
-    k=list_wadevice_decryption_requests(requester_uid=decryption_request_parameter["requester_uid"])
- 
+    wadevice_decryption_requests = list_wadevice_decryption_requests(
+        requester_uid=decryption_request_parameter["requester_uid"])
+
+    print(wadevice_decryption_requests)
+
+    assert wadevice_decryption_requests["requester_uid"] == decryption_request_parameter["requester_uid"]
+    assert wadevice_decryption_requests["response_public_key"] == decryption_request_parameter["response_public_key"]
+    assert wadevice_decryption_requests["request_status"] == "Pending"
+    assert wadevice_decryption_requests["symkeys_decryption"] == [{
+        'request_data': symkeys_decryption[0]["symkey_ciphertext"],
+        'response_data': b'',
+        'decryption_status': 'Decrypted'
+    }, {
+        'request_data': symkeys_decryption[1]["symkey_ciphertext"],
+        'response_data': b'',
+        'decryption_status': 'Decrypted'
+    }]
+
+
+    # Authentifieur n'existe pas dans le dépôt distant
+    corrupted_decryption_request_parameter1 = decryption_request_parameter.copy()
+    corrupted_decryption_request_parameter1["keystore_uid"] = generate_uuid0()
+    with pytest.raises(KeystoreDoesNotExist):
+        submit_decryption_request(keystore_uid=corrupted_decryption_request_parameter1["keystore_uid"],
+                                  requester_uid=corrupted_decryption_request_parameter1["requester_uid"],
+                                  description=corrupted_decryption_request_parameter1["description"],
+                                  response_public_key=corrupted_decryption_request_parameter1["response_public_key"],
+                                  symkeys_decryption=corrupted_decryption_request_parameter1["symkeys_decryption"])
+
+    # Les données entrées ne sont pas correctes(erreur de lors de la validation de schema)
+    corrupted_decryption_request_parameter2 = decryption_request_parameter.copy()
+    corrupted_decryption_request_parameter2["symkeys_decryption"][0]["key_algo"] = "AES-AES"
+
+    with pytest.raises(SchemaValidationError):
+        submit_decryption_request(keystore_uid=corrupted_decryption_request_parameter2["keystore_uid"],
+                                  requester_uid=corrupted_decryption_request_parameter2["requester_uid"],
+                                  description=corrupted_decryption_request_parameter2["description"],
+                                  response_public_key=corrupted_decryption_request_parameter2["response_public_key"],
+                                  symkeys_decryption=corrupted_decryption_request_parameter2["symkeys_decryption"])

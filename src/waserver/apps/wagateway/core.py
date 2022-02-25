@@ -1,6 +1,7 @@
 import uuid
 from datetime import timedelta
 from typing import Optional
+from uuid import UUID
 
 from django.db import transaction
 
@@ -28,6 +29,16 @@ def get_public_authenticator(keystore_uid, keystore_secret=None):
 
 def set_public_authenticator(keystore_owner: str, keystore_secret: str, keystore_uid: uuid.UUID, public_keys: list):
     with transaction.atomic():
+
+        public_authenticator_tree = {
+            "keystore_owner": keystore_owner,
+            "keystore_secret": keystore_secret,
+            "keystore_uid": keystore_uid,
+            "public_keys": public_keys
+        }
+
+        validate_data_tree_with_pythonschema(data_tree=public_authenticator_tree, valid_schema=PUBLIC_AUTHENTICATOR_SCHEMA)
+
         authenticator_user_or_none = PublicAuthenticator.objects.filter(keystore_uid=keystore_uid).first()
 
         if authenticator_user_or_none:
@@ -44,74 +55,101 @@ def set_public_authenticator(keystore_owner: str, keystore_secret: str, keystore
                                                   key_value=public_key["key_value"])
 
 
-def submit_decryption_request(keystore_uid: uuid.UUID, requester_uid: uuid.UUID, description: str, response_public_key: bytes,
+def submit_decryption_request(keystore_uid: uuid.UUID, requester_uid: uuid.UUID, description: str,
+                              response_public_key: bytes,
                               symkeys_decryption: list):
-    #symkey_decryption: liste de dict qui ont chacun des champs symkey_ciphertext, key_algo et keychain_uid
+    # symkey_decryption: liste de dict qui ont chacun des champs symkey_ciphertext, key_algo et keychain_uid
+    # Tester le cas où les symkeys n'existe pas dans le depôt distant
 
-    #Todo valider le schema
+    # Todo valider le schema
 
     with transaction.atomic():
+
+        decryption_request_tree = {
+            "keystore_uid": keystore_uid,
+            "requester_uid": requester_uid,
+            "description": description,
+            "response_public_key": response_public_key,
+            "symkeys_decryption": symkeys_decryption
+        }
+
+        validate_data_tree_with_pythonschema(data_tree=decryption_request_tree,
+                                             valid_schema=SCHEMA_OF_DECRYTION_RESQUEST_INPUT_PARAMETERS)
 
         public_authenticator = PublicAuthenticator.objects.filter(keystore_uid=keystore_uid).first()
 
         if not public_authenticator:
-            raise KeyDoesNotExist("Authenticator %s does not exists in sql storage" % keystore_uid)
+            raise KeystoreDoesNotExist(
+                "Authenticator %s does not exists in sql storage" % keystore_uid)  # TODO Create AuthenticatorDoesNotEXIST
 
-        decryption_request = DecryptionRequest.objects.create(
-            authenticator_user=public_authenticator, requester_uid=requester_uid, description=description,
+        decryption_request = DecryptionRequest.objects.create(authenticator_user=public_authenticator,
+                                                              requester_uid=requester_uid,
+                                                              description=description,
                                                               response_public_key=response_public_key)
-
-        #authenticator_public_keys = AuthenticatorPublicKey.objects.filter(authenticator_user=public_authenticator)
 
         for symkey_decryption in symkeys_decryption:
             # TODO vérifier que la clé à déchiffrer est présent dans authenticator_public_keys
 
-            authenticator_public_key = public_authenticator.public_keys.get(keychain_uid=symkey_decryption['keychain_uid'], key_algo=symkey_decryption['key_algo'])
-            #recuperer la bonne clé publique avec public_authenticator.puybli_keys.filter(keychain/keyalgo)....
+            try:
+                authenticator_public_key = public_authenticator.public_keys.get(
+                    keychain_uid=symkey_decryption['keychain_uid'], key_algo=symkey_decryption['key_algo'])
+            except AuthenticatorPublicKey.DoesNotExist:
+                raise KeyDoesNotExist(
+                    "Public key %s does not exists in sql storage" % symkey_decryption['keychain_uid'])
 
-            SymkeyDecryption.objects.create(decryption_request=decryption_request, authenticator_public_key=authenticator_public_key, request_data=symkey_decryption["symkey_ciphertext"])
+            SymkeyDecryption.objects.create(decryption_request=decryption_request,
+                                            authenticator_public_key=authenticator_public_key,
+                                            request_data=symkey_decryption["symkey_ciphertext"])
 
 
 def list_wadevice_decryption_requests(requester_uid):
     try:
-        queryset = DecryptionRequest.objects.get(requester_uid=requester_uid)
+        decryption_resquest_of_requester_uid = DecryptionRequest.objects.get(requester_uid=requester_uid)
         # queryset = DecryptionRequest.objects.filter(requester_uid=requester_uid).values('request_status')
-        return DecryptionRequestSerializer(queryset).data
+        return DecryptionRequestSerializer(decryption_resquest_of_requester_uid).data
     except DecryptionRequest.DoesNotExist:
-        raise ExistenceError("Authenticator User does not exist") # TODO Change this exception
+        raise ExistenceError("Authenticator User does not exist")  # TODO Change this exception
 
 
+micro_schema = get_validation_micro_schemas(extended_json_format=False)
 
-def _create_public_authenticator_schema():
-    """Create validation schema for public authenticator tree
+SCHEMA_OF_DECRYTION_RESQUEST_INPUT_PARAMETERS = Schema({
+    "keystore_uid": micro_schema.schema_uid,
+    "requester_uid": micro_schema.schema_uid,
+    "description": And(str, len),
+    "response_public_key": micro_schema.schema_binary,
+    "symkeys_decryption": [{
+        "symkey_ciphertext": micro_schema.schema_binary,
+        "keychain_uid": micro_schema.schema_uid,
+        "key_algo": Or(*SUPPORTED_CIPHER_ALGOS),
+    }]
+})
 
-    :return: a schema.
+PUBLIC_AUTHENTICATOR_SCHEMA = Schema({
+    "keystore_owner": And(str, len),
+    "keystore_secret": And(str, len),
+    "keystore_uid": micro_schema.schema_uid,
+    "public_keys": [
+        {
+            'keychain_uid': micro_schema.schema_uid,
+            'key_algo': Or(*SUPPORTED_CIPHER_ALGOS),
+            'key_value': micro_schema.schema_binary
+        }
+    ]
+})
+
+
+def validate_data_tree_with_pythonschema(data_tree: dict, valid_schema: Schema):  # TODO Add to wacryptolib
+    """Allows the validation of a data_tree with a pythonschema
+
+    :param data_tree: data to validate
+    :param valid_schema: validation scheme
     """
-    micro_schema = get_validation_micro_schemas(extended_json_format=False)
+    # we use the python schema module
 
-    schema_public_authenticator = Schema({
-        "keystore_owner": And(str, len),
-        "keystore_uid": micro_schema.schema_uid,
-        "public_keys": [
-            {
-                'key_algo': Or(*SUPPORTED_CIPHER_ALGOS),
-                'keychain_uid': micro_schema.schema_uid,
-                'key_value': micro_schema.schema_binary
-            }
-        ]
-    })
+    assert isinstance(data_tree, dict), data_tree
 
-    return schema_public_authenticator
-
-
-def check_public_authenticator_sanity(public_authenticator: dict):
-    """Validate a native python tree of public_authenticator data.
-
-    Raise SchemaValidationError on error
-    """
-    assert isinstance(public_authenticator, dict), public_authenticator
-    public_authenticator_schema = _create_public_authenticator_schema()
     try:
-        public_authenticator_schema.validate(public_authenticator)
+        valid_schema.validate(data_tree)
     except SchemaError as exc:
-        raise SchemaValidationError("Error validating public authenticator: {}".format(exc)) from exc
+        raise SchemaValidationError("Error validating data tree with python-schema: {}".format(exc)) from exc

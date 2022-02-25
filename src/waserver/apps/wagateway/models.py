@@ -84,8 +84,8 @@ class SymkeyDecryption(CreatedModifiedByMixin):
     MISMATCH = "Mismatch"
     DECRYPTION_STATUS_CHOICES = [(DECRYPTED, "DECRYPTED"), (NOT_FOUND, "NOT_FOUND"), (CORRUPTED, "CORRUPTED"), (MISMATCH, "MISMATCH")]
 
-    decryption_request = models.ForeignKey(DecryptionRequest, related_name='symkey_decryption', on_delete=models.CASCADE)
-    authenticator_public_key = models.ForeignKey(AuthenticatorPublicKey, related_name='symkey_decryption', on_delete=models.CASCADE)
+    decryption_request = models.ForeignKey(DecryptionRequest, related_name='symkeys_decryption', on_delete=models.CASCADE)
+    authenticator_public_key = models.ForeignKey(AuthenticatorPublicKey, related_name='symkeys_decryption', on_delete=models.CASCADE)
 
     #cryptainer_metadata = models.JSONField(_("Cryptainer data)"), default={})
     request_data = encrypt(models.BinaryField(_("Request data (PEM format)")))
