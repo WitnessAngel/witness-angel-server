@@ -111,6 +111,27 @@ def list_wadevice_decryption_requests(requester_uid):
         raise ExistenceError("Authenticator User does not exist")  # TODO Change this exception
 
 
+def list_authenticator_decryption_requests():  # Appelé par authentifieur, authentifié via keystore_secret
+    try:
+        all_decryption_resquest= DecryptionRequest.objects.all()
+        # queryset = DecryptionRequest.objects.filter(requester_uid=requester_uid).values('request_status')
+        return DecryptionRequestSerializer(all_decryption_resquest).data
+    except DecryptionRequest.DoesNotExist:
+        raise ExistenceError("Authenticator User does not exist")  # TODO Change this exception
+
+
+def reject_decryption_request(requester_uid): # Appelé par authentifieur, authentifié via keystore_secret
+    DecryptionRequest.objects.filter(requester_uid=requester_uid).update(request_status="Rejected")
+
+
+def accept_decryption_request(requester_uid, response_data):  # Appelé par authentifieur, authentifié via keystore_secret
+
+    decryption_resquest_of_requester_uid = DecryptionRequest.objects.get(requester_uid=requester_uid).update(request_status="Rejected")
+
+    SymkeyDecryption.objects.filter(decryption_request=decryption_resquest_of_requester_uid).update(decryption_status='Decrypted', response_data=response_data )
+
+
+
 micro_schema = get_validation_micro_schemas(extended_json_format=False)
 
 SCHEMA_OF_DECRYTION_RESQUEST_INPUT_PARAMETERS = Schema({
