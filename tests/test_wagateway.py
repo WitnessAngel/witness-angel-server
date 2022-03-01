@@ -8,8 +8,9 @@ from wacryptolib.exceptions import KeystoreDoesNotExist, KeystoreAlreadyExists, 
 from wacryptolib.jsonrpc_client import JsonRpcProxy, status_slugs_response_error_handler
 from wacryptolib.utilities import generate_uuid0
 from waserver.apps.wagateway.core import submit_decryption_request, \
-    list_wadevice_decryption_requests, validate_data_tree_with_pythonschema, PUBLIC_AUTHENTICATOR_SCHEMA
-from waserver.apps.wagateway.models import PublicAuthenticator
+    list_wadevice_decryption_requests, validate_data_tree_with_pythonschema, PUBLIC_AUTHENTICATOR_SCHEMA, \
+    list_authenticator_decryption_requests
+from waserver.apps.wagateway.models import PublicAuthenticator, RequestStatus, DecryptionStatus
 
 from waserver.apps.wagateway.views import set_public_authenticator_view
 
@@ -157,19 +158,23 @@ def test_decryption_request(live_server):
     wadevice_decryption_requests = list_wadevice_decryption_requests(
         requester_uid=decryption_request_parameter["requester_uid"])
 
-    print(wadevice_decryption_requests)
+    authenticator_decryption_requests = list_authenticator_decryption_requests(keystore_uid=decryption_request_parameter["keystore_uid"])
 
     assert wadevice_decryption_requests["requester_uid"] == decryption_request_parameter["requester_uid"]
     assert wadevice_decryption_requests["response_public_key"] == decryption_request_parameter["response_public_key"]
-    assert wadevice_decryption_requests["request_status"] == "Pending"
+    assert wadevice_decryption_requests["request_status"] == RequestStatus.PENDING
     assert wadevice_decryption_requests["symkeys_decryption"] == [{
+        'cryptainer_uid': None,
+        'cryptainer_metadata': {},
         'request_data': symkeys_decryption[0]["symkey_ciphertext"],
         'response_data': b'',
-        'decryption_status': 'Decrypted'
+        'decryption_status': DecryptionStatus.PENDING
     }, {
+        'cryptainer_uid': None,
+        'cryptainer_metadata': {},
         'request_data': symkeys_decryption[1]["symkey_ciphertext"],
         'response_data': b'',
-        'decryption_status': 'Decrypted'
+        'decryption_status': DecryptionStatus.PENDING
     }]
 
 
@@ -185,7 +190,7 @@ def test_decryption_request(live_server):
 
     # Les données entrées ne sont pas correctes(erreur de lors de la validation de schema)
     corrupted_decryption_request_parameter2 = decryption_request_parameter.copy()
-    corrupted_decryption_request_parameter2["symkeys_decryption"][0]["key_algo"] = "AES-AES"
+    corrupted_decryption_request_parameter2["symkeys_decryption"][0]["key_algo"] = "AES_AES"
 
     with pytest.raises(SchemaValidationError):
         submit_decryption_request(keystore_uid=corrupted_decryption_request_parameter2["keystore_uid"],

@@ -35,7 +35,7 @@ class SymkeyDecryptionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = SymkeyDecryption
-        fields = ['request_data', 'response_data', 'decryption_status']
+        fields = ['cryptainer_uid', 'cryptainer_metadata', 'request_data', 'response_data', 'decryption_status']
 
 
 class DecryptionRequestSerializer(serializers.ModelSerializer):
@@ -45,24 +45,25 @@ class DecryptionRequestSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = DecryptionRequest
-        fields = ['requester_uid', 'description', 'response_public_key', 'request_status', 'symkeys_decryption' ]
+        fields = ['decryption_request_uid', 'requester_uid', 'description', 'response_public_key', 'request_status',
+                  'symkeys_decryption']
 
 
 class AuthenticatorPublicKeySerializer(serializers.ModelSerializer):
     keychain_uid = TransparentRepresentationUUIDField()
     key_value = BinaryField()
-    symkeys_decryption = SymkeyDecryptionSerializer(many=True, read_only=True)
+    # symkeys_decryption = SymkeyDecryptionSerializer(many=True, read_only=True)
 
     class Meta:
         model = AuthenticatorPublicKey
-        fields = ['keychain_uid', 'key_algo', 'key_value', 'symkeys_decryption']
+        fields = ['keychain_uid', 'key_algo', 'key_value']
 
 
 class PublicAuthenticatorSerializer(serializers.ModelSerializer):
     keystore_uid = TransparentRepresentationUUIDField()
     public_keys = AuthenticatorPublicKeySerializer(many=True, read_only=True)
-    decryption_request = DecryptionRequestSerializer(many=True, read_only=True)
+    # decryption_request = DecryptionRequestSerializer(many=True, read_only=True)
 
     class Meta:
         model = PublicAuthenticator
-        fields = ['keystore_owner', 'keystore_uid', 'public_keys', 'decryption_request']
+        fields = ['keystore_owner', 'keystore_uid', 'public_keys']

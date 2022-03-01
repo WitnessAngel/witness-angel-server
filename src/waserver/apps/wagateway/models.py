@@ -5,6 +5,7 @@ from django.utils.translation import ugettext_lazy as _
 from django_cryptography.fields import encrypt
 from django_changeset.models import CreatedModifiedByMixin
 from rest_framework.fields import JSONField
+from wacryptolib.utilities import generate_uuid0
 
 
 class PublicAuthenticator(CreatedModifiedByMixin):
@@ -63,32 +64,41 @@ class AuthenticatorPublicKey(CreatedModifiedByMixin):
     key_value = encrypt(models.BinaryField(_("Public key (PEM format)")))
 
 
+class RequestStatus(models.TextChoices):
+    REJECTED = 'REJECTED', _('REJECTED')
+    ACCEPTED = 'ACCEPTED', _('ACCEPTED')
+    PENDING = 'PENDING', _('PENDING')
+
+
 class DecryptionRequest(CreatedModifiedByMixin):
-    PENDING = "Pending"
-    ACCEPTED = "Accepted"
-    REJECTED = "Rejected"
-    REQUEST_STATUS_CHOICES = [(PENDING, "PENDING"), (ACCEPTED, "ACCEPTED"), (REJECTED, "REJECTED")]
 
-    authenticator_user = models.ForeignKey(PublicAuthenticator, related_name='decryption_request', on_delete=models.CASCADE)
+    public_authenticator = models.ForeignKey(PublicAuthenticator, related_name='decryption_request',
+                                             on_delete=models.CASCADE)
 
+    decryption_request_uid = models.UUIDField(_("Decryption request uid"), default=generate_uuid0())
     requester_uid = models.UUIDField(_("Requester uid"), db_index=True)
     description = models.TextField(_("Description"), blank=True)
-    response_public_key = encrypt(models.BinaryField(_("Response Public key (PEM format)")))
-    request_status = models.CharField(max_length=128, choices=REQUEST_STATUS_CHOICES, default=PENDING)
+    response_public_key = encrypt(models.BinaryField(_("Response Public key (PEM format)")))  # For now always RSA
+    request_status = models.CharField(max_length=128, choices=RequestStatus.choices, default=RequestStatus.PENDING)
+
+
+class DecryptionStatus(models.TextChoices):
+    DECRYPTED = 'DECRYPTED', _('DECRYPTED')
+    PRIVATE_KEY_MISSING = 'PRIVATE KEY MISSING', _('PRIVATE KEY MISSING')
+    CORRUPTED = 'CORRUPTED', _('CORRUPTED')
+    MISMATCH = 'MISMATCH', _('MISMATCH')
+    PENDING = 'PENDING', _('PENDING')
 
 
 class SymkeyDecryption(CreatedModifiedByMixin):
-    DECRYPTED = "Decrypted"
-    NOT_FOUND = "Not_found"
-    CORRUPTED = "Corrupted"
-    MISMATCH = "Mismatch"
-    DECRYPTION_STATUS_CHOICES = [(DECRYPTED, "DECRYPTED"), (NOT_FOUND, "NOT_FOUND"), (CORRUPTED, "CORRUPTED"), (MISMATCH, "MISMATCH")]
 
-    decryption_request = models.ForeignKey(DecryptionRequest, related_name='symkeys_decryption', on_delete=models.CASCADE)
-    authenticator_public_key = models.ForeignKey(AuthenticatorPublicKey, related_name='symkeys_decryption', on_delete=models.CASCADE)
+    decryption_request = models.ForeignKey(DecryptionRequest, related_name='symkeys_decryption',
+                                           on_delete=models.CASCADE)
+    authenticator_public_key = models.ForeignKey(AuthenticatorPublicKey, related_name='symkeys_decryption',
+                                                 on_delete=models.CASCADE)
 
-    #cryptainer_metadata = models.JSONField(_("Cryptainer data)"), default={})
+    cryptainer_uid = models.UUIDField(_("Requester uid"), null=True)
+    cryptainer_metadata = models.JSONField(_("Cryptainer metadata)"), default=dict)
     request_data = encrypt(models.BinaryField(_("Request data (PEM format)")))
     response_data = encrypt(models.BinaryField(_("Response data (PEM format)"), default=b''))
-    decryption_status = models.CharField(max_length=128, choices=DECRYPTION_STATUS_CHOICES, default=DECRYPTED)
-
+    decryption_status = models.CharField(max_length=128, choices=DecryptionStatus.choices, default=DecryptionStatus.PENDING)

@@ -1,17 +1,14 @@
 import uuid
-from datetime import timedelta
-from typing import Optional
-from uuid import UUID
 
 from django.db import transaction
 
-from schema import And, Or, Schema, SchemaError
+from schema import And, Or, Optional, Schema, SchemaError
 from wacryptolib.cipher import SUPPORTED_CIPHER_ALGOS
 from wacryptolib.exceptions import SchemaValidationError, KeystoreAlreadyExists, KeystoreDoesNotExist, ValidationError, \
     KeyDoesNotExist, ExistenceError
 from wacryptolib.utilities import get_validation_micro_schemas
 from waserver.apps.wagateway.models import PublicAuthenticator, AuthenticatorPublicKey, DecryptionRequest, \
-    SymkeyDecryption
+    SymkeyDecryption, RequestStatus
 
 from waserver.apps.wagateway.serializers import PublicAuthenticatorSerializer, DecryptionRequestSerializer
 
@@ -37,7 +34,8 @@ def set_public_authenticator(keystore_owner: str, keystore_secret: str, keystore
             "public_keys": public_keys
         }
 
-        validate_data_tree_with_pythonschema(data_tree=public_authenticator_tree, valid_schema=PUBLIC_AUTHENTICATOR_SCHEMA)
+        validate_data_tree_with_pythonschema(data_tree=public_authenticator_tree,
+                                             valid_schema=PUBLIC_AUTHENTICATOR_SCHEMA)
 
         authenticator_user_or_none = PublicAuthenticator.objects.filter(keystore_uid=keystore_uid).first()
 
@@ -82,7 +80,7 @@ def submit_decryption_request(keystore_uid: uuid.UUID, requester_uid: uuid.UUID,
             raise KeystoreDoesNotExist(
                 "Authenticator %s does not exists in sql storage" % keystore_uid)  # TODO Create AuthenticatorDoesNotEXIST
 
-        decryption_request = DecryptionRequest.objects.create(authenticator_user=public_authenticator,
+        decryption_request = DecryptionRequest.objects.create(public_authenticator=public_authenticator,
                                                               requester_uid=requester_uid,
                                                               description=description,
                                                               response_public_key=response_public_key)
@@ -102,34 +100,45 @@ def submit_decryption_request(keystore_uid: uuid.UUID, requester_uid: uuid.UUID,
                                             request_data=symkey_decryption["symkey_ciphertext"])
 
 
-def list_wadevice_decryption_requests(requester_uid):
+def list_wadevice_decryption_requests(requester_uid: uuid.UUID):
     try:
-        decryption_resquest_of_requester_uid = DecryptionRequest.objects.get(requester_uid=requester_uid)
-        # queryset = DecryptionRequest.objects.filter(requester_uid=requester_uid).values('request_status')
-        return DecryptionRequestSerializer(decryption_resquest_of_requester_uid).data
+        decryption_resquest_by_requester_uid = DecryptionRequest.objects.get(requester_uid=requester_uid)
+        return DecryptionRequestSerializer(decryption_resquest_by_requester_uid).data
     except DecryptionRequest.DoesNotExist:
-        raise ExistenceError("Authenticator User does not exist")  # TODO Change this exception
+        raise ExistenceError(
+            "Requester uid %s does not have a decryption requests" % requester_uid)  # TODO Change this exception
 
 
-def list_authenticator_decryption_requests():  # Appelé par authentifieur, authentifié via keystore_secret
+def list_authenticator_decryption_requests(
+        keystore_uid: uuid.UUID):  # Appelé par authentifieur, authentifié via keystore_secret
     try:
-        all_decryption_resquest= DecryptionRequest.objects.all()
-        # queryset = DecryptionRequest.objects.filter(requester_uid=requester_uid).values('request_status')
-        return DecryptionRequestSerializer(all_decryption_resquest).data
+        decryption_resquest_by_keystore_uid = DecryptionRequest.objects.get(
+            public_authenticator__keystore_uid=keystore_uid)
+        return DecryptionRequestSerializer(decryption_resquest_by_keystore_uid).data
     except DecryptionRequest.DoesNotExist:
-        raise ExistenceError("Authenticator User does not exist")  # TODO Change this exception
+        raise ExistenceError(
+            "No decryption request concerns %s authenticator" % keystore_uid)  # TODO Change this exception
 
 
-def reject_decryption_request(requester_uid): # Appelé par authentifieur, authentifié via keystore_secret
-    DecryptionRequest.objects.filter(requester_uid=requester_uid).update(request_status="Rejected")
+def reject_decryption_request(
+        decryption_request_uid: uuid.UUID):  # Appelé par authentifieur, authentifié via keystore_secret
+    DecryptionRequest.objects.filter(decryption_request_uid=decryption_request_uid).update(
+        request_status=RequestStatus.REJECTED)
 
 
-def accept_decryption_request(requester_uid, response_data):  # Appelé par authentifieur, authentifié via keystore_secret
+def accept_decryption_request(decryption_request_uid, symkeys_decryption_result: list):  # Appelé par authentifieur, authentifié via keystore_secret
 
-    decryption_resquest_of_requester_uid = DecryptionRequest.objects.get(requester_uid=requester_uid).update(request_status="Rejected")
+    symkeys_decryption = SymkeyDecryption.objects.filter(decryption_request__decryption_request_uid=decryption_request_uid)
 
-    SymkeyDecryption.objects.filter(decryption_request=decryption_resquest_of_requester_uid).update(decryption_status='Decrypted', response_data=response_data )
+    assert symkeys_decryption.count() == len(symkeys_decryption_result)
 
+    for symkey_decryption_result in symkeys_decryption_result:
+
+        for symkey_decryption in symkeys_decryption:
+
+            if symkey_decryption_result["keychain_uid"] == symkey_decryption["keychain_uid"]:
+
+                symkey_decryption.update(response_data=symkey_decryption_result["response_data"], decryption_status=symkey_decryption_result["decryption_status"])
 
 
 micro_schema = get_validation_micro_schemas(extended_json_format=False)
@@ -148,7 +157,7 @@ SCHEMA_OF_DECRYTION_RESQUEST_INPUT_PARAMETERS = Schema({
 
 PUBLIC_AUTHENTICATOR_SCHEMA = Schema({
     "keystore_owner": And(str, len),
-    "keystore_secret": And(str, len),
+    Optional("keystore_secret"): And(str, len),
     "keystore_uid": micro_schema.schema_uid,
     "public_keys": [
         {
