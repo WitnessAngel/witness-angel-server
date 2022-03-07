@@ -34,14 +34,15 @@ python = ">=3.7, <=3.10"
 wacryptolib = { git = "https://github.com/WitnessAngel/witness-angel-cryptolib.git", branch = "waserver_stable" }
 
 # Django & Bson
-Django = "^2.2"
+Django = "^3.1"
 json-rpc-django = "^1.0"
 schema = "^0.7.0"
-django_cryptography = "^0.3.0"
+django_cryptography = "^1.0"
 python-decouple = "^3.3"
 django-model-utils = "^4.1.1"
 django-rest-framework = "^0.1.0"
 django-changeset = "^1.1.0"
+django-utils-six = "^2.0"
 
 [tool.poetry.dev-dependencies]
 

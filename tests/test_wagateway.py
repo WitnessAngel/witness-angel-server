@@ -1,3 +1,5 @@
+from uuid import UUID
+
 import requests
 
 import pytest
@@ -9,7 +11,7 @@ from wacryptolib.jsonrpc_client import JsonRpcProxy, status_slugs_response_error
 from wacryptolib.utilities import generate_uuid0
 from waserver.apps.wagateway.core import submit_decryption_request, \
     list_wadevice_decryption_requests, validate_data_tree_with_pythonschema, PUBLIC_AUTHENTICATOR_SCHEMA, \
-    list_authenticator_decryption_requests
+    list_authenticator_decryption_requests, reject_decryption_request, accept_decryption_request
 from waserver.apps.wagateway.models import PublicAuthenticator, RequestStatus, DecryptionStatus
 
 from waserver.apps.wagateway.views import set_public_authenticator_view
@@ -76,9 +78,8 @@ def test_jsonrpc_set_and_get_public_authenticator(live_server):
     del parameters["keystore_secret"]
     assert parameters == public_authenticator
 
+    # check_public_authenticator_sanity(public_authenticator)
     validate_data_tree_with_pythonschema(public_authenticator, PUBLIC_AUTHENTICATOR_SCHEMA)
-
-    #check_public_authenticator_sanity(public_authenticator)
 
 
 def test_rest_api_get_public_authenticator(live_server):
@@ -131,11 +132,13 @@ def test_decryption_request(live_server):
 
     public_authenticator = gateway_proxy.get_public_authenticator(keystore_uid=parameters["keystore_uid"])
 
-    symkeys_decryption = []
+    symkeys_data_to_decrypt = []
 
     for public_key in public_authenticator["public_keys"]:
-        symkeys_decryption.append(
+        symkeys_data_to_decrypt.append(
             dict(
+                cryptainer_uid=generate_uuid0(),
+                cryptainer_metadata={},
                 symkey_ciphertext=public_key["key_value"],
                 keychain_uid=public_key["keychain_uid"],
                 key_algo=public_key["key_algo"],
@@ -147,36 +150,44 @@ def test_decryption_request(live_server):
         "requester_uid": generate_uuid0(),
         "description": "Bien vouloir nous aider pour le dechiffrement de cette clé.",
         "response_public_key": get_random_bytes(20),
-        "symkeys_decryption": symkeys_decryption
+        "symkeys_data_to_decrypt": symkeys_data_to_decrypt
     }
+
+    # Soumettre une demande de déchiffrement
     submit_decryption_request(keystore_uid=decryption_request_parameter["keystore_uid"],
                               requester_uid=decryption_request_parameter["requester_uid"],
                               description=decryption_request_parameter["description"],
                               response_public_key=decryption_request_parameter["response_public_key"],
-                              symkeys_decryption=decryption_request_parameter["symkeys_decryption"])
+                              symkeys_data_to_decrypt=decryption_request_parameter["symkeys_data_to_decrypt"])
 
+    # Soumettre une 2e demande de déchiffrement
+    submit_decryption_request(keystore_uid=decryption_request_parameter["keystore_uid"],
+                              requester_uid=decryption_request_parameter["requester_uid"],
+                              description=decryption_request_parameter["description"],
+                              response_public_key=decryption_request_parameter["response_public_key"],
+                              symkeys_data_to_decrypt=decryption_request_parameter["symkeys_data_to_decrypt"])
+
+    # Liste des demandes de déchiffrement par le nvr
     wadevice_decryption_requests = list_wadevice_decryption_requests(
         requester_uid=decryption_request_parameter["requester_uid"])
+    # print(">>>>>>>>>>>>>>>>>>>>>>>>>>", wadevice_decryption_requests)
 
-    authenticator_decryption_requests = list_authenticator_decryption_requests(keystore_uid=decryption_request_parameter["keystore_uid"])
-
-    assert wadevice_decryption_requests["requester_uid"] == decryption_request_parameter["requester_uid"]
-    assert wadevice_decryption_requests["response_public_key"] == decryption_request_parameter["response_public_key"]
-    assert wadevice_decryption_requests["request_status"] == RequestStatus.PENDING
-    assert wadevice_decryption_requests["symkeys_decryption"] == [{
-        'cryptainer_uid': None,
-        'cryptainer_metadata': {},
-        'request_data': symkeys_decryption[0]["symkey_ciphertext"],
+    assert wadevice_decryption_requests[0]["requester_uid"] == decryption_request_parameter["requester_uid"]
+    assert wadevice_decryption_requests[0]["response_public_key"] == decryption_request_parameter["response_public_key"]
+    assert wadevice_decryption_requests[0]["request_status"] == RequestStatus.PENDING
+    assert wadevice_decryption_requests[0]["symkeys_decryption"] == [{
+        'cryptainer_uid': symkeys_data_to_decrypt[0]["cryptainer_uid"],
+        'cryptainer_metadata': symkeys_data_to_decrypt[0]["cryptainer_metadata"],
+        'request_data': symkeys_data_to_decrypt[0]["symkey_ciphertext"],
         'response_data': b'',
         'decryption_status': DecryptionStatus.PENDING
     }, {
-        'cryptainer_uid': None,
-        'cryptainer_metadata': {},
-        'request_data': symkeys_decryption[1]["symkey_ciphertext"],
+        'cryptainer_uid': symkeys_data_to_decrypt[1]["cryptainer_uid"],
+        'cryptainer_metadata': symkeys_data_to_decrypt[1]["cryptainer_metadata"],
+        'request_data': symkeys_data_to_decrypt[1]["symkey_ciphertext"],
         'response_data': b'',
         'decryption_status': DecryptionStatus.PENDING
     }]
-
 
     # Authentifieur n'existe pas dans le dépôt distant
     corrupted_decryption_request_parameter1 = decryption_request_parameter.copy()
@@ -186,15 +197,34 @@ def test_decryption_request(live_server):
                                   requester_uid=corrupted_decryption_request_parameter1["requester_uid"],
                                   description=corrupted_decryption_request_parameter1["description"],
                                   response_public_key=corrupted_decryption_request_parameter1["response_public_key"],
-                                  symkeys_decryption=corrupted_decryption_request_parameter1["symkeys_decryption"])
+                                  symkeys_data_to_decrypt=corrupted_decryption_request_parameter1[
+                                      "symkeys_data_to_decrypt"])
 
     # Les données entrées ne sont pas correctes(erreur de lors de la validation de schema)
     corrupted_decryption_request_parameter2 = decryption_request_parameter.copy()
-    corrupted_decryption_request_parameter2["symkeys_decryption"][0]["key_algo"] = "AES_AES"
+    corrupted_decryption_request_parameter2["symkeys_data_to_decrypt"][0]["key_algo"] = "AES_AES"
 
     with pytest.raises(SchemaValidationError):
         submit_decryption_request(keystore_uid=corrupted_decryption_request_parameter2["keystore_uid"],
                                   requester_uid=corrupted_decryption_request_parameter2["requester_uid"],
                                   description=corrupted_decryption_request_parameter2["description"],
                                   response_public_key=corrupted_decryption_request_parameter2["response_public_key"],
-                                  symkeys_decryption=corrupted_decryption_request_parameter2["symkeys_decryption"])
+                                  symkeys_data_to_decrypt=corrupted_decryption_request_parameter2[
+                                      "symkeys_data_to_decrypt"])
+
+    reject_decryption_request(wadevice_decryption_requests[0]["decryption_request_uid"])
+
+    #  Liste des demandes de déchiffrement par authentifieur
+    authenticator_decryption_requests = list_authenticator_decryption_requests(
+        keystore_uid=decryption_request_parameter["keystore_uid"])
+
+    assert authenticator_decryption_requests[0]["request_status"] == RequestStatus.REJECTED
+    assert authenticator_decryption_requests[1]["request_status"] == RequestStatus.PENDING
+
+    symkeys_decryption_result = [{
+        "public_key": parameters["public_keys"][0],
+        "response_data": b'\xdd\xfa\xc8\xe9K-}[\xc1W\\\xd9{l\xb2\x1a\xfb\xc4\xa9\xb8',
+        "decryption_status": DecryptionStatus.DECRYPTED
+    }]
+
+    accept_decryption_request(wadevice_decryption_requests[0]["decryption_request_uid"], symkeys_decryption_result)

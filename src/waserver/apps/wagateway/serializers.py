@@ -30,6 +30,7 @@ class TransparentRepresentationUUIDField(TransparentRepresentationMixin, UUIDFie
 
 
 class SymkeyDecryptionSerializer(serializers.ModelSerializer):
+    cryptainer_uid = TransparentRepresentationUUIDField()
     request_data = BinaryField()
     response_data = BinaryField()
 
@@ -45,7 +46,7 @@ class DecryptionRequestSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = DecryptionRequest
-        fields = ['decryption_request_uid', 'requester_uid', 'description', 'response_public_key', 'request_status',
+        fields = ['public_authenticator', 'decryption_request_uid', 'requester_uid', 'description', 'response_public_key', 'request_status',
                   'symkeys_decryption']
 
 

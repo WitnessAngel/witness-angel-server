@@ -72,10 +72,9 @@ class RequestStatus(models.TextChoices):
 
 class DecryptionRequest(CreatedModifiedByMixin):
 
-    public_authenticator = models.ForeignKey(PublicAuthenticator, related_name='decryption_request',
-                                             on_delete=models.CASCADE)
+    public_authenticator = models.ForeignKey(PublicAuthenticator, related_name='decryption_request', on_delete=models.CASCADE)
 
-    decryption_request_uid = models.UUIDField(_("Decryption request uid"), default=generate_uuid0())
+    decryption_request_uid = models.UUIDField(_("Decryption request uid"), default=generate_uuid0)
     requester_uid = models.UUIDField(_("Requester uid"), db_index=True)
     description = models.TextField(_("Description"), blank=True)
     response_public_key = encrypt(models.BinaryField(_("Response Public key (PEM format)")))  # For now always RSA
@@ -92,11 +91,8 @@ class DecryptionStatus(models.TextChoices):
 
 class SymkeyDecryption(CreatedModifiedByMixin):
 
-    decryption_request = models.ForeignKey(DecryptionRequest, related_name='symkeys_decryption',
-                                           on_delete=models.CASCADE)
-    authenticator_public_key = models.ForeignKey(AuthenticatorPublicKey, related_name='symkeys_decryption',
-                                                 on_delete=models.CASCADE)
-
+    decryption_request = models.ForeignKey(DecryptionRequest, related_name='symkeys_decryption', on_delete=models.CASCADE)
+    authenticator_public_key = models.ForeignKey(AuthenticatorPublicKey, related_name='symkeys_decryption', on_delete=models.CASCADE)
     cryptainer_uid = models.UUIDField(_("Requester uid"), null=True)
     cryptainer_metadata = models.JSONField(_("Cryptainer metadata)"), default=dict)
     request_data = encrypt(models.BinaryField(_("Request data (PEM format)")))
