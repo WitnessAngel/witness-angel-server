@@ -29,27 +29,6 @@ class TransparentRepresentationUUIDField(TransparentRepresentationMixin, UUIDFie
     pass
 
 
-class SymkeyDecryptionSerializer(serializers.ModelSerializer):
-    cryptainer_uid = TransparentRepresentationUUIDField()
-    request_data = BinaryField()
-    response_data = BinaryField()
-
-    class Meta:
-        model = SymkeyDecryption
-        fields = ['cryptainer_uid', 'cryptainer_metadata', 'request_data', 'response_data', 'decryption_status']
-
-
-class DecryptionRequestSerializer(serializers.ModelSerializer):
-    requester_uid = TransparentRepresentationUUIDField()
-    response_public_key = BinaryField()
-    symkeys_decryption = SymkeyDecryptionSerializer(many=True, read_only=True)
-
-    class Meta:
-        model = DecryptionRequest
-        fields = ['public_authenticator', 'decryption_request_uid', 'requester_uid', 'description', 'response_public_key', 'request_status',
-                  'symkeys_decryption']
-
-
 class AuthenticatorPublicKeySerializer(serializers.ModelSerializer):
     keychain_uid = TransparentRepresentationUUIDField()
     key_value = BinaryField()
@@ -68,3 +47,29 @@ class PublicAuthenticatorSerializer(serializers.ModelSerializer):
     class Meta:
         model = PublicAuthenticator
         fields = ['keystore_owner', 'keystore_uid', 'public_keys']
+
+
+class SymkeyDecryptionSerializer(serializers.ModelSerializer):
+    cryptainer_uid = TransparentRepresentationUUIDField()
+    request_data = BinaryField()
+    response_data = BinaryField()
+    authenticator_public_key = AuthenticatorPublicKeySerializer(read_only=True)
+
+    class Meta:
+        model = SymkeyDecryption
+        fields = ['authenticator_public_key', 'cryptainer_uid', 'cryptainer_metadata', 'request_data', 'response_data', 'decryption_status']
+
+
+class DecryptionRequestSerializer(serializers.ModelSerializer):
+    requester_uid = TransparentRepresentationUUIDField()
+    response_public_key = BinaryField()
+    symkeys_decryption = SymkeyDecryptionSerializer(many=True, read_only=True)
+    public_authenticator = PublicAuthenticatorSerializer(read_only=True)
+
+    class Meta:
+        model = DecryptionRequest
+        fields = ['public_authenticator', 'decryption_request_uid', 'requester_uid', 'description', 'response_public_key', 'request_status',
+                  'symkeys_decryption']
+
+
+
