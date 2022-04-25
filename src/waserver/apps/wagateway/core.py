@@ -43,8 +43,7 @@ def set_public_authenticator(keystore_owner: str, keystore_secret: str, keystore
         if authenticator_user_or_none:
             raise KeystoreAlreadyExists("Authenticator %s already exists in sql storage" % keystore_uid)
 
-        public_authenticator = PublicAuthenticator.objects.create(
-            keystore_owner=keystore_owner, keystore_uid=keystore_uid)
+        public_authenticator = PublicAuthenticator.objects.create(keystore_owner=keystore_owner, keystore_uid=keystore_uid)
         public_authenticator.set_keystore_secret(keystore_secret)
         public_authenticator.save()
         for public_key in public_keys:
@@ -55,7 +54,7 @@ def set_public_authenticator(keystore_owner: str, keystore_secret: str, keystore
 
 
 def submit_decryption_request(keystore_uid: uuid.UUID, requester_uid: uuid.UUID, description: str,
-                              response_public_key: bytes,
+                              response_public_key: bytes, response_keychain_uid: uuid.UUID, response_key_algo: str,
                               symkeys_data_to_decrypt: list):
     # symkey_decryption: liste de dict qui ont chacun des champs symkey_ciphertext, key_algo et keychain_uid
     # Tester le cas où les symkeys n'existe pas dans le depôt distant
@@ -69,6 +68,8 @@ def submit_decryption_request(keystore_uid: uuid.UUID, requester_uid: uuid.UUID,
             "requester_uid": requester_uid,
             "description": description,
             "response_public_key": response_public_key,
+            "response_keychain_uid": response_keychain_uid,
+            "response_key_algo": response_key_algo,
             "symkeys_data_to_decrypt": symkeys_data_to_decrypt
         }
 
@@ -84,7 +85,9 @@ def submit_decryption_request(keystore_uid: uuid.UUID, requester_uid: uuid.UUID,
         decryption_request = DecryptionRequest.objects.create(public_authenticator=public_authenticator,
                                                               requester_uid=requester_uid,
                                                               description=description,
-                                                              response_public_key=response_public_key)
+                                                              response_public_key=response_public_key,
+                                                              response_keychain_uid=response_keychain_uid,
+                                                              response_key_algo=response_key_algo)
 
         for symkey_data_to_decrypt in symkeys_data_to_decrypt:
             # TODO vérifier que la clé à déchiffrer est présent dans authenticator_public_keys
@@ -107,8 +110,7 @@ def list_wadevice_decryption_requests(requester_uid: uuid.UUID):
 
         decryption_resquest_by_requester_uid = DecryptionRequest.objects.filter(requester_uid=requester_uid)
         if not decryption_resquest_by_requester_uid:
-            raise ExistenceError(
-                "Requester uid %s does not have a decryption requests" % requester_uid)  # TODO Change this exception
+            raise ExistenceError("Requester uid %s does not have a decryption requests" % requester_uid)  # TODO Change this exception
 
         return DecryptionRequestSerializer(decryption_resquest_by_requester_uid, many=True).data
 
@@ -169,9 +171,11 @@ SCHEMA_OF_DECRYTION_RESQUEST_INPUT_PARAMETERS = Schema({
     "requester_uid": micro_schema.schema_uid,
     "description": And(str, len),
     "response_public_key": micro_schema.schema_binary,
+    "response_keychain_uid": micro_schema.schema_uid,
+    "response_key_algo": Or(*SUPPORTED_CIPHER_ALGOS),
     "symkeys_data_to_decrypt": [{
-        'cryptainer_uid': micro_schema.schema_uid,
-        'cryptainer_metadata': dict,
+        "cryptainer_uid": micro_schema.schema_uid,
+        "cryptainer_metadata": dict,
         "symkey_ciphertext": micro_schema.schema_binary,
         "keychain_uid": micro_schema.schema_uid,
         "key_algo": Or(*SUPPORTED_CIPHER_ALGOS),

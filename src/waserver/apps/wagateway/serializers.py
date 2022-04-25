@@ -68,8 +68,8 @@ class DecryptionRequestSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = DecryptionRequest
-        fields = ['public_authenticator', 'decryption_request_uid', 'requester_uid', 'description', 'response_public_key', 'request_status',
-                  'symkeys_decryption']
+        fields = ['public_authenticator', 'decryption_request_uid', 'requester_uid', 'description', 'response_public_key',
+                  'response_keychain_uid', 'response_key_algo', 'request_status', 'symkeys_decryption']
 
 
 
