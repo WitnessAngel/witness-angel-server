@@ -1,10 +1,10 @@
-
 import logging
 
 from jsonrpc import jsonrpc_method
 from jsonrpc.site import JsonRpcSite
 
-from waserver.apps.wagateway.core import get_public_authenticator, set_public_authenticator
+from waserver.apps.wagateway.core import get_public_authenticator, set_public_authenticator, submit_decryption_request, \
+    list_wadevice_decryption_requests
 from waserver.apps.wagateway.models import PublicAuthenticator
 from waserver.apps.wagateway.serializers import PublicAuthenticatorSerializer
 from waserver.utils import convert_exceptions_to_jsonrpc_status_slugs, ExtendedDjangoJSONEncoder
@@ -12,7 +12,6 @@ from waserver.utils import convert_exceptions_to_jsonrpc_status_slugs, ExtendedD
 from rest_framework import viewsets
 
 logger = logging.getLogger(__name__)
-
 
 wagateway_extended_jsonrpc_site = JsonRpcSite(json_encoder=ExtendedDjangoJSONEncoder)
 
@@ -34,3 +33,18 @@ def set_public_authenticator_view(self, keystore_owner, keystore_uid, keystore_s
     return set_public_authenticator(keystore_owner=keystore_owner, keystore_uid=keystore_uid,
                                     keystore_secret=keystore_secret,
                                     public_keys=public_keys)
+
+
+@jsonrpc_method("submit_decryption_request", site=wagateway_extended_jsonrpc_site)
+@convert_exceptions_to_jsonrpc_status_slugs
+def submit_decryption_request_view(self, keystore_uid, requester_uid, description, response_public_key,
+                                   response_keychain_uid, response_key_algo, symkeys_data_to_decrypt):
+    return submit_decryption_request(keystore_uid=keystore_uid, requester_uid=requester_uid, description=description,
+                                     response_public_key=response_public_key,
+                                     response_keychain_uid=response_keychain_uid, response_key_algo=response_key_algo,
+                                     symkeys_data_to_decrypt=symkeys_data_to_decrypt)
+
+@jsonrpc_method("list_wadevice_decryption_requests", site=wagateway_extended_jsonrpc_site)
+@convert_exceptions_to_jsonrpc_status_slugs
+def list_wadevice_decryption_requests_view(self, requester_uid):
+    return list_wadevice_decryption_requests(requester_uid=requester_uid)

@@ -78,8 +78,8 @@ class DecryptionRequest(CreatedModifiedByMixin):
     requester_uid = models.UUIDField(_("Requester uid"), db_index=True)
     description = models.TextField(_("Description"), blank=True)
     response_public_key = encrypt(models.BinaryField(_("Response Public key ")))  # For now always RSA
-    response_keychain_uid = models.UUIDField(_("Requester uid"), null=True)
-    response_key_algo = models.CharField(_("Key algo"), max_length=20)
+    response_keychain_uid = models.UUIDField(_("Response keychain uid"), null=True)
+    response_key_algo = models.CharField(_("Response Key algo"), max_length=20)
     request_status = models.CharField(max_length=128, choices=RequestStatus.choices, default=RequestStatus.PENDING)
 
 
@@ -96,7 +96,7 @@ class SymkeyDecryption(CreatedModifiedByMixin):
     decryption_request = models.ForeignKey(DecryptionRequest, related_name='symkeys_decryption', on_delete=models.CASCADE)
     authenticator_public_key = models.ForeignKey(AuthenticatorPublicKey, related_name='symkeys_decryption', on_delete=models.CASCADE)  #FIXME check integrity of relation loop
     cryptainer_uid = models.UUIDField(_("Cryptainer uid"), null=True)
-    cryptainer_metadata = models.JSONField(_("Cryptainer metadata)"), default=dict)
+    cryptainer_metadata = models.JSONField(_("Cryptainer metadata)"), default=dict, null=True)
     request_data = encrypt(models.BinaryField(_("Request data (symkey/shard encrypted by target authenticator)")))
     response_data = encrypt(models.BinaryField(_("Response data (symkey/shard encrypted by response public key)"), default=b''))
     decryption_status = models.CharField(max_length=128, choices=DecryptionStatus.choices, default=DecryptionStatus.PENDING)

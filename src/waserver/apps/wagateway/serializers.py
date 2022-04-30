@@ -62,6 +62,8 @@ class SymkeyDecryptionSerializer(serializers.ModelSerializer):
 
 class DecryptionRequestSerializer(serializers.ModelSerializer):
     requester_uid = TransparentRepresentationUUIDField()
+    decryption_request_uid = TransparentRepresentationUUIDField()
+    response_keychain_uid = TransparentRepresentationUUIDField()
     response_public_key = BinaryField()
     symkeys_decryption = SymkeyDecryptionSerializer(many=True, read_only=True)
     public_authenticator = PublicAuthenticatorSerializer(read_only=True)
