@@ -8,7 +8,7 @@ from wacryptolib.exceptions import SchemaValidationError, KeystoreAlreadyExists,
     KeyDoesNotExist, ExistenceError
 from wacryptolib.utilities import get_validation_micro_schemas
 from waserver.apps.wagateway.models import PublicAuthenticator, AuthenticatorPublicKey, DecryptionRequest, \
-    SymkeyDecryption, RequestStatus
+    SymkeyDecryption, RequestStatus, DecryptionStatus
 
 from waserver.apps.wagateway.serializers import PublicAuthenticatorSerializer, DecryptionRequestSerializer, \
     AuthenticatorPublicKeySerializer
@@ -145,11 +145,12 @@ def accept_decryption_request(decryption_request_uid,
     expected_keypair_identifiers = set()
     for symkey_decryption in symkey_decryptions:
         authenticator_public_key = symkey_decryption.authenticator_public_key
-        keypair_identifier = (authenticator_public_key.keychain_uid, authenticator_public_key.key_algo)
+        cryptainer_uid = symkey_decryption.cryptainer_uid
+        keypair_identifier = (cryptainer_uid, authenticator_public_key.keychain_uid, authenticator_public_key.key_algo)
         expected_keypair_identifiers.add(keypair_identifier)
 
     received_keypair_identifiers = set(
-        (symkey_decryption_result["keychain_uid"], symkey_decryption_result["key_algo"]) for symkey_decryption_result in
+        (symkey_decryption_result["cryptainer_uid"], symkey_decryption_result["keychain_uid"], symkey_decryption_result["key_algo"]) for symkey_decryption_result in
         symkey_decryptions_result)
 
     exceeding_keypair_identifiers_among_received = received_keypair_identifiers - expected_keypair_identifiers
@@ -164,9 +165,9 @@ def accept_decryption_request(decryption_request_uid,
 
         for symkey_decryption_result in symkey_decryptions_result:
 
-            if symkey_decryption.authenticator_public_key.keychain_uid == symkey_decryption_result["keychain_uid"]:
+            if symkey_decryption.cryptainer_uid == symkey_decryption_result["cryptainer_uid"]:
                 symkey_decryption.response_data = symkey_decryption_result["response_data"]
-                symkey_decryption.decryption_status = symkey_decryption_result["decryption_status"]
+                symkey_decryption.decryption_status = DecryptionStatus.DECRYPTED
                 symkey_decryption.save()
 
     DecryptionRequest.objects.filter(decryption_request_uid=decryption_request_uid).update(

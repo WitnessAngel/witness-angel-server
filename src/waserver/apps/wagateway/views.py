@@ -4,7 +4,8 @@ from jsonrpc import jsonrpc_method
 from jsonrpc.site import JsonRpcSite
 
 from waserver.apps.wagateway.core import get_public_authenticator, set_public_authenticator, submit_decryption_request, \
-    list_wadevice_decryption_requests
+    list_wadevice_decryption_requests, list_authenticator_decryption_requests, reject_decryption_request, \
+    accept_decryption_request
 from waserver.apps.wagateway.models import PublicAuthenticator
 from waserver.apps.wagateway.serializers import PublicAuthenticatorSerializer
 from waserver.utils import convert_exceptions_to_jsonrpc_status_slugs, ExtendedDjangoJSONEncoder
@@ -44,7 +45,27 @@ def submit_decryption_request_view(self, keystore_uid, requester_uid, descriptio
                                      response_keychain_uid=response_keychain_uid, response_key_algo=response_key_algo,
                                      symkeys_data_to_decrypt=symkeys_data_to_decrypt)
 
+
 @jsonrpc_method("list_wadevice_decryption_requests", site=wagateway_extended_jsonrpc_site)
 @convert_exceptions_to_jsonrpc_status_slugs
 def list_wadevice_decryption_requests_view(self, requester_uid):
     return list_wadevice_decryption_requests(requester_uid=requester_uid)
+
+
+@jsonrpc_method("list_authenticator_decryption_requests", site=wagateway_extended_jsonrpc_site)
+@convert_exceptions_to_jsonrpc_status_slugs
+def list_authenticator_decryption_requests_view(self, keystore_uid):
+    return list_authenticator_decryption_requests(keystore_uid=keystore_uid)
+
+
+@jsonrpc_method("reject_decryption_request", site=wagateway_extended_jsonrpc_site)
+@convert_exceptions_to_jsonrpc_status_slugs
+def reject_decryption_request_view(self, decryption_request_uid):
+    return reject_decryption_request(decryption_request_uid=decryption_request_uid)
+
+
+@jsonrpc_method("accept_decryption_request", site=wagateway_extended_jsonrpc_site)
+@convert_exceptions_to_jsonrpc_status_slugs
+def accept_decryption_request_view(self, decryption_request_uid, symkey_decryptions_result):
+    return accept_decryption_request(decryption_request_uid=decryption_request_uid, symkey_decryptions_result=symkey_decryptions_result)
+
