@@ -56,11 +56,7 @@ def set_public_authenticator(keystore_owner: str, keystore_secret: str, keystore
 def submit_decryption_request(keystore_uid: uuid.UUID, requester_uid: uuid.UUID, description: str,
                               response_public_key: bytes, response_keychain_uid: uuid.UUID, response_key_algo: str,
                               symkeys_data_to_decrypt: list):
-    # symkey_decryption: liste de dict qui ont chacun des champs symkey_ciphertext, key_algo et keychain_uid
-    # Tester le cas où les symkeys n'existe pas dans le depôt distant
-
-    # Todo valider le schema
-
+    # TODO Traiter le cas où les request_data des symkeys doivent être unique pour une même demande de dechiffrement
     with transaction.atomic():
 
         decryption_request_tree = {
@@ -74,7 +70,7 @@ def submit_decryption_request(keystore_uid: uuid.UUID, requester_uid: uuid.UUID,
         }
 
         validate_data_tree_with_pythonschema(data_tree=decryption_request_tree,
-                                             valid_schema=SCHEMA_OF_DECRYTION_RESQUEST_INPUT_PARAMETERS)
+                                             valid_schema=SCHEMA_OF_DECRYTION_REQUEST_INPUT_PARAMETERS)
 
         public_authenticator = PublicAuthenticator.objects.filter(keystore_uid=keystore_uid).first()
 
@@ -107,23 +103,23 @@ def submit_decryption_request(keystore_uid: uuid.UUID, requester_uid: uuid.UUID,
 
 
 def list_wadevice_decryption_requests(requester_uid: uuid.UUID):
-    decryption_resquest_by_requester_uid = DecryptionRequest.objects.filter(requester_uid=requester_uid)
-    if not decryption_resquest_by_requester_uid:
+    decryption_request_by_requester_uid = DecryptionRequest.objects.filter(requester_uid=requester_uid)
+    if not decryption_request_by_requester_uid:
         raise ExistenceError(
             "Requester uid %s does not have a decryption requests" % requester_uid)  # TODO Change this exception
 
-    return DecryptionRequestSerializer(decryption_resquest_by_requester_uid, many=True).data
+    return DecryptionRequestSerializer(decryption_request_by_requester_uid, many=True).data
 
 
 def list_authenticator_decryption_requests(
         keystore_uid: uuid.UUID):  # Appelé par authentifieur, authentifié via keystore_secret
 
-    decryption_resquest_by_keystore_uid = DecryptionRequest.objects.filter(
+    decryption_request_by_keystore_uid = DecryptionRequest.objects.filter(
         public_authenticator__keystore_uid=keystore_uid)
-    if not decryption_resquest_by_keystore_uid:
+    if not decryption_request_by_keystore_uid:
         raise ExistenceError(
             "No decryption request concerns %s authenticator" % keystore_uid)  # TODO Change this exception
-    return DecryptionRequestSerializer(decryption_resquest_by_keystore_uid, many=True).data
+    return DecryptionRequestSerializer(decryption_request_by_keystore_uid, many=True).data
 
 
 def reject_decryption_request(
@@ -136,38 +132,34 @@ def reject_decryption_request(
     decryption_request.save()
 
 
-def accept_decryption_request(decryption_request_uid,
-                              symkey_decryptions_result: list):  # Appelé par authentifieur, authentifié via keystore_secret
+def accept_decryption_request(decryption_request_uid, symkey_decryption_results: list):  # Appelé par authentifieur, authentifié via keystore_secret
 
     symkey_decryptions = SymkeyDecryption.objects.filter(
         decryption_request__decryption_request_uid=decryption_request_uid)
 
-    expected_keypair_identifiers = set()
+    expected_request_data = set()
     for symkey_decryption in symkey_decryptions:
-        authenticator_public_key = symkey_decryption.authenticator_public_key
-        cryptainer_uid = symkey_decryption.cryptainer_uid
-        keypair_identifier = (cryptainer_uid, authenticator_public_key.keychain_uid, authenticator_public_key.key_algo)
-        expected_keypair_identifiers.add(keypair_identifier)
+        request_data = symkey_decryption.request_data
+        expected_request_data.add(request_data)
 
-    received_keypair_identifiers = set(
-        (symkey_decryption_result["cryptainer_uid"], symkey_decryption_result["keychain_uid"], symkey_decryption_result["key_algo"]) for symkey_decryption_result in
-        symkey_decryptions_result)
+    received_request_data = set(symkey_decryption_result["request_data"] for symkey_decryption_result in symkey_decryption_results)
 
-    exceeding_keypair_identifiers_among_received = received_keypair_identifiers - expected_keypair_identifiers
-    missing_keypair_identifiers_among_received = expected_keypair_identifiers - received_keypair_identifiers
+    exceeding_request_data_among_received = received_request_data - expected_request_data
+    missing_request_data_among_received = expected_request_data - received_request_data
 
-    if exceeding_keypair_identifiers_among_received or missing_keypair_identifiers_among_received:
-        raise ExistenceError("Difference between expected and received keys, %s does not exist in expected keys and "
-                             "%s is expected but not received ", exceeding_keypair_identifiers_among_received,
-                             missing_keypair_identifiers_among_received)
+    if exceeding_request_data_among_received or missing_request_data_among_received:
+        raise ExistenceError("Difference between expected and received request data, %s does not exist in expected "
+                             "request data and %s is expected but not received ",
+                             exceeding_request_data_among_received,
+                             missing_request_data_among_received)
 
     for symkey_decryption in symkey_decryptions:
 
-        for symkey_decryption_result in symkey_decryptions_result:
+        for symkey_decryption_result in symkey_decryption_results:
 
-            if symkey_decryption.cryptainer_uid == symkey_decryption_result["cryptainer_uid"]:
+            if symkey_decryption.request_data == symkey_decryption_result["request_data"]:
                 symkey_decryption.response_data = symkey_decryption_result["response_data"]
-                symkey_decryption.decryption_status = DecryptionStatus.DECRYPTED
+                symkey_decryption.decryption_status = symkey_decryption_result["decryption_status"]
                 symkey_decryption.save()
 
     DecryptionRequest.objects.filter(decryption_request_uid=decryption_request_uid).update(
@@ -176,7 +168,7 @@ def accept_decryption_request(decryption_request_uid,
 
 micro_schema = get_validation_micro_schemas(extended_json_format=False)
 
-SCHEMA_OF_DECRYTION_RESQUEST_INPUT_PARAMETERS = Schema({
+SCHEMA_OF_DECRYTION_REQUEST_INPUT_PARAMETERS = Schema({
     "keystore_uid": micro_schema.schema_uid,
     "requester_uid": micro_schema.schema_uid,
     "description": And(str, len),
