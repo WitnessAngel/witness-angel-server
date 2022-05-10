@@ -87,7 +87,7 @@ class DecryptionStatus(models.TextChoices):
     DECRYPTED = 'DECRYPTED', _('DECRYPTED')
     PRIVATE_KEY_MISSING = 'PRIVATE KEY MISSING', _('PRIVATE KEY MISSING')
     CORRUPTED = 'CORRUPTED', _('CORRUPTED')
-    MISMATCH = 'MISMATCH', _('MISMATCH')
+    MISMATCH = 'MISMATCH', _('MISMATCH')  # METADATA MISMATCH
     PENDING = 'PENDING', _('PENDING')
 
 
@@ -100,3 +100,4 @@ class SymkeyDecryption(CreatedModifiedByMixin):
     request_data = encrypt(models.BinaryField(_("Request data (symkey/shard encrypted by target authenticator)")))
     response_data = encrypt(models.BinaryField(_("Response data (symkey/shard encrypted by response public key)"), default=b''))
     decryption_status = models.CharField(max_length=128, choices=DecryptionStatus.choices, default=DecryptionStatus.PENDING)
+    unique_together = ('decryption_request', 'request_data',)
