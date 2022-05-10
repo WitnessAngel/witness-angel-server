@@ -66,6 +66,6 @@ def reject_decryption_request_view(self, decryption_request_uid):
 
 @jsonrpc_method("accept_decryption_request", site=wagateway_extended_jsonrpc_site)
 @convert_exceptions_to_jsonrpc_status_slugs
-def accept_decryption_request_view(self, decryption_request_uid, symkey_decryptions_result):
-    return accept_decryption_request(decryption_request_uid=decryption_request_uid, symkey_decryptions_result=symkey_decryptions_result)
+def accept_decryption_request_view(self, decryption_request_uid, symkey_decryption_results):
+    return accept_decryption_request(decryption_request_uid=decryption_request_uid, symkey_decryption_results=symkey_decryption_results)
 
