@@ -14,6 +14,10 @@ from waserver.apps.wagateway.serializers import PublicAuthenticatorSerializer, D
     AuthenticatorPublicKeySerializer
 
 
+class PermissionAuthenticatorError(ExistenceError):  # TODO Put this in wacryptolib
+    pass
+
+
 def get_public_authenticator(keystore_uid, keystore_secret=None):
     try:
         authenticator_user = PublicAuthenticator.objects.get(keystore_uid=keystore_uid)
@@ -111,38 +115,63 @@ def list_wadevice_decryption_requests(requester_uid: uuid.UUID):
     return DecryptionRequestSerializer(decryption_request_by_requester_uid, many=True).data
 
 
-def list_authenticator_decryption_requests(
-        keystore_uid: uuid.UUID):  # Appelé par authentifieur, authentifié via keystore_secret
+def list_authenticator_decryption_requests(keystore_uid: uuid.UUID,
+                                           keystore_secret: str):  # Appelé par authentifieur, authentifié via keystore_secret
 
     decryption_request_by_keystore_uid = DecryptionRequest.objects.filter(
         public_authenticator__keystore_uid=keystore_uid)
     if not decryption_request_by_keystore_uid:
         raise ExistenceError(
             "No decryption request concerns %s authenticator" % keystore_uid)  # TODO Change this exception
+
+    public_authenticator = PublicAuthenticator.objects.filter(keystore_uid=keystore_uid).first()
+    password_is_correct = public_authenticator.check_keystore_secret(keystore_secret)
+    if not password_is_correct:
+        raise PermissionAuthenticatorError("The keystore secret of authenticator is not correct")
+
     return DecryptionRequestSerializer(decryption_request_by_keystore_uid, many=True).data
 
 
-def reject_decryption_request(
-        decryption_request_uid: uuid.UUID):  # Appelé par authentifieur, authentifié via keystore_secret
+def reject_decryption_request(keystore_secret: str,
+                              decryption_request_uid: uuid.UUID):  # Appelé par authentifieur, authentifié via keystore_secret
+
     decryption_request = DecryptionRequest.objects.filter(decryption_request_uid=decryption_request_uid).first()
+
     if not decryption_request:
         raise ExistenceError(
             "Decryption request %s does not exist" % decryption_request_uid)  # TODO Change this exception
+
+    public_authenticator = decryption_request.public_authenticator
+    password_is_correct = public_authenticator.check_keystore_secret(keystore_secret)
+    if not password_is_correct:
+        raise PermissionAuthenticatorError("The keystore secret of authenticator is not correct")
+
     decryption_request.request_status = RequestStatus.REJECTED
     decryption_request.save()
 
 
-def accept_decryption_request(decryption_request_uid, symkey_decryption_results: list):  # Appelé par authentifieur, authentifié via keystore_secret
+def accept_decryption_request(keystore_secret: str, decryption_request_uid,
+                              symkey_decryption_results: list):  # Appelé par authentifieur, authentifié via keystore_secret
 
     symkey_decryptions = SymkeyDecryption.objects.filter(
         decryption_request__decryption_request_uid=decryption_request_uid)
 
+    if not symkey_decryptions:
+        raise ExistenceError("Decryption request %s does not exist", decryption_request_uid)
+
+    public_authenticator = symkey_decryptions[0].decryption_request.public_authenticator
+    password_is_correct = public_authenticator.check_keystore_secret(keystore_secret)
+    if not password_is_correct:
+        raise PermissionAuthenticatorError("The keystore secret of authenticator is not correct")
+
     expected_request_data = set()
+
     for symkey_decryption in symkey_decryptions:
         request_data = symkey_decryption.request_data
         expected_request_data.add(request_data)
 
-    received_request_data = set(symkey_decryption_result["request_data"] for symkey_decryption_result in symkey_decryption_results)
+    received_request_data = set(
+        symkey_decryption_result["request_data"] for symkey_decryption_result in symkey_decryption_results)
 
     exceeding_request_data_among_received = received_request_data - expected_request_data
     missing_request_data_among_received = expected_request_data - received_request_data

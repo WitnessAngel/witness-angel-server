@@ -54,18 +54,18 @@ def list_wadevice_decryption_requests_view(self, requester_uid):
 
 @jsonrpc_method("list_authenticator_decryption_requests", site=wagateway_extended_jsonrpc_site)
 @convert_exceptions_to_jsonrpc_status_slugs
-def list_authenticator_decryption_requests_view(self, keystore_uid):
-    return list_authenticator_decryption_requests(keystore_uid=keystore_uid)
+def list_authenticator_decryption_requests_view(self, keystore_uid, keystore_secret):
+    return list_authenticator_decryption_requests(keystore_uid=keystore_uid, keystore_secret=keystore_secret)
 
 
 @jsonrpc_method("reject_decryption_request", site=wagateway_extended_jsonrpc_site)
 @convert_exceptions_to_jsonrpc_status_slugs
-def reject_decryption_request_view(self, decryption_request_uid):
-    return reject_decryption_request(decryption_request_uid=decryption_request_uid)
+def reject_decryption_request_view(self, keystore_secret, decryption_request_uid):
+    return reject_decryption_request(keystore_secret=keystore_secret, decryption_request_uid=decryption_request_uid)
 
 
 @jsonrpc_method("accept_decryption_request", site=wagateway_extended_jsonrpc_site)
 @convert_exceptions_to_jsonrpc_status_slugs
-def accept_decryption_request_view(self, decryption_request_uid, symkey_decryption_results):
-    return accept_decryption_request(decryption_request_uid=decryption_request_uid, symkey_decryption_results=symkey_decryption_results)
+def accept_decryption_request_view(self, keystore_secret, decryption_request_uid, symkey_decryption_results):
+    return accept_decryption_request(keystore_secret=keystore_secret, decryption_request_uid=decryption_request_uid, symkey_decryption_results=symkey_decryption_results)
 
