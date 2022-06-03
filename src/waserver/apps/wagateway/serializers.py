@@ -65,7 +65,7 @@ class DecryptionRequestSerializer(serializers.ModelSerializer):
     decryption_request_uid = TransparentRepresentationUUIDField()
     response_keychain_uid = TransparentRepresentationUUIDField()
     response_public_key = BinaryField()
-    symkeys_decryption = SymkeyDecryptionSerializer(many=True, read_only=True)
+    symkeys_decryption = SymkeyDecryptionSerializer(many=True, read_only=True)  # FIXME wrong plural location
     public_authenticator = PublicAuthenticatorSerializer(read_only=True)
 
     class Meta:

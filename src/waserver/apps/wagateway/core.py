@@ -14,6 +14,7 @@ from waserver.apps.wagateway.serializers import PublicAuthenticatorSerializer, D
     AuthenticatorPublicKeySerializer
 
 
+# FIXME WEIRD NAME
 class PermissionAuthenticatorError(ExistenceError):  # TODO Put this in wacryptolib
     pass
 
@@ -23,7 +24,7 @@ def get_public_authenticator(keystore_uid, keystore_secret=None):
         authenticator_user = PublicAuthenticator.objects.get(keystore_uid=keystore_uid)
         if keystore_secret:
             if keystore_secret != authenticator_user.keystore_secret:
-                raise RuntimeError("Wrong authenticator secret")
+                raise RuntimeError("Wrong authenticator secret")  # FIXME raise better permission error
         return PublicAuthenticatorSerializer(authenticator_user).data
     except PublicAuthenticator.DoesNotExist:
         raise KeystoreDoesNotExist("Authenticator User does not exist")  # TODO change this exception error
@@ -47,7 +48,7 @@ def set_public_authenticator(keystore_owner: str, keystore_secret: str, keystore
         if authenticator_user_or_none:
             raise KeystoreAlreadyExists("Authenticator %s already exists in sql storage" % keystore_uid)
 
-        public_authenticator = PublicAuthenticator.objects.create(keystore_owner=keystore_owner, keystore_uid=keystore_uid)
+        public_authenticator = PublicAuthenticator(keystore_owner=keystore_owner, keystore_uid=keystore_uid)
         public_authenticator.set_keystore_secret(keystore_secret)
         public_authenticator.save()
         for public_key in public_keys:
@@ -60,7 +61,7 @@ def set_public_authenticator(keystore_owner: str, keystore_secret: str, keystore
 def submit_decryption_request(keystore_uid: uuid.UUID, requester_uid: uuid.UUID, description: str,
                               response_public_key: bytes, response_keychain_uid: uuid.UUID, response_key_algo: str,
                               symkeys_data_to_decrypt: list):
-    # TODO Traiter le cas où les request_data des symkeys doivent être unique pour une même demande de dechiffrement
+    # TODO Traiter le cas où les request_data des symkeys doivent être uniques pour une même demande de dechiffrement
     with transaction.atomic():
 
         decryption_request_tree = {
@@ -115,19 +116,20 @@ def list_wadevice_decryption_requests(requester_uid: uuid.UUID):
     return DecryptionRequestSerializer(decryption_request_by_requester_uid, many=True).data
 
 
-def list_authenticator_decryption_requests(keystore_uid: uuid.UUID,
-                                           keystore_secret: str):  # Appelé par authentifieur, authentifié via keystore_secret
+def list_authenticator_decryption_requests(keystore_uid: uuid.UUID,  # FIXMe rename to authenticator_keystore_uid and authenticator_keystore_secret ?
+                                           keystore_secret: str):  # Appelé par authentifieur, authentifié via keystore_secret  # FIXME english comments only
 
-    decryption_request_by_keystore_uid = DecryptionRequest.objects.filter(
+    decryption_request_by_keystore_uid = DecryptionRequest.objects.filter(  # Rename -> decryption_requests_for_keystore_uid
         public_authenticator__keystore_uid=keystore_uid)
-    if not decryption_request_by_keystore_uid:
+    if not decryption_request_by_keystore_uid:  # FIXME wrong, it must be e.g. xxx.count()
         raise ExistenceError(
             "No decryption request concerns %s authenticator" % keystore_uid)  # TODO Change this exception
 
-    public_authenticator = PublicAuthenticator.objects.filter(keystore_uid=keystore_uid).first()
+    # FIXME do that permission check FIRST, before any other work
+    public_authenticator = PublicAuthenticator.objects.filter(keystore_uid=keystore_uid).first()  # FIXME use .get() because UNICITY
     password_is_correct = public_authenticator.check_keystore_secret(keystore_secret)
     if not password_is_correct:
-        raise PermissionAuthenticatorError("The keystore secret of authenticator is not correct")
+        raise PermissionAuthenticatorError("The provided keystore secret is not correct for target authenticator")
 
     return DecryptionRequestSerializer(decryption_request_by_keystore_uid, many=True).data
 
@@ -141,6 +143,7 @@ def reject_decryption_request(keystore_secret: str,
         raise ExistenceError(
             "Decryption request %s does not exist" % decryption_request_uid)  # TODO Change this exception
 
+    # FIXME DUPLICATED CODE - not ok, factorize that with above
     public_authenticator = decryption_request.public_authenticator
     password_is_correct = public_authenticator.check_keystore_secret(keystore_secret)
     if not password_is_correct:
@@ -151,7 +154,7 @@ def reject_decryption_request(keystore_secret: str,
 
 
 def accept_decryption_request(keystore_secret: str, decryption_request_uid,
-                              symkey_decryption_results: list):  # Appelé par authentifieur, authentifié via keystore_secret
+                              symkey_decryption_results: list):  # Appelé par authentifieur, authentifié via keystore_secret  # FIXME english
 
     symkey_decryptions = SymkeyDecryption.objects.filter(
         decryption_request__decryption_request_uid=decryption_request_uid)
@@ -159,6 +162,7 @@ def accept_decryption_request(keystore_secret: str, decryption_request_uid,
     if not symkey_decryptions:
         raise ExistenceError("Decryption request %s does not exist", decryption_request_uid)
 
+    # FIXME DUPLICATED CODE - not ok, factorize that with above TOO
     public_authenticator = symkey_decryptions[0].decryption_request.public_authenticator
     password_is_correct = public_authenticator.check_keystore_secret(keystore_secret)
     if not password_is_correct:

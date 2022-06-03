@@ -1,6 +1,5 @@
 from django.contrib import admin
 from django.db.models import Count
-#from django.contrib.admin import display
 
 from .models import PublicAuthenticator, AuthenticatorPublicKey, SymkeyDecryption, DecryptionRequest
 
@@ -17,15 +16,11 @@ class AuthenticatorPublicKeyInline(admin.StackedInline):
 
 
 class PublicAuthenticatorAdmin(admin.ModelAdmin):
-    list_display = ["keystore_owner", "keystore_uid", "public_key_count", "created_at"] ##, "created_at"]
-    #list_filter = ['']
-    #changelist_links = ['projects']
-    #change_links = ["public_keys"]
+    list_display = ["keystore_owner", "keystore_uid", "public_key_count", "created_at"]
     inlines = [AuthenticatorPublicKeyInline]
     readonly_fields = ["created_at"]
     ordering = ["-pk"]
 
-    #@display(description='Public keys')
     def public_key_count(self, obj):
         return obj.public_key_count
 
@@ -37,11 +32,7 @@ class PublicAuthenticatorAdmin(admin.ModelAdmin):
 
 admin.site.register(PublicAuthenticator, PublicAuthenticatorAdmin)
 
-#admin.site.register(AuthenticatorPublicKey)  # Not needed
 admin.site.register(DecryptionRequest)
 admin.site.register(SymkeyDecryption)
-
-
-
 
 

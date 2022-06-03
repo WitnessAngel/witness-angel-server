@@ -85,7 +85,7 @@ def test_jsonrpc_set_and_get_public_authenticator(live_server):
     validate_data_tree_with_pythonschema(public_authenticator, PUBLIC_AUTHENTICATOR_SCHEMA)
 
 
-def test_rest_api_get_public_authenticator(live_server):
+def __NOPE_DISABLED_NOW_test_rest_api_get_public_authenticator(live_server):
     parameters = _generate_authenticator_parameter_tree(2, key_value="aé$£é&ö".encode("utf8"))
 
     set_public_authenticator_view(None,
@@ -128,7 +128,7 @@ def test_decryption_request(live_server):
 
     key_algo = "RSA_OAEP"
 
-    # Vérifie que les public authenticator n'existe pas sur le server
+    # Vérifie que les public authenticator n'existe pas sur le server  # FIXME - ENGLISH
     with pytest.raises(KeystoreDoesNotExist):
         gateway_proxy.get_public_authenticator(keystore_uid=parameters1["keystore_uid"])
 
@@ -153,7 +153,7 @@ def test_decryption_request(live_server):
     public_authenticators.append(public_authenticator1)
     public_authenticators.append(public_authenticator2)
 
-    # Créer la response keypair
+    # Créer la response keypair    # FIXME - ENGLISH etc.
     response_keypair = generate_keypair(key_algo=key_algo)
 
     # Créer la symkey
