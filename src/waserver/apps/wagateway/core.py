@@ -24,7 +24,7 @@ def get_public_authenticator(keystore_uid, keystore_secret=None):
         authenticator_user = PublicAuthenticator.objects.get(keystore_uid=keystore_uid)
         if keystore_secret:
             if keystore_secret != authenticator_user.keystore_secret:
-                raise RuntimeError("Wrong authenticator secret")  # FIXME raise better permission error
+                raise PermissionAuthenticatorError("Wrong authenticator secret")  # FIXME raise better permission error OK
         return PublicAuthenticatorSerializer(authenticator_user).data
     except PublicAuthenticator.DoesNotExist:
         raise KeystoreDoesNotExist("Authenticator User does not exist")  # TODO change this exception error
