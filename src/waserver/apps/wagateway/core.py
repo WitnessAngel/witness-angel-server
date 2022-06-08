@@ -19,6 +19,10 @@ class PermissionAuthenticatorError(ExistenceError):  # TODO Put this in wacrypto
     pass
 
 
+class AuthenticatorDoesNotExist(ExistenceError):  # TODO Put this in wacryptolib
+    pass
+
+
 def get_public_authenticator(keystore_uid, keystore_secret=None):
     try:
         authenticator_user = PublicAuthenticator.objects.get(keystore_uid=keystore_uid)
@@ -98,7 +102,8 @@ def submit_decryption_request(keystore_uid: uuid.UUID, requester_uid: uuid.UUID,
                     keychain_uid=symkey_data_to_decrypt['keychain_uid'], key_algo=symkey_data_to_decrypt['key_algo'])
             except AuthenticatorPublicKey.DoesNotExist:
                 raise KeyDoesNotExist(
-                    "Public key %s does not exists in key storage in %s authenticator" %(symkey_data_to_decrypt['keychain_uid'], keystore_uid))
+                    "Public key %s does not exists in key storage in %s authenticator" % (
+                    symkey_data_to_decrypt['keychain_uid'], keystore_uid))
 
             SymkeyDecryption.objects.create(decryption_request=decryption_request,
                                             cryptainer_uid=symkey_data_to_decrypt["cryptainer_uid"],
@@ -116,17 +121,20 @@ def list_wadevice_decryption_requests(requester_uid: uuid.UUID):
     return DecryptionRequestSerializer(decryption_request_by_requester_uid, many=True).data
 
 
-def list_authenticator_decryption_requests(keystore_uid: uuid.UUID,  # FIXMe rename to authenticator_keystore_uid and authenticator_keystore_secret ?
+def list_authenticator_decryption_requests(keystore_uid: uuid.UUID,
+                                           # FIXMe rename to authenticator_keystore_uid and authenticator_keystore_secret ?
                                            keystore_secret: str):  # Appelé par authentifieur, authentifié via keystore_secret  # FIXME english comments only
 
-    decryption_request_by_keystore_uid = DecryptionRequest.objects.filter(  # Rename -> decryption_requests_for_keystore_uid
+    decryption_request_by_keystore_uid = DecryptionRequest.objects.filter(
+        # Rename -> decryption_requests_for_keystore_uid
         public_authenticator__keystore_uid=keystore_uid)
     if not decryption_request_by_keystore_uid:  # FIXME wrong, it must be e.g. xxx.count()
         raise ExistenceError(
             "No decryption request concerns %s authenticator" % keystore_uid)  # TODO Change this exception
 
     # FIXME do that permission check FIRST, before any other work
-    public_authenticator = PublicAuthenticator.objects.filter(keystore_uid=keystore_uid).first()  # FIXME use .get() because UNICITY
+    public_authenticator = PublicAuthenticator.objects.filter(
+        keystore_uid=keystore_uid).first()  # FIXME use .get() because UNICITY
     password_is_correct = public_authenticator.check_keystore_secret(keystore_secret)
     if not password_is_correct:
         raise PermissionAuthenticatorError("The provided keystore secret is not correct for target authenticator")
