@@ -84,8 +84,8 @@ def submit_decryption_request(keystore_uid: uuid.UUID, requester_uid: uuid.UUID,
         public_authenticator = PublicAuthenticator.objects.filter(keystore_uid=keystore_uid).first()
 
         if not public_authenticator:
-            raise KeystoreDoesNotExist(
-                "Authenticator %s does not exists in sql storage" % keystore_uid)  # TODO Create AuthenticatorDoesNotEXIST
+            raise AuthenticatorDoesNotExist("Authenticator %s does not exists in sql storage" % keystore_uid)
+            # TODO Create AuthenticatorDoesNotEXIST
 
         decryption_request = DecryptionRequest.objects.create(public_authenticator=public_authenticator,
                                                               requester_uid=requester_uid,
