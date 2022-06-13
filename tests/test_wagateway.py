@@ -11,11 +11,11 @@ from wacryptolib.exceptions import KeystoreDoesNotExist, KeystoreAlreadyExists, 
 from wacryptolib.jsonrpc_client import JsonRpcProxy, status_slugs_response_error_handler
 from wacryptolib.keygen import generate_symkey, generate_keypair, load_asymmetric_key_from_pem_bytestring
 from wacryptolib.utilities import generate_uuid0
-from waserver.apps.wagateway.core import submit_decryption_request, \
-    list_wadevice_decryption_requests, validate_data_tree_with_pythonschema, PUBLIC_AUTHENTICATOR_SCHEMA, \
-    list_authenticator_decryption_requests, reject_decryption_request, accept_decryption_request, \
-    PermissionAuthenticatorError
-from waserver.apps.wagateway.models import PublicAuthenticator, RequestStatus, DecryptionStatus
+from waserver.apps.wagateway.core import validate_data_tree_with_pythonschema, PUBLIC_AUTHENTICATOR_SCHEMA, \
+    PermissionAuthenticatorError, submit_revelation_request, list_wadevice_revelation_requests, \
+    list_authenticator_revelation_requests, reject_revelation_request, accept_revelation_request, \
+    AuthenticatorDoesNotExist
+from waserver.apps.wagateway.models import PublicAuthenticator, RevelationRequestStatus, DecryptionStatus
 
 from waserver.apps.wagateway.views import set_public_authenticator_view
 
@@ -48,7 +48,7 @@ def test_jsonrpc_set_and_get_public_authenticator(live_server):
 
     parameters = _generate_authenticator_parameter_tree(2)
 
-    with pytest.raises(KeystoreDoesNotExist):
+    with pytest.raises(ExistenceError): # TODO replace with AuthenticatorDoesNotExist
         gateway_proxy.get_public_authenticator(keystore_uid=parameters["keystore_uid"])
 
     gateway_proxy.set_public_authenticator(keystore_uid=parameters["keystore_uid"],
@@ -116,7 +116,7 @@ def __NOPE_DISABLED_NOW_test_rest_api_get_public_authenticator(live_server):
                                                      'key_value': 'YcOpJMKjw6kmw7Y='}]}
 
 
-def test_decryption_request(live_server):
+def test_revelation_request(live_server):
     jsonrpc_url = live_server.url + "/gateway/jsonrpc/"
 
     gateway_proxy = JsonRpcProxy(
@@ -128,14 +128,14 @@ def test_decryption_request(live_server):
 
     key_algo = "RSA_OAEP"
 
-    # Vérifie que les public authenticator n'existe pas sur le server  # FIXME - ENGLISH
-    with pytest.raises(KeystoreDoesNotExist):
+    # Check that the public authenticator does not exist on the server
+    with pytest.raises(ExistenceError):
         gateway_proxy.get_public_authenticator(keystore_uid=parameters1["keystore_uid"])
 
-    with pytest.raises(KeystoreDoesNotExist):
+    with pytest.raises(ExistenceError):
         gateway_proxy.get_public_authenticator(keystore_uid=parameters2["keystore_uid"])
 
-    # Publier les deux authenticators sur le server
+    # Publish the two authenticators on the server
     gateway_proxy.set_public_authenticator(keystore_uid=parameters1["keystore_uid"],
                                            keystore_owner=parameters1["keystore_owner"],
                                            keystore_secret=parameters1["keystore_secret"],
@@ -146,30 +146,30 @@ def test_decryption_request(live_server):
                                            keystore_secret=parameters2["keystore_secret"],
                                            public_keys=parameters2["public_keys"])
 
-    # Recuperer dans une liste tous les publics authenticators
+    # Retrieve in a list all the public authenticators
     public_authenticators = []
     public_authenticator1 = gateway_proxy.get_public_authenticator(keystore_uid=parameters1["keystore_uid"])
     public_authenticator2 = gateway_proxy.get_public_authenticator(keystore_uid=parameters2["keystore_uid"])
     public_authenticators.append(public_authenticator1)
     public_authenticators.append(public_authenticator2)
 
-    # Créer la response keypair    # FIXME - ENGLISH etc.
+    # Create response keypair    # FIXME - ENGLISH etc.
     response_keypair = generate_keypair(key_algo=key_algo)
 
-    # Créer la symkey
+    # Create symkey decryption
     symkey_dict = generate_symkey(cipher_algo="AES_CBC")
 
     decryption_request_parameters = []
 
     for public_authenticator in public_authenticators:
         decryption_request_parameter = {
-            "keystore_uid": public_authenticator["keystore_uid"],
+            "authenticator_keystore_uid": public_authenticator["keystore_uid"],
             "requester_uid": generate_uuid0(),
-            "description": "Bien vouloir nous aider pour le déchiffrement de cette clé.",
+            "revelation_request_description": "Bien vouloir nous aider pour le déchiffrement de cette clé.",
             "response_public_key": response_keypair["public_key"],
             "response_keychain_uid": generate_uuid0(),
             "response_key_algo": key_algo,
-            "symkeys_data_to_decrypt": [{
+            "symkey_decryption_requests": [{
                 "cryptainer_uid": generate_uuid0(),
                 "cryptainer_metadata": {},
                 "symkey_ciphertext": symkey_dict["key"],
@@ -178,20 +178,22 @@ def test_decryption_request(live_server):
             }]
         }
 
-        # Soumettre une demande de déchiffrement
-        submit_decryption_request(keystore_uid=decryption_request_parameter["keystore_uid"],
+        # Submit revelation_request
+        submit_revelation_request(authenticator_keystore_uid=decryption_request_parameter["authenticator_keystore_uid"],
                                   requester_uid=decryption_request_parameter["requester_uid"],
-                                  description=decryption_request_parameter["description"],
+                                  revelation_request_description=decryption_request_parameter[
+                                      "revelation_request_description"],
                                   response_public_key=decryption_request_parameter["response_public_key"],
                                   response_keychain_uid=decryption_request_parameter["response_keychain_uid"],
                                   response_key_algo=decryption_request_parameter["response_key_algo"],
-                                  symkeys_data_to_decrypt=decryption_request_parameter["symkeys_data_to_decrypt"])
+                                  symkey_decryption_requests=decryption_request_parameter["symkey_decryption_requests"])
 
         decryption_request_parameters.append(decryption_request_parameter)
 
-    # Liste des demandes de déchiffrement par l'authentifieur
-    decryption_request_by_keystore_uid = list_authenticator_decryption_requests(
-        keystore_uid=decryption_request_parameters[0]["keystore_uid"], keystore_secret="keystore_secret")
+    # List of decryption requests for the first authenticator
+    decryption_request_by_keystore_uid = list_authenticator_revelation_requests(
+        authenticator_keystore_uid=decryption_request_parameters[0]["authenticator_keystore_uid"],
+        authenticator_keystore_secret="keystore_secret")
 
     assert decryption_request_by_keystore_uid[0]["requester_uid"] == decryption_request_parameters[0]["requester_uid"]
     assert decryption_request_by_keystore_uid[0]["response_public_key"] == decryption_request_parameters[0][
@@ -200,24 +202,29 @@ def test_decryption_request(live_server):
         "response_keychain_uid"]
     assert decryption_request_by_keystore_uid[0]["response_key_algo"] == decryption_request_parameters[0][
         "response_key_algo"]
-    assert decryption_request_by_keystore_uid[0]["request_status"] == RequestStatus.PENDING
-    assert decryption_request_by_keystore_uid[0]["symkeys_decryption"][0][
-               "decryption_status"] == DecryptionStatus.PENDING
-    assert decryption_request_by_keystore_uid[0]["symkeys_decryption"][0]["authenticator_public_key"]["keychain_uid"] == \
-           decryption_request_parameters[0]["symkeys_data_to_decrypt"][0]["keychain_uid"]
-    assert decryption_request_by_keystore_uid[0]["symkeys_decryption"][0]["authenticator_public_key"]["key_algo"] == \
-           decryption_request_parameters[0]["symkeys_data_to_decrypt"][0]["key_algo"]
+    assert decryption_request_by_keystore_uid[0]["revelation_request_status"] == RevelationRequestStatus.PENDING
+    print("hgfdssdfghjklm",decryption_request_by_keystore_uid)
+    assert decryption_request_by_keystore_uid[0]["symkey_decryption_requests"][0]["decryption_status"] == DecryptionStatus.PENDING
 
-    # Liste des demandes de déchiffrement par authentifieur avec keystore ou keystore_secret qui n'existe pas
+    assert decryption_request_by_keystore_uid[0]["symkey_decryption_requests"][0]["public_authenticator_key"][
+               "keychain_uid"] == \
+           decryption_request_parameters[0]["symkey_decryption_requests"][0]["keychain_uid"]
+    assert decryption_request_by_keystore_uid[0]["symkey_decryption_requests"][0]["public_authenticator_key"][
+               "key_algo"] == \
+           decryption_request_parameters[0]["symkey_decryption_requests"][0]["key_algo"]
+
+    # List of decryption requests for the authenticator with  keystore ou keystore_secret that does not exist
     with pytest.raises(ExistenceError):
-        list_authenticator_decryption_requests(keystore_uid=generate_uuid0(), keystore_secret="keystore_secret")
+        list_authenticator_revelation_requests(authenticator_keystore_uid=generate_uuid0(),
+                                               authenticator_keystore_secret="keystore_secret")
 
     with pytest.raises(PermissionAuthenticatorError):
-        list_authenticator_decryption_requests(keystore_uid=decryption_request_parameters[0]["keystore_uid"],
-                                               keystore_secret="toto")
+        list_authenticator_revelation_requests(
+            authenticator_keystore_uid=decryption_request_parameters[0]["authenticator_keystore_uid"],
+            authenticator_keystore_secret="toto")
 
-    # Liste des demandes de déchiffrement par le nvr
-    decryption_request_by_requester_uid1 = list_wadevice_decryption_requests(
+    # List of decryption requests by NVR
+    decryption_request_by_requester_uid1 = list_wadevice_revelation_requests(
         requester_uid=decryption_request_parameters[1]["requester_uid"])
 
     assert decryption_request_by_requester_uid1[0]["requester_uid"] == decryption_request_parameters[1]["requester_uid"]
@@ -227,72 +234,71 @@ def test_decryption_request(live_server):
         "response_keychain_uid"]
     assert decryption_request_by_requester_uid1[0]["response_key_algo"] == decryption_request_parameters[1][
         "response_key_algo"]
-    assert decryption_request_by_requester_uid1[0]["request_status"] == RequestStatus.PENDING
-    assert decryption_request_by_requester_uid1[0]["symkeys_decryption"][0][
+    assert decryption_request_by_requester_uid1[0]["revelation_request_status"] == RevelationRequestStatus.PENDING
+    assert decryption_request_by_requester_uid1[0]["symkey_decryption_requests"][0][
                "decryption_status"] == DecryptionStatus.PENDING
-    assert decryption_request_by_requester_uid1[0]["symkeys_decryption"][0]["authenticator_public_key"][
-               "keychain_uid"] == decryption_request_parameters[1]["symkeys_data_to_decrypt"][0]["keychain_uid"]
-    assert decryption_request_by_requester_uid1[0]["symkeys_decryption"][0]["authenticator_public_key"]["key_algo"] == \
-           decryption_request_parameters[1]["symkeys_data_to_decrypt"][0]["key_algo"]
+    assert decryption_request_by_requester_uid1[0]["symkey_decryption_requests"][0]["public_authenticator_key"][
+               "keychain_uid"] == decryption_request_parameters[1]["symkey_decryption_requests"][0]["keychain_uid"]
+    assert decryption_request_by_requester_uid1[0]["symkey_decryption_requests"][0]["public_authenticator_key"]["key_algo"] == \
+           decryption_request_parameters[1]["symkey_decryption_requests"][0]["key_algo"]
 
-    # Liste des demandes de déchiffrement par le nvr avec un requester_uid inexistant
+    # List of decryption requests by the authenticator for NVR with requester_uid that does not exist
     with pytest.raises(ExistenceError):
-        list_wadevice_decryption_requests(requester_uid=generate_uuid0())
+        list_wadevice_revelation_requests(requester_uid=generate_uuid0())
 
-    # Rejecter la demande de déchiffrement du requester1
-    reject_decryption_request(keystore_secret="keystore_secret",
-                              decryption_request_uid=decryption_request_by_requester_uid1[0]["decryption_request_uid"])
+    # Reject a decryption request for requester1
+    reject_revelation_request(authenticator_keystore_secret="keystore_secret",
+                              revelation_request_uid=decryption_request_by_requester_uid1[0]["revelation_request_uid"])
 
-    decryption_request_by_requester_uid1 = list_wadevice_decryption_requests(
+    decryption_request_by_requester_uid1 = list_wadevice_revelation_requests(
         requester_uid=decryption_request_parameters[1]["requester_uid"])
-    assert decryption_request_by_requester_uid1[0]["request_status"] == RequestStatus.REJECTED
-    assert decryption_request_by_requester_uid1[0]["symkeys_decryption"][0][
-               "decryption_status"] == RequestStatus.PENDING
-    assert decryption_request_by_requester_uid1[0]["symkeys_decryption"][0]["response_data"] == b""
+    assert decryption_request_by_requester_uid1[0]["revelation_request_status"] == RevelationRequestStatus.REJECTED
+    assert decryption_request_by_requester_uid1[0]["symkey_decryption_requests"][0][
+               "decryption_status"] == DecryptionStatus.PENDING
+    assert decryption_request_by_requester_uid1[0]["symkey_decryption_requests"][0]["response_data"] == b""
 
-    # Rejeter une demande de déchiffrement qui n'existe pas
+    # Reject a decryption request that does not exist
     with pytest.raises(ExistenceError):
-        reject_decryption_request(
-            keystore_secret="keystore_secret",
-            decryption_request_uid=generate_uuid0())
+        reject_revelation_request(authenticator_keystore_secret="keystore_secret",
+                                  revelation_request_uid=generate_uuid0())
 
-    # Rejeter une demande de déchiffrement avec un keystore secret incorrect
+    #  Reject a decryption requestwith keystore secret that does not exist
     with pytest.raises(PermissionAuthenticatorError):
-        reject_decryption_request(
-            keystore_secret="toto",
-            decryption_request_uid=decryption_request_by_requester_uid1[0]["decryption_request_uid"])
+        reject_revelation_request(
+            authenticator_keystore_secret="toto",
+            revelation_request_uid=decryption_request_by_requester_uid1[0]["revelation_request_uid"])
 
-    decryption_request_by_requester_uid2 = list_wadevice_decryption_requests(
+    decryption_request_by_requester_uid2 = list_wadevice_revelation_requests(
         requester_uid=decryption_request_parameters[1]["requester_uid"])
 
     symkey_decryption_results = [{
-        "request_data": decryption_request_parameters[1]["symkeys_data_to_decrypt"][0]["symkey_ciphertext"],
+        "request_data": decryption_request_parameters[1]["symkey_decryption_requests"][0]["symkey_ciphertext"],
         "response_data": get_random_bytes(20),
         "decryption_status": DecryptionStatus.DECRYPTED
     }]
 
-    # Accepter la deuxième demande de dechiffrement
-    accept_decryption_request(keystore_secret="keystore_secret",
-                              decryption_request_uid=decryption_request_by_requester_uid2[0]["decryption_request_uid"],
+    # Accept the second decryption request
+    accept_revelation_request(authenticator_keystore_secret="keystore_secret",
+                              revelation_request_uid=decryption_request_by_requester_uid2[0]["revelation_request_uid"],
                               symkey_decryption_results=symkey_decryption_results)
 
-    decryption_request_by_requester_uid2 = list_wadevice_decryption_requests(
+    decryption_request_by_requester_uid2 = list_wadevice_revelation_requests(
         requester_uid=decryption_request_parameters[1]["requester_uid"])
-    assert decryption_request_by_requester_uid2[0]["request_status"] == RequestStatus.ACCEPTED
-    assert decryption_request_by_requester_uid2[0]["symkeys_decryption"][0]["decryption_status"] == \
+    assert decryption_request_by_requester_uid2[0]["revelation_request_status"] == RevelationRequestStatus.ACCEPTED
+    assert decryption_request_by_requester_uid2[0]["symkey_decryption_requests"][0]["decryption_status"] == \
            symkey_decryption_results[0]["decryption_status"]
-    assert decryption_request_by_requester_uid2[0]["symkeys_decryption"][0]["response_data"] == \
+    assert decryption_request_by_requester_uid2[0]["symkey_decryption_requests"][0]["response_data"] == \
            symkey_decryption_results[0]["response_data"]
 
-    # Accepter une demande de déchiffrement qui n'existe pas
+    # Accept a decryption request that does not exist
     with pytest.raises(ExistenceError):
-        accept_decryption_request(keystore_secret="keystore_secret",
-                                  decryption_request_uid=generate_uuid0(),
-                                 symkey_decryption_results=[])
+        accept_revelation_request(authenticator_keystore_secret="keystore_secret",
+                                  revelation_request_uid=generate_uuid0(),
+                                  symkey_decryption_results=[])
 
-    # Accepter une demande de déchiffrement ont le keystore_secret ne correspond pas
+    # Accept a decryption request have the keystore_secret does not match
     with pytest.raises(PermissionAuthenticatorError):
-        accept_decryption_request(
-            keystore_secret="",
-            decryption_request_uid=decryption_request_by_requester_uid2[0]["decryption_request_uid"],
+        accept_revelation_request(
+            authenticator_keystore_secret="",
+            revelation_request_uid=decryption_request_by_requester_uid2[0]["revelation_request_uid"],
             symkey_decryption_results=symkey_decryption_results)

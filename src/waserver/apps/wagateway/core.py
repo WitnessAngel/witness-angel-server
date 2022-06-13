@@ -7,7 +7,7 @@ from wacryptolib.cipher import SUPPORTED_CIPHER_ALGOS
 from wacryptolib.exceptions import SchemaValidationError, KeystoreAlreadyExists, KeyDoesNotExist, ExistenceError
 from wacryptolib.utilities import get_validation_micro_schemas
 from waserver.apps.wagateway.models import PublicAuthenticator, PublicAuthenticatorKey, RevelationRequest, \
-    SymkeyDecryptionRequest, RequestStatus
+    SymkeyDecryptionRequest, RevelationRequestStatus
 
 from waserver.apps.wagateway.serializers import PublicAuthenticatorSerializer, RevelationRequestSerializer
 
@@ -26,11 +26,10 @@ def get_public_authenticator(keystore_uid, keystore_secret=None):
         authenticator_user = PublicAuthenticator.objects.get(keystore_uid=keystore_uid)
         if keystore_secret:
             if keystore_secret != authenticator_user.keystore_secret:
-                raise PermissionAuthenticatorError(
-                    "Wrong authenticator secret")
+                raise PermissionAuthenticatorError("Wrong authenticator secret")
         return PublicAuthenticatorSerializer(authenticator_user).data
     except PublicAuthenticator.DoesNotExist:
-        raise AuthenticatorDoesNotExist("Authenticator User does not exist")
+        raise AuthenticatorDoesNotExist("Authenticator User does not exist") from None
 
 
 def set_public_authenticator(keystore_owner: str, keystore_secret: str, keystore_uid: uuid.UUID, public_keys: list):
@@ -68,7 +67,7 @@ def submit_revelation_request(authenticator_keystore_uid: uuid.UUID, requester_u
     with transaction.atomic():
 
         decryption_request_tree = {
-            "keystore_uid": authenticator_keystore_uid,
+            "authenticator_keystore_uid": authenticator_keystore_uid,
             "requester_uid": requester_uid,
             "revelation_request_description": revelation_request_description,
             "response_public_key": response_public_key,
@@ -171,7 +170,7 @@ def reject_revelation_request(authenticator_keystore_secret: str, revelation_req
     except PermissionAuthenticatorError:
         raise PermissionAuthenticatorError("The provided keystore secret is not correct for target authenticator")
 
-    revelation_request.request_status = RequestStatus.REJECTED
+    revelation_request.revelation_request_status = RevelationRequestStatus.REJECTED
     revelation_request.save()
 
 
@@ -181,7 +180,7 @@ def accept_revelation_request(authenticator_keystore_secret: str, revelation_req
     symkey_decryption_requests = SymkeyDecryptionRequest.objects.filter(
         revelation_request__revelation_request_uid=revelation_request_uid)
 
-    if not symkey_decryption_requests.exist():
+    if not symkey_decryption_requests.exists():
         raise ExistenceError("Decryption request %s does not exist", revelation_request_uid)  # TODO Change this message
 
     target_public_authenticator = symkey_decryption_requests[0].revelation_request.target_public_authenticator
@@ -218,19 +217,19 @@ def accept_revelation_request(authenticator_keystore_secret: str, revelation_req
                 symkey_decryption_request.save()
 
     RevelationRequest.objects.filter(revelation_request_uid=revelation_request_uid).update(
-        revelation_request_status=RequestStatus.ACCEPTED)
+        revelation_request_status=RevelationRequestStatus.ACCEPTED)
 
 
 micro_schema = get_validation_micro_schemas(extended_json_format=False)
 
 SCHEMA_OF_DECRYTION_REQUEST_INPUT_PARAMETERS = Schema({
-    "keystore_uid": micro_schema.schema_uid,
+    "authenticator_keystore_uid": micro_schema.schema_uid,
     "requester_uid": micro_schema.schema_uid,
-    "description": And(str, len),
+    "revelation_request_description": And(str, len),
     "response_public_key": micro_schema.schema_binary,
     "response_keychain_uid": micro_schema.schema_uid,
     "response_key_algo": Or(*SUPPORTED_CIPHER_ALGOS),
-    "symkeys_data_to_decrypt": [{
+    "symkey_decryption_requests": [{
         "cryptainer_uid": micro_schema.schema_uid,
         "cryptainer_metadata": Or(dict, None),
         "symkey_ciphertext": micro_schema.schema_binary,

@@ -7,7 +7,7 @@ import requests
 import pytest
 from jsonrpc_requests import TransportError
 
-from wacryptolib.exceptions import KeystoreDoesNotExist
+from wacryptolib.exceptions import KeystoreDoesNotExist, ExistenceError
 from wacryptolib.jsonrpc_client import JsonRpcProxy, status_slugs_response_error_handler
 
 
@@ -44,7 +44,7 @@ def test_waserver_abnormal_error_masking(live_server):
 
     keystore_uid = UUID("cac682a8-809f-4de5-bbfd-72b533a37a21")
 
-    with pytest.raises(KeystoreDoesNotExist):  # Error well translated
+    with pytest.raises(ExistenceError):  #TODO replace with AuthenticatorDoesNotExist
         gateway_proxy.get_public_authenticator(keystore_uid=keystore_uid)
 
     # Patch the IMPORTED callable of view.py!

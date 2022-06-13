@@ -64,7 +64,7 @@ class PublicAuthenticatorKey(CreatedModifiedByMixin):
     key_value = encrypt(models.BinaryField(_("Public key (PEM format)")))
 
 
-class RequestStatus(models.TextChoices):
+class RevelationRequestStatus(models.TextChoices):
     REJECTED = 'REJECTED', _('REJECTED')
     ACCEPTED = 'ACCEPTED', _('ACCEPTED')
     PENDING = 'PENDING', _('PENDING')
@@ -75,7 +75,7 @@ class RevelationRequest(CreatedModifiedByMixin):
     target_public_authenticator = models.ForeignKey(PublicAuthenticator, related_name='revelation_request', on_delete=models.CASCADE)
 
     # FIXME prefiex all fields by revelation_xxx, to diféfrentiate from fields of SymkeyDecryptionRequest?
-    revelation_request_status = models.CharField(max_length=128, choices=RequestStatus.choices, default=RequestStatus.PENDING)
+    revelation_request_status = models.CharField(max_length=128, choices=RevelationRequestStatus.choices, default=RevelationRequestStatus.PENDING)
     revelation_request_uid = models.UUIDField(_("Decryption request uid"), default=generate_uuid0, unique=True)
     requester_uid = models.UUIDField(_("Requester uid"), db_index=True)
     revelation_request_description = models.TextField(_("Description"), blank=True)
@@ -94,10 +94,10 @@ class DecryptionStatus(models.TextChoices):
 
 class SymkeyDecryptionRequest(CreatedModifiedByMixin):
     class Meta:
-        unique_together = [("decryption_request", "request_data")]
+        unique_together = [("revelation_request", "request_data")]
 
-    revelation_request = models.ForeignKey(RevelationRequest, related_name='symkey_decryption_request', on_delete=models.CASCADE)
-    public_authenticator_key = models.ForeignKey(PublicAuthenticatorKey, related_name='symkey_decryption_request', on_delete=models.CASCADE)  # FIXME check integrity of relation loop
+    revelation_request = models.ForeignKey(RevelationRequest, related_name='symkey_decryption_requests', on_delete=models.CASCADE)
+    public_authenticator_key = models.ForeignKey(PublicAuthenticatorKey, related_name='symkey_decryption_requests', on_delete=models.CASCADE)  # FIXME check integrity of relation loop
     cryptainer_uid = models.UUIDField(_("Cryptainer uid"), null=True)
     cryptainer_metadata = models.JSONField(_("Cryptainer metadata)"), default=dict, null=True)
     request_data = encrypt(models.BinaryField(_("Request data (symkey/shard encrypted by target authenticator)")))

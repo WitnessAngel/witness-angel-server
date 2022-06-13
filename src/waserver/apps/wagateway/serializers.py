@@ -29,7 +29,7 @@ class TransparentRepresentationUUIDField(TransparentRepresentationMixin, UUIDFie
     pass
 
 
-class AuthenticatorPublicKeySerializer(serializers.ModelSerializer):
+class PublicAuthenticatorKeySerializer(serializers.ModelSerializer):
     keychain_uid = TransparentRepresentationUUIDField()
     key_value = BinaryField()
 
@@ -40,7 +40,7 @@ class AuthenticatorPublicKeySerializer(serializers.ModelSerializer):
 
 class PublicAuthenticatorSerializer(serializers.ModelSerializer):
     keystore_uid = TransparentRepresentationUUIDField()
-    public_keys = AuthenticatorPublicKeySerializer(many=True, read_only=True)
+    public_keys = PublicAuthenticatorKeySerializer(many=True, read_only=True)
     # decryption_request = DecryptionRequestSerializer(many=True, read_only=True)
 
     class Meta:
@@ -52,7 +52,7 @@ class SymkeyDecryptionRequestSerializer(serializers.ModelSerializer):
     cryptainer_uid = TransparentRepresentationUUIDField()
     request_data = BinaryField()
     response_data = BinaryField()
-    public_authenticator_key = AuthenticatorPublicKeySerializer(read_only=True)
+    public_authenticator_key = PublicAuthenticatorKeySerializer(read_only=True)
 
     class Meta:
         model = SymkeyDecryptionRequest
@@ -61,16 +61,16 @@ class SymkeyDecryptionRequestSerializer(serializers.ModelSerializer):
 
 class RevelationRequestSerializer(serializers.ModelSerializer):
     requester_uid = TransparentRepresentationUUIDField()
-    decryption_request_uid = TransparentRepresentationUUIDField()
+    revelation_request_uid = TransparentRepresentationUUIDField()
     response_keychain_uid = TransparentRepresentationUUIDField()
     response_public_key = BinaryField()
-    symkey_decryption_resquests = SymkeyDecryptionRequestSerializer(many=True, read_only=True)
+    symkey_decryption_requests = SymkeyDecryptionRequestSerializer(many=True, read_only=True)
     target_public_authenticator = PublicAuthenticatorSerializer(read_only=True)
 
     class Meta:
         model = RevelationRequest
         fields = ['target_public_authenticator', 'revelation_request_uid', 'requester_uid', 'revelation_request_description', 'response_public_key',
-                  'response_keychain_uid', 'response_key_algo', 'revelation_request_status', 'symkey_decryption_resquests']
+                  'response_keychain_uid', 'response_key_algo', 'revelation_request_status', 'symkey_decryption_requests']
 
 
 
