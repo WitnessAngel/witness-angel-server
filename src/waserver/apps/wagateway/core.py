@@ -113,10 +113,9 @@ def submit_decryption_request(authenticator_keystore_uid: uuid.UUID, requester_u
 
 def list_wadevice_decryption_requests(requester_uid: uuid.UUID):
     decryption_request_by_requester_uid = DecryptionRequest.objects.filter(requester_uid=requester_uid)
-    if not decryption_request_by_requester_uid:
+    if not decryption_request_by_requester_uid.exists():
         raise ExistenceError(
             "Requester uid %s does not have a decryption requests" % requester_uid)  # TODO Change this exception
-
     return DecryptionRequestSerializer(decryption_request_by_requester_uid, many=True).data
 
 
@@ -124,10 +123,11 @@ def list_authenticator_decryption_requests(authenticator_keystore_uid: uuid.UUID
     # FIXMe rename to authenticator_keystore_uid and authenticator_keystore_secret?  OK
 
     # Appelé par authentifieur, authentifié via keystore_secret  # FIXME english comments only
-    decryption_request_by_keystore_uid = DecryptionRequest.objects.filter(
-        # Rename -> decryption_requests_for_keystore_uid
+    decryption_requests_for_keystore_uid = DecryptionRequest.objects.filter(
         public_authenticator__keystore_uid=authenticator_keystore_uid)
-    if not decryption_request_by_keystore_uid:  # FIXME wrong, it must be e.g. xxx.count()
+    # TODO Rename -> decryption_requests_for_keystore_uid OK
+
+    if not decryption_requests_for_keystore_uid.exists():  # FIXME wrong, it must be e.g. xxx.count()
         raise ExistenceError(
             "No decryption request concerns %s authenticator" % authenticator_keystore_uid)  # TODO Change this exception
 
@@ -141,7 +141,7 @@ def list_authenticator_decryption_requests(authenticator_keystore_uid: uuid.UUID
     if not password_is_correct:
         raise PermissionAuthenticatorError("The provided keystore secret is not correct for target authenticator")
 
-    return DecryptionRequestSerializer(decryption_request_by_keystore_uid, many=True).data
+    return DecryptionRequestSerializer(decryption_requests_for_keystore_uid, many=True).data
 
 
 def reject_decryption_request(authenticator_keystore_secret: str,
