@@ -32,7 +32,6 @@ class TransparentRepresentationUUIDField(TransparentRepresentationMixin, UUIDFie
 class AuthenticatorPublicKeySerializer(serializers.ModelSerializer):
     keychain_uid = TransparentRepresentationUUIDField()
     key_value = BinaryField()
-    # symkeys_decryption = SymkeyDecryptionSerializer(many=True, read_only=True)
 
     class Meta:
         model = AuthenticatorPublicKey
@@ -65,13 +64,13 @@ class DecryptionRequestSerializer(serializers.ModelSerializer):
     decryption_request_uid = TransparentRepresentationUUIDField()
     response_keychain_uid = TransparentRepresentationUUIDField()
     response_public_key = BinaryField()
-    symkeys_decryption = SymkeyDecryptionSerializer(many=True, read_only=True)  # FIXME wrong plural location
+    symkey_decryptions = SymkeyDecryptionSerializer(many=True, read_only=True)  # FIXME wrong plural location OK
     public_authenticator = PublicAuthenticatorSerializer(read_only=True)
 
     class Meta:
         model = DecryptionRequest
         fields = ['public_authenticator', 'decryption_request_uid', 'requester_uid', 'description', 'response_public_key',
-                  'response_keychain_uid', 'response_key_algo', 'request_status', 'symkeys_decryption']
+                  'response_keychain_uid', 'response_key_algo', 'request_status', 'symkey_decryptions']
 
 
 
