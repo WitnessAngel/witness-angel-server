@@ -47,29 +47,28 @@ def set_public_authenticator(keystore_owner: str, keystore_secret: str, keystore
         validate_data_tree_with_pythonschema(data_tree=public_authenticator_tree,
                                              valid_schema=PUBLIC_AUTHENTICATOR_SCHEMA)
 
-        authenticator_user_or_none = PublicAuthenticator.objects.filter(keystore_uid=keystore_uid).first()
-
-        if authenticator_user_or_none:
+        try:
+            PublicAuthenticator.objects.get(keystore_uid=keystore_uid)
             raise KeystoreAlreadyExists("Authenticator %s already exists in sql storage" % keystore_uid)
+        except PublicAuthenticator.DoesNotExist:
+            public_authenticator = PublicAuthenticator(keystore_owner=keystore_owner, keystore_uid=keystore_uid)
+            public_authenticator.set_keystore_secret(keystore_secret)
+            public_authenticator.save()
+            for public_key in public_keys:
+                AuthenticatorPublicKey.objects.create(authenticator_user=public_authenticator,
+                                                      keychain_uid=public_key["keychain_uid"],
+                                                      key_algo=public_key["key_algo"],
+                                                      key_value=public_key["key_value"])
 
-        public_authenticator = PublicAuthenticator(keystore_owner=keystore_owner, keystore_uid=keystore_uid)
-        public_authenticator.set_keystore_secret(keystore_secret)
-        public_authenticator.save()
-        for public_key in public_keys:
-            AuthenticatorPublicKey.objects.create(authenticator_user=public_authenticator,
-                                                  keychain_uid=public_key["keychain_uid"],
-                                                  key_algo=public_key["key_algo"],
-                                                  key_value=public_key["key_value"])
 
-
-def submit_decryption_request(keystore_uid: uuid.UUID, requester_uid: uuid.UUID, description: str,
+def submit_decryption_request(authenticator_keystore_uid: uuid.UUID, requester_uid: uuid.UUID, description: str,
                               response_public_key: bytes, response_keychain_uid: uuid.UUID, response_key_algo: str,
                               symkeys_data_to_decrypt: list):
     # TODO Traiter le cas où les request_data des symkeys doivent être uniques pour une même demande de dechiffrement
     with transaction.atomic():
 
         decryption_request_tree = {
-            "keystore_uid": keystore_uid,
+            "keystore_uid": authenticator_keystore_uid,
             "requester_uid": requester_uid,
             "description": description,
             "response_public_key": response_public_key,
@@ -81,10 +80,11 @@ def submit_decryption_request(keystore_uid: uuid.UUID, requester_uid: uuid.UUID,
         validate_data_tree_with_pythonschema(data_tree=decryption_request_tree,
                                              valid_schema=SCHEMA_OF_DECRYTION_REQUEST_INPUT_PARAMETERS)
 
-        public_authenticator = PublicAuthenticator.objects.filter(keystore_uid=keystore_uid).first()
-
-        if not public_authenticator:
-            raise AuthenticatorDoesNotExist("Authenticator %s does not exists in sql storage" % keystore_uid)
+        try:
+            public_authenticator = PublicAuthenticator.objects.get(keystore_uid=authenticator_keystore_uid)
+            # FIXME use .get() because UNICITY OK
+        except PublicAuthenticator.DoesNotExist:
+            raise AuthenticatorDoesNotExist("Authenticator %s does not exists in sql storage" % authenticator_keystore_uid)
             # TODO Create and Change this this exception to AuthenticatorDoesNotEXIST OK
 
         decryption_request = DecryptionRequest.objects.create(public_authenticator=public_authenticator,
@@ -102,7 +102,7 @@ def submit_decryption_request(keystore_uid: uuid.UUID, requester_uid: uuid.UUID,
             except AuthenticatorPublicKey.DoesNotExist:
                 raise KeyDoesNotExist(
                     "Public key %s does not exists in key storage in %s authenticator" % (
-                    symkey_data_to_decrypt['keychain_uid'], keystore_uid))
+                    symkey_data_to_decrypt['keychain_uid'], authenticator_keystore_uid))
 
             SymkeyDecryption.objects.create(decryption_request=decryption_request,
                                             cryptainer_uid=symkey_data_to_decrypt["cryptainer_uid"],
@@ -122,8 +122,8 @@ def list_wadevice_decryption_requests(requester_uid: uuid.UUID):
 
 def list_authenticator_decryption_requests(authenticator_keystore_uid: uuid.UUID, authenticator_keystore_secret: str):
     # FIXMe rename to authenticator_keystore_uid and authenticator_keystore_secret?  OK
-    # Appelé par authentifieur, authentifié via keystore_secret  # FIXME english comments only
 
+    # Appelé par authentifieur, authentifié via keystore_secret  # FIXME english comments only
     decryption_request_by_keystore_uid = DecryptionRequest.objects.filter(
         # Rename -> decryption_requests_for_keystore_uid
         public_authenticator__keystore_uid=authenticator_keystore_uid)
@@ -132,8 +132,11 @@ def list_authenticator_decryption_requests(authenticator_keystore_uid: uuid.UUID
             "No decryption request concerns %s authenticator" % authenticator_keystore_uid)  # TODO Change this exception
 
     # FIXME do that permission check FIRST, before any other work
-    public_authenticator = PublicAuthenticator.objects.filter(
-        keystore_uid=authenticator_keystore_uid).first()  # FIXME use .get() because UNICITY
+    try:
+        public_authenticator = PublicAuthenticator.objects.get(keystore_uid=authenticator_keystore_uid)
+        # FIXME use .get() because UNICITY OK
+    except PublicAuthenticator.DoesNotExist:
+        raise AuthenticatorDoesNotExist("Authenticator User does not exist")
     password_is_correct = public_authenticator.check_keystore_secret(authenticator_keystore_secret)
     if not password_is_correct:
         raise PermissionAuthenticatorError("The provided keystore secret is not correct for target authenticator")
@@ -144,7 +147,7 @@ def list_authenticator_decryption_requests(authenticator_keystore_uid: uuid.UUID
 def reject_decryption_request(authenticator_keystore_secret: str,
                               decryption_request_uid: uuid.UUID):  # Appelé par authentifieur, authentifié via keystore_secret
 
-    decryption_request = DecryptionRequest.objects.filter(decryption_request_uid=decryption_request_uid).first()
+    decryption_request = DecryptionRequest.objects.get(decryption_request_uid=decryption_request_uid)
 
     if not decryption_request:
         raise ExistenceError(
