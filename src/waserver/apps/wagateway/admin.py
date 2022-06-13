@@ -1,11 +1,11 @@
 from django.contrib import admin
 from django.db.models import Count
 
-from .models import PublicAuthenticator, AuthenticatorPublicKey, SymkeyDecryption, DecryptionRequest
+from .models import PublicAuthenticator, PublicAuthenticatorKey, SymkeyDecryptionRequest, RevelationRequest
 
 
 class AuthenticatorPublicKeyInline(admin.StackedInline):
-    model = AuthenticatorPublicKey
+    model = PublicAuthenticatorKey
     extra = 0
     fields = ["keychain_uid", "key_algo", "key_value_length", "created_at"]
 
@@ -32,7 +32,7 @@ class PublicAuthenticatorAdmin(admin.ModelAdmin):
 
 admin.site.register(PublicAuthenticator, PublicAuthenticatorAdmin)
 
-admin.site.register(DecryptionRequest)
-admin.site.register(SymkeyDecryption)
+admin.site.register(RevelationRequest)
+admin.site.register(SymkeyDecryptionRequest)
 
 

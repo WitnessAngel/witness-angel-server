@@ -4,14 +4,12 @@ from django.db import transaction
 
 from schema import And, Or, Optional, Schema, SchemaError
 from wacryptolib.cipher import SUPPORTED_CIPHER_ALGOS
-from wacryptolib.exceptions import SchemaValidationError, KeystoreAlreadyExists, KeystoreDoesNotExist, ValidationError, \
-    KeyDoesNotExist, ExistenceError
+from wacryptolib.exceptions import SchemaValidationError, KeystoreAlreadyExists, KeyDoesNotExist, ExistenceError
 from wacryptolib.utilities import get_validation_micro_schemas
-from waserver.apps.wagateway.models import PublicAuthenticator, AuthenticatorPublicKey, DecryptionRequest, \
-    SymkeyDecryption, RequestStatus, DecryptionStatus
+from waserver.apps.wagateway.models import PublicAuthenticator, PublicAuthenticatorKey, RevelationRequest, \
+    SymkeyDecryptionRequest, RequestStatus
 
-from waserver.apps.wagateway.serializers import PublicAuthenticatorSerializer, DecryptionRequestSerializer, \
-    AuthenticatorPublicKeySerializer
+from waserver.apps.wagateway.serializers import PublicAuthenticatorSerializer, RevelationRequestSerializer
 
 
 # FIXME WEIRD NAME
@@ -29,10 +27,10 @@ def get_public_authenticator(keystore_uid, keystore_secret=None):
         if keystore_secret:
             if keystore_secret != authenticator_user.keystore_secret:
                 raise PermissionAuthenticatorError(
-                    "Wrong authenticator secret")  # FIXME raise better permission error OK
+                    "Wrong authenticator secret")
         return PublicAuthenticatorSerializer(authenticator_user).data
     except PublicAuthenticator.DoesNotExist:
-        raise AuthenticatorDoesNotExist("Authenticator User does not exist")  # TODO change this exception error OK
+        raise AuthenticatorDoesNotExist("Authenticator User does not exist")
 
 
 def set_public_authenticator(keystore_owner: str, keystore_secret: str, keystore_uid: uuid.UUID, public_keys: list):
@@ -56,22 +54,23 @@ def set_public_authenticator(keystore_owner: str, keystore_secret: str, keystore
             public_authenticator.set_keystore_secret(keystore_secret)
             public_authenticator.save()
             for public_key in public_keys:
-                AuthenticatorPublicKey.objects.create(authenticator_user=public_authenticator,
+                PublicAuthenticatorKey.objects.create(authenticator_user=public_authenticator,
                                                       keychain_uid=public_key["keychain_uid"],
                                                       key_algo=public_key["key_algo"],
                                                       key_value=public_key["key_value"])
 
 
-def submit_decryption_request(authenticator_keystore_uid: uuid.UUID, requester_uid: uuid.UUID, description: str,
+def submit_revelation_request(authenticator_keystore_uid: uuid.UUID, requester_uid: uuid.UUID, revelation_request_description: str,
                               response_public_key: bytes, response_keychain_uid: uuid.UUID, response_key_algo: str,
                               symkey_decryption_requests: list):
-    # TODO Traiter le cas où les request_data des symkeys doivent être uniques pour une même demande de dechiffrement
+    #  Called by NVR
+    # TODO Handle the case where symkey request_data must be unique for the same decryption request
     with transaction.atomic():
 
         decryption_request_tree = {
             "keystore_uid": authenticator_keystore_uid,
             "requester_uid": requester_uid,
-            "description": description,
+            "revelation_request_description": revelation_request_description,
             "response_public_key": response_public_key,
             "response_keychain_uid": response_keychain_uid,
             "response_key_algo": response_key_algo,
@@ -82,47 +81,49 @@ def submit_decryption_request(authenticator_keystore_uid: uuid.UUID, requester_u
                                              valid_schema=SCHEMA_OF_DECRYTION_REQUEST_INPUT_PARAMETERS)
 
         try:
-            public_authenticator = PublicAuthenticator.objects.get(keystore_uid=authenticator_keystore_uid)
-            # FIXME use .get() because UNICITY OK
+            target_public_authenticator = PublicAuthenticator.objects.get(keystore_uid=authenticator_keystore_uid)
+
         except PublicAuthenticator.DoesNotExist:
             raise AuthenticatorDoesNotExist(
                 "Authenticator %s does not exists in sql storage" % authenticator_keystore_uid)
-            # TODO Create and Change this this exception to AuthenticatorDoesNotEXIST OK
 
-        decryption_request = DecryptionRequest.objects.create(public_authenticator=public_authenticator,
+        revelation_request = RevelationRequest.objects.create(target_public_authenticator=target_public_authenticator,
                                                               requester_uid=requester_uid,
-                                                              description=description,
+                                                              revelation_request_description=revelation_request_description,
                                                               response_public_key=response_public_key,
                                                               response_keychain_uid=response_keychain_uid,
                                                               response_key_algo=response_key_algo)
 
         for symkey_decryption_request in symkey_decryption_requests:
-            # TODO vérifier que la clé à déchiffrer est présent dans authenticator_public_keys OK
+            # Check that the key to decrypt is present in public_authentication_key
             try:
-                authenticator_public_key = public_authenticator.public_keys.get(
+                public_authenticator_key = target_public_authenticator.public_keys.get(
                     keychain_uid=symkey_decryption_request['keychain_uid'],
                     key_algo=symkey_decryption_request['key_algo'])
-            except AuthenticatorPublicKey.DoesNotExist:
+            except PublicAuthenticatorKey.DoesNotExist:
                 raise KeyDoesNotExist(
                     "Public key %s does not exists in key storage in %s authenticator" % (
                         symkey_decryption_request['keychain_uid'], authenticator_keystore_uid))
 
-            SymkeyDecryption.objects.create(decryption_request=decryption_request,
-                                            cryptainer_uid=symkey_decryption_request["cryptainer_uid"],
-                                            cryptainer_metadata=symkey_decryption_request["cryptainer_metadata"],
-                                            authenticator_public_key=authenticator_public_key,
-                                            request_data=symkey_decryption_request["symkey_ciphertext"])
+            SymkeyDecryptionRequest.objects.create(revelation_request=revelation_request,
+                                                   cryptainer_uid=symkey_decryption_request["cryptainer_uid"],
+                                                   cryptainer_metadata=symkey_decryption_request["cryptainer_metadata"],
+                                                   public_authenticator_key=public_authenticator_key,
+                                                   request_data=symkey_decryption_request["symkey_ciphertext"])
 
 
-def list_wadevice_decryption_requests(requester_uid: uuid.UUID):
-    decryption_request_by_requester_uid = DecryptionRequest.objects.filter(requester_uid=requester_uid)
-    if not decryption_request_by_requester_uid.exists():
+def list_wadevice_revelation_requests(requester_uid: uuid.UUID):
+    #  Called by NVR
+
+    revelation_request_for_requester_uid = RevelationRequest.objects.filter(requester_uid=requester_uid)
+    if not revelation_request_for_requester_uid.exists():
         raise ExistenceError(
             "Requester uid %s does not have a decryption requests" % requester_uid)  # TODO Change this exception
-    return DecryptionRequestSerializer(decryption_request_by_requester_uid, many=True).data
+    return RevelationRequestSerializer(revelation_request_for_requester_uid, many=True).data
 
 
-def _check_authenticator_authorization(public_authenticator: uuid.UUID, authenticator_keystore_secret: str):
+def _check_authenticator_authorization(public_authenticator, authenticator_keystore_secret: str):
+
     password_is_correct = public_authenticator.check_keystore_secret(authenticator_keystore_secret)
     if not password_is_correct:
         raise PermissionAuthenticatorError("The provided keystore secret is not correct for target authenticator")
@@ -130,15 +131,12 @@ def _check_authenticator_authorization(public_authenticator: uuid.UUID, authenti
     return password_is_correct
 
 
-def list_authenticator_decryption_requests(authenticator_keystore_uid: uuid.UUID, authenticator_keystore_secret: str):
-    # FIXMe rename to authenticator_keystore_uid and authenticator_keystore_secret?  OK
-    # Appelé par authentifieur, authentifié via keystore_secret  # FIXME english comments only
+def list_authenticator_revelation_requests(authenticator_keystore_uid: uuid.UUID, authenticator_keystore_secret: str):
+    # Called by authenticator, authenticated with keystore secret
 
-    # FIXME do that permission check FIRST, before any other work
     try:
-        public_authenticator = PublicAuthenticator.objects.get(keystore_uid=authenticator_keystore_uid)
-        # FIXME use .get() because UNICITY OK
-        _check_authenticator_authorization(public_authenticator, authenticator_keystore_secret)
+        target_public_authenticator = PublicAuthenticator.objects.get(keystore_uid=authenticator_keystore_uid)
+        _check_authenticator_authorization(target_public_authenticator, authenticator_keystore_secret)
 
     except PublicAuthenticator.DoesNotExist:
         raise AuthenticatorDoesNotExist("Authenticator User does not exist")
@@ -146,57 +144,56 @@ def list_authenticator_decryption_requests(authenticator_keystore_uid: uuid.UUID
     except PermissionAuthenticatorError:
         raise PermissionAuthenticatorError("The provided keystore secret is not correct for target authenticator")
 
-    decryption_requests_for_keystore_uid = DecryptionRequest.objects.filter(
-        public_authenticator__keystore_uid=authenticator_keystore_uid)
-    # TODO Rename -> decryption_requests_for_keystore_uid OK
+    revelation_requests_for_keystore_uid = RevelationRequest.objects.filter(
+        target_public_authenticator__keystore_uid=authenticator_keystore_uid)
 
-    if not decryption_requests_for_keystore_uid.exists():  # FIXME wrong, it must be e.g. xxx.count() OK
+    if not revelation_requests_for_keystore_uid.exists():
         raise ExistenceError(
-            "No decryption request concerns %s authenticator" % authenticator_keystore_uid)  # TODO Change this exception
+            "No revelation request concerns %s authenticator" % authenticator_keystore_uid)  # TODO Change this exception
 
-    return DecryptionRequestSerializer(decryption_requests_for_keystore_uid, many=True).data
+    return RevelationRequestSerializer(revelation_requests_for_keystore_uid, many=True).data
 
 
-def reject_decryption_request(authenticator_keystore_secret: str,
-                              decryption_request_uid: uuid.UUID):  # Appelé par authentifieur, authentifié via keystore_secret
+def reject_revelation_request(authenticator_keystore_secret: str, revelation_request_uid: uuid.UUID):
+    # Called by authenticator, authenticated with keystore secret
 
-    decryption_request = DecryptionRequest.objects.get(decryption_request_uid=decryption_request_uid)
-
-    if not decryption_request:
-        raise ExistenceError(
-            "Decryption request %s does not exist" % decryption_request_uid)  # TODO Change this exception
-
-    # FIXME DUPLICATED CODE - not ok, factorize that with above
-    public_authenticator = decryption_request.public_authenticator
     try:
-        _check_authenticator_authorization(public_authenticator, authenticator_keystore_secret)
+        revelation_request = RevelationRequest.objects.get(revelation_request_uid=revelation_request_uid)
+
+        target_public_authenticator = revelation_request.target_public_authenticator
+
+        _check_authenticator_authorization(target_public_authenticator, authenticator_keystore_secret)
+
+    except RevelationRequest.DoesNotExist:
+        raise ExistenceError(
+            "Decryption request %s does not exist" % revelation_request_uid)  # TODO Change this exception
+
     except PermissionAuthenticatorError:
         raise PermissionAuthenticatorError("The provided keystore secret is not correct for target authenticator")
 
-    decryption_request.request_status = RequestStatus.REJECTED
-    decryption_request.save()
+    revelation_request.request_status = RequestStatus.REJECTED
+    revelation_request.save()
 
 
-def accept_decryption_request(authenticator_keystore_secret: str, decryption_request_uid,
-                              symkey_decryption_results: list):  # Appelé par authentifieur, authentifié via keystore_secret  # FIXME english
+def accept_revelation_request(authenticator_keystore_secret: str, revelation_request_uid, symkey_decryption_results: list):
+    #  Called by authenticator, authenticated with keystore secret
 
-    symkey_decryptions = SymkeyDecryption.objects.filter(
-        decryption_request__decryption_request_uid=decryption_request_uid)
+    symkey_decryption_requests = SymkeyDecryptionRequest.objects.filter(
+        revelation_request__revelation_request_uid=revelation_request_uid)
 
-    if not symkey_decryptions.exist():
-        raise ExistenceError("Decryption request %s does not exist", decryption_request_uid)  # TODO Change this message
+    if not symkey_decryption_requests.exist():
+        raise ExistenceError("Decryption request %s does not exist", revelation_request_uid)  # TODO Change this message
 
-    # FIXME DUPLICATED CODE - not ok, factorize that with above TOO OK
-    public_authenticator = symkey_decryptions[0].decryption_request.public_authenticator
+    target_public_authenticator = symkey_decryption_requests[0].revelation_request.target_public_authenticator
     try:
-        _check_authenticator_authorization(public_authenticator, authenticator_keystore_secret)
+        _check_authenticator_authorization(target_public_authenticator, authenticator_keystore_secret)
     except PermissionAuthenticatorError:
         raise PermissionAuthenticatorError("The provided keystore secret is not correct for target authenticator")
 
     expected_request_data = set()
 
-    for symkey_decryption in symkey_decryptions:
-        request_data = symkey_decryption.request_data
+    for symkey_decryption_request in symkey_decryption_requests:
+        request_data = symkey_decryption_request.request_data
         expected_request_data.add(request_data)
 
     received_request_data = set(
@@ -211,17 +208,17 @@ def accept_decryption_request(authenticator_keystore_secret: str, decryption_req
                              exceeding_request_data_among_received,
                              missing_request_data_among_received)
 
-    for symkey_decryption in symkey_decryptions:
+    for symkey_decryption_request in symkey_decryption_requests:
 
         for symkey_decryption_result in symkey_decryption_results:
 
-            if symkey_decryption.request_data == symkey_decryption_result["request_data"]:
-                symkey_decryption.response_data = symkey_decryption_result["response_data"]
-                symkey_decryption.decryption_status = symkey_decryption_result["decryption_status"]
-                symkey_decryption.save()
+            if symkey_decryption_request.request_data == symkey_decryption_result["request_data"]:
+                symkey_decryption_request.response_data = symkey_decryption_result["response_data"]
+                symkey_decryption_request.decryption_status = symkey_decryption_result["decryption_status"]
+                symkey_decryption_request.save()
 
-    DecryptionRequest.objects.filter(decryption_request_uid=decryption_request_uid).update(
-        request_status=RequestStatus.ACCEPTED)
+    RevelationRequest.objects.filter(revelation_request_uid=revelation_request_uid).update(
+        revelation_request_status=RequestStatus.ACCEPTED)
 
 
 micro_schema = get_validation_micro_schemas(extended_json_format=False)

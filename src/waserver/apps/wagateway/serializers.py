@@ -3,8 +3,8 @@ from rest_framework.fields import UUIDField, Field
 
 # from watrustee.models import AuthenticatorUser, AuthenticatorPublicKey
 
-from waserver.apps.wagateway.models import PublicAuthenticator, AuthenticatorPublicKey, DecryptionRequest, \
-    SymkeyDecryption
+from waserver.apps.wagateway.models import PublicAuthenticator, PublicAuthenticatorKey, RevelationRequest, \
+    SymkeyDecryptionRequest
 
 
 class BinaryField(Field):
@@ -34,7 +34,7 @@ class AuthenticatorPublicKeySerializer(serializers.ModelSerializer):
     key_value = BinaryField()
 
     class Meta:
-        model = AuthenticatorPublicKey
+        model = PublicAuthenticatorKey
         fields = ['keychain_uid', 'key_algo', 'key_value']
 
 
@@ -48,29 +48,29 @@ class PublicAuthenticatorSerializer(serializers.ModelSerializer):
         fields = ['keystore_owner', 'keystore_uid', 'public_keys']
 
 
-class SymkeyDecryptionSerializer(serializers.ModelSerializer):
+class SymkeyDecryptionRequestSerializer(serializers.ModelSerializer):
     cryptainer_uid = TransparentRepresentationUUIDField()
     request_data = BinaryField()
     response_data = BinaryField()
-    authenticator_public_key = AuthenticatorPublicKeySerializer(read_only=True)
+    public_authenticator_key = AuthenticatorPublicKeySerializer(read_only=True)
 
     class Meta:
-        model = SymkeyDecryption
-        fields = ['authenticator_public_key', 'cryptainer_uid', 'cryptainer_metadata', 'request_data', 'response_data', 'decryption_status']
+        model = SymkeyDecryptionRequest
+        fields = ['public_authenticator_key', 'cryptainer_uid', 'cryptainer_metadata', 'request_data', 'response_data', 'decryption_status']
 
 
-class DecryptionRequestSerializer(serializers.ModelSerializer):
+class RevelationRequestSerializer(serializers.ModelSerializer):
     requester_uid = TransparentRepresentationUUIDField()
     decryption_request_uid = TransparentRepresentationUUIDField()
     response_keychain_uid = TransparentRepresentationUUIDField()
     response_public_key = BinaryField()
-    symkey_decryptions = SymkeyDecryptionSerializer(many=True, read_only=True)  # FIXME wrong plural location OK
-    public_authenticator = PublicAuthenticatorSerializer(read_only=True)
+    symkey_decryption_resquests = SymkeyDecryptionRequestSerializer(many=True, read_only=True)
+    target_public_authenticator = PublicAuthenticatorSerializer(read_only=True)
 
     class Meta:
-        model = DecryptionRequest
-        fields = ['public_authenticator', 'decryption_request_uid', 'requester_uid', 'description', 'response_public_key',
-                  'response_keychain_uid', 'response_key_algo', 'request_status', 'symkey_decryptions']
+        model = RevelationRequest
+        fields = ['target_public_authenticator', 'revelation_request_uid', 'requester_uid', 'revelation_request_description', 'response_public_key',
+                  'response_keychain_uid', 'response_key_algo', 'revelation_request_status', 'symkey_decryption_resquests']
 
 
 
