@@ -1,14 +1,12 @@
-from django.contrib.auth import authenticate
 from django.contrib.auth.hashers import make_password, check_password, is_password_usable
 from django.db import models
 from django.utils.translation import ugettext_lazy as _
 from django_cryptography.fields import encrypt
 from django_changeset.models import CreatedModifiedByMixin
-from rest_framework.fields import JSONField
 from wacryptolib.utilities import generate_uuid0
 
 
-class PublicAuthenticator(CreatedModifiedByMixin):
+class PublicAuthenticator(CreatedModifiedByMixin):  # Fixme think about this name PublicAth..Profile
     """
     Published mirror of an authenticator device owned by a Key Guardian.
     Username is set as the authenticator's UUID.
@@ -72,19 +70,19 @@ class RevelationRequestStatus(models.TextChoices):
 
 class RevelationRequest(CreatedModifiedByMixin):
 
-    target_public_authenticator = models.ForeignKey(PublicAuthenticator, related_name='revelation_request', on_delete=models.CASCADE)
+    target_public_authenticator = models.ForeignKey(PublicAuthenticator, related_name='revelation_request', on_delete=models.CASCADE) ###
 
     # FIXME prefiex all fields by revelation_xxx, to diféfrentiate from fields of SymkeyDecryptionRequest?
     revelation_request_status = models.CharField(max_length=128, choices=RevelationRequestStatus.choices, default=RevelationRequestStatus.PENDING)
-    revelation_request_uid = models.UUIDField(_("Decryption request uid"), default=generate_uuid0, unique=True)
-    requester_uid = models.UUIDField(_("Requester uid"), db_index=True)
-    revelation_request_description = models.TextField(_("Description"), blank=True)
-    response_public_key = encrypt(models.BinaryField(_("Response Public key ")))  # For now always RSA
-    response_keychain_uid = models.UUIDField(_("Response keychain uid"), null=True)
-    response_key_algo = models.CharField(_("Response Key algo"), max_length=20)
+    revelation_request_uid = models.UUIDField(_("Revelation request uid"), default=generate_uuid0, unique=True)
+    requester_uid = models.UUIDField(_("Requester uid"), db_index=True) #fixme revelation_initiator_uid
+    revelation_request_description = models.TextField(_("Revelation request description"), blank=True)
+    revelation_response_public_key = encrypt(models.BinaryField(_("Revelation response Public key ")))  # For now always RSA
+    revelation_response_keychain_uid = models.UUIDField(_("Revelation response keychain uid"), null=True)
+    revelation_response_key_algo = models.CharField(_("Revelation response Key algo"), max_length=20)
 
 
-class DecryptionStatus(models.TextChoices):
+class SymkeyDecryptionStatus(models.TextChoices):
     DECRYPTED = 'DECRYPTED', _('DECRYPTED')
     PRIVATE_KEY_MISSING = 'PRIVATE KEY MISSING', _('PRIVATE KEY MISSING')
     CORRUPTED = 'CORRUPTED', _('CORRUPTED')
@@ -94,13 +92,13 @@ class DecryptionStatus(models.TextChoices):
 
 class SymkeyDecryptionRequest(CreatedModifiedByMixin):
     class Meta:
-        unique_together = [("revelation_request", "request_data")]
+        unique_together = [("revelation_request", "symkey_decryption_request_data")]
 
     revelation_request = models.ForeignKey(RevelationRequest, related_name='symkey_decryption_requests', on_delete=models.CASCADE)
     public_authenticator_key = models.ForeignKey(PublicAuthenticatorKey, related_name='symkey_decryption_requests', on_delete=models.CASCADE)  # FIXME check integrity of relation loop
     cryptainer_uid = models.UUIDField(_("Cryptainer uid"), null=True)
     cryptainer_metadata = models.JSONField(_("Cryptainer metadata)"), default=dict, null=True)
-    request_data = encrypt(models.BinaryField(_("Request data (symkey/shard encrypted by target authenticator)")))
-    response_data = encrypt(models.BinaryField(_("Response data (symkey/shard encrypted by response public key)"), default=b''))
-    decryption_status = models.CharField(max_length=128, choices=DecryptionStatus.choices, default=DecryptionStatus.PENDING)
+    symkey_decryption_request_data = encrypt(models.BinaryField(_("Symkey Request data (symkey/shard encrypted by target authenticator)")))
+    symkey_decryption_response_data = encrypt(models.BinaryField(_("Symkey Response data (symkey/shard encrypted by response public key)"), default=b''))
+    symkey_decryption_status = models.CharField(max_length=128, choices=SymkeyDecryptionStatus.choices, default=SymkeyDecryptionStatus.PENDING)
 

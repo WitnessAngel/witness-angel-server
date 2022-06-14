@@ -4,21 +4,13 @@ from django.db import transaction
 
 from schema import And, Or, Optional, Schema, SchemaError
 from wacryptolib.cipher import SUPPORTED_CIPHER_ALGOS
-from wacryptolib.exceptions import SchemaValidationError, KeystoreAlreadyExists, KeyDoesNotExist, ExistenceError
+from wacryptolib.exceptions import SchemaValidationError, KeystoreAlreadyExists, KeyDoesNotExist, ExistenceError, \
+    PermissionAuthenticatorError, AuthenticatorDoesNotExist
 from wacryptolib.utilities import get_validation_micro_schemas
 from waserver.apps.wagateway.models import PublicAuthenticator, PublicAuthenticatorKey, RevelationRequest, \
     SymkeyDecryptionRequest, RevelationRequestStatus
 
 from waserver.apps.wagateway.serializers import PublicAuthenticatorSerializer, RevelationRequestSerializer
-
-
-# FIXME WEIRD NAME
-class PermissionAuthenticatorError(ExistenceError):  # TODO Put this in wacryptolib
-    pass
-
-
-class AuthenticatorDoesNotExist(ExistenceError):  # TODO Put this in wacryptolib
-    pass
 
 
 def get_public_authenticator(keystore_uid, keystore_secret=None):
@@ -60,7 +52,7 @@ def set_public_authenticator(keystore_owner: str, keystore_secret: str, keystore
 
 
 def submit_revelation_request(authenticator_keystore_uid: uuid.UUID, requester_uid: uuid.UUID, revelation_request_description: str,
-                              response_public_key: bytes, response_keychain_uid: uuid.UUID, response_key_algo: str,
+                              revelation_response_public_key: bytes, revelation_response_keychain_uid: uuid.UUID, revelation_response_key_algo: str,
                               symkey_decryption_requests: list):
     #  Called by NVR
     # TODO Handle the case where symkey request_data must be unique for the same decryption request
@@ -70,9 +62,9 @@ def submit_revelation_request(authenticator_keystore_uid: uuid.UUID, requester_u
             "authenticator_keystore_uid": authenticator_keystore_uid,
             "requester_uid": requester_uid,
             "revelation_request_description": revelation_request_description,
-            "response_public_key": response_public_key,
-            "response_keychain_uid": response_keychain_uid,
-            "response_key_algo": response_key_algo,
+            "revelation_response_public_key": revelation_response_public_key,
+            "revelation_response_keychain_uid": revelation_response_keychain_uid,
+            "revelation_response_key_algo": revelation_response_key_algo,
             "symkey_decryption_requests": symkey_decryption_requests
         }
 
@@ -89,9 +81,9 @@ def submit_revelation_request(authenticator_keystore_uid: uuid.UUID, requester_u
         revelation_request = RevelationRequest.objects.create(target_public_authenticator=target_public_authenticator,
                                                               requester_uid=requester_uid,
                                                               revelation_request_description=revelation_request_description,
-                                                              response_public_key=response_public_key,
-                                                              response_keychain_uid=response_keychain_uid,
-                                                              response_key_algo=response_key_algo)
+                                                              revelation_response_public_key=revelation_response_public_key,
+                                                              revelation_response_keychain_uid=revelation_response_keychain_uid,
+                                                              revelation_response_key_algo=revelation_response_key_algo)
 
         for symkey_decryption_request in symkey_decryption_requests:
             # Check that the key to decrypt is present in public_authentication_key
@@ -108,7 +100,7 @@ def submit_revelation_request(authenticator_keystore_uid: uuid.UUID, requester_u
                                                    cryptainer_uid=symkey_decryption_request["cryptainer_uid"],
                                                    cryptainer_metadata=symkey_decryption_request["cryptainer_metadata"],
                                                    public_authenticator_key=public_authenticator_key,
-                                                   request_data=symkey_decryption_request["symkey_ciphertext"])
+                                                   symkey_decryption_request_data=symkey_decryption_request["symkey_ciphertext"])
 
 
 def list_wadevice_revelation_requests(requester_uid: uuid.UUID):
@@ -192,11 +184,11 @@ def accept_revelation_request(authenticator_keystore_secret: str, revelation_req
     expected_request_data = set()
 
     for symkey_decryption_request in symkey_decryption_requests:
-        request_data = symkey_decryption_request.request_data
+        request_data = symkey_decryption_request.symkey_decryption_request_data
         expected_request_data.add(request_data)
 
     received_request_data = set(
-        symkey_decryption_result["request_data"] for symkey_decryption_result in symkey_decryption_results)
+        symkey_decryption_result["symkey_decryption_request_data"] for symkey_decryption_result in symkey_decryption_results)
 
     exceeding_request_data_among_received = received_request_data - expected_request_data
     missing_request_data_among_received = expected_request_data - received_request_data
@@ -211,9 +203,9 @@ def accept_revelation_request(authenticator_keystore_secret: str, revelation_req
 
         for symkey_decryption_result in symkey_decryption_results:
 
-            if symkey_decryption_request.request_data == symkey_decryption_result["request_data"]:
-                symkey_decryption_request.response_data = symkey_decryption_result["response_data"]
-                symkey_decryption_request.decryption_status = symkey_decryption_result["decryption_status"]
+            if symkey_decryption_request.symkey_decryption_request_data == symkey_decryption_result["symkey_decryption_request_data"]:
+                symkey_decryption_request.symkey_decryption_response_data = symkey_decryption_result["symkey_decryption_response_data"]
+                symkey_decryption_request.symkey_decryption_status = symkey_decryption_result["symkey_decryption_status"]
                 symkey_decryption_request.save()
 
     RevelationRequest.objects.filter(revelation_request_uid=revelation_request_uid).update(
@@ -226,9 +218,9 @@ SCHEMA_OF_DECRYTION_REQUEST_INPUT_PARAMETERS = Schema({
     "authenticator_keystore_uid": micro_schema.schema_uid,
     "requester_uid": micro_schema.schema_uid,
     "revelation_request_description": And(str, len),
-    "response_public_key": micro_schema.schema_binary,
-    "response_keychain_uid": micro_schema.schema_uid,
-    "response_key_algo": Or(*SUPPORTED_CIPHER_ALGOS),
+    "revelation_response_public_key": micro_schema.schema_binary,
+    "revelation_response_keychain_uid": micro_schema.schema_uid,
+    "revelation_response_key_algo": Or(*SUPPORTED_CIPHER_ALGOS),
     "symkey_decryption_requests": [{
         "cryptainer_uid": micro_schema.schema_uid,
         "cryptainer_metadata": Or(dict, None),

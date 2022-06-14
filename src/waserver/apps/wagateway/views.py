@@ -30,12 +30,13 @@ def set_public_authenticator_view(self, keystore_owner, keystore_uid, keystore_s
 
 @jsonrpc_method("submit_decryption_request", site=wagateway_extended_jsonrpc_site)
 @convert_exceptions_to_jsonrpc_status_slugs
-def submit_decryption_request_view(self, authenticator_keystore_uid, requester_uid, revelation_request_description, response_public_key,
-                                   response_keychain_uid, response_key_algo, symkey_decryption_requests):
+def submit_decryption_request_view(self, authenticator_keystore_uid, requester_uid, revelation_request_description, revelation_response_public_key,
+                                   revelation_response_keychain_uid, revelation_response_key_algo, symkey_decryption_requests):
     return submit_revelation_request(authenticator_keystore_uid=authenticator_keystore_uid, requester_uid=requester_uid,
                                      revelation_request_description=revelation_request_description,
-                                     response_public_key=response_public_key,
-                                     response_keychain_uid=response_keychain_uid, response_key_algo=response_key_algo,
+                                     revelation_response_public_key=revelation_response_public_key,
+                                     revelation_response_keychain_uid=revelation_response_keychain_uid,
+                                     revelation_response_key_algo=revelation_response_key_algo,
                                      symkey_decryption_requests=symkey_decryption_requests)
 
 
