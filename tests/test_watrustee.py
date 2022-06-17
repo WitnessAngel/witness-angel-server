@@ -25,7 +25,7 @@ from wacryptolib.exceptions import KeyDoesNotExist, SignatureVerificationError, 
     KeystoreDoesNotExist, KeystoreAlreadyExists, ValidationError, DecryptionError
 from wacryptolib.jsonrpc_client import JsonRpcProxy, status_slugs_response_error_handler
 from wacryptolib.keygen import load_asymmetric_key_from_pem_bytestring
-from wacryptolib.keystore import DummyKeystore
+from wacryptolib.keystore import InMemoryKeystore
 from wacryptolib.scaffolding import (
     check_keystore_basic_get_set_api,
     check_keystore_free_keys_api,
@@ -173,7 +173,7 @@ def test_jsonrpc_trustee_decryption_authorization_flags(live_server):
                 cipherdict=cipherdict,
             )
 
-        cipherdict["digest_list"].append(b"aaabbbccc")
+        cipherdict["ciphertext_chunks"].append(b"aaabbbccc")
         with pytest.raises(DecryptionError, match="Ciphertext with incorrect length"):
             trustee_proxy.decrypt_with_private_key(
                 keychain_uid=keychain_uid,
@@ -435,7 +435,6 @@ def test_jsonrpc_trustee_encrypt_decrypt_cryptainer(live_server):
     )
 
     # CASE 1: authorization request well sent a short time after creation of "keychain_uid" keypair, so decryption is accepted
-
     with freeze_time() as frozen_datetime:
         keychain_uid = generate_uuid0()
         payload = get_random_bytes(101)
@@ -491,7 +490,7 @@ def test_jsonrpc_trustee_encrypt_decrypt_cryptainer(live_server):
     with freeze_time() as frozen_datetime:
         keychain_uid = generate_uuid0()
         data = get_random_bytes(101)
-        local_keystore = DummyKeystore()
+        local_keystore = InMemoryKeystore()
 
         cryptainer = encrypt_payload_into_cryptainer(
             payload=payload,

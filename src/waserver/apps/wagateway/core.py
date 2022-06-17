@@ -139,7 +139,7 @@ def list_authenticator_revelation_requests(authenticator_keystore_uid: uuid.UUID
         target_public_authenticator__keystore_uid=authenticator_keystore_uid)
 
     if not revelation_requests_for_keystore_uid.exists():
-        raise ExistenceError(
+            raise ExistenceError(
             "No revelation request concerns %s authenticator" % authenticator_keystore_uid)  # TODO Change this exception
 
     return RevelationRequestSerializer(revelation_requests_for_keystore_uid, many=True).data
