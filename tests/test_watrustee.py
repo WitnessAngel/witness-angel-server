@@ -420,14 +420,14 @@ def test_jsonrpc_trustee_encrypt_decrypt_cryptainer(live_server):
                 payload_cipher_algo="AES_EAX",
                 key_cipher_layers=[
                     dict(
-                        key_cipher_algo="RSA_OAEP", key_cipher_trustee=dict(trustee_type=CRYPTAINER_TRUSTEE_TYPES.JSONRPC_API_TRUSTEE, url=jsonrpc_url)
+                        key_cipher_algo="RSA_OAEP", key_cipher_trustee=dict(trustee_type=CRYPTAINER_TRUSTEE_TYPES.JSONRPC_API_TRUSTEE, jsonrpc_url=jsonrpc_url)
                     )
                 ],
                 payload_signatures=[
                     dict(
                         payload_digest_algo="SHA512",
                         payload_signature_algo="DSA_DSS",
-                        payload_signature_trustee=dict(trustee_type=CRYPTAINER_TRUSTEE_TYPES.JSONRPC_API_TRUSTEE, url=jsonrpc_url),
+                        payload_signature_trustee=dict(trustee_type=CRYPTAINER_TRUSTEE_TYPES.JSONRPC_API_TRUSTEE, jsonrpc_url=jsonrpc_url),
                     )
                 ],
             )
