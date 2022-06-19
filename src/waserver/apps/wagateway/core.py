@@ -14,9 +14,10 @@ from waserver.apps.wagateway.serializers import PublicAuthenticatorSerializer, R
 
 
 def get_public_authenticator(keystore_uid, keystore_secret=None):
+    # FIXME validate with tiny SCHEMA, here, too!
     try:
         authenticator_user = PublicAuthenticator.objects.get(keystore_uid=keystore_uid)
-        if keystore_secret:
+        if keystore_secret:  # Optional, only provided to check if owned keystore_secret is still OK
             if keystore_secret != authenticator_user.keystore_secret:
                 raise PermissionAuthenticatorError("Wrong authenticator secret")
         return PublicAuthenticatorSerializer(authenticator_user).data
@@ -58,7 +59,7 @@ def submit_revelation_request(authenticator_keystore_uid: uuid.UUID, requester_u
     # TODO Handle the case where symkey request_data must be unique for the same decryption request
     with transaction.atomic():
 
-        decryption_request_tree = {
+        decryption_request_tree = {  # FIXME rename to revelation_request_tree
             "authenticator_keystore_uid": authenticator_keystore_uid,
             "requester_uid": requester_uid,
             "revelation_request_description": revelation_request_description,
@@ -86,7 +87,7 @@ def submit_revelation_request(authenticator_keystore_uid: uuid.UUID, requester_u
                                                               revelation_response_key_algo=revelation_response_key_algo)
 
         for symkey_decryption_request in symkey_decryption_requests:
-            # Check that the key to decrypt is present in public_authentication_key
+
             try:
                 public_authenticator_key = target_public_authenticator.public_keys.get(
                     keychain_uid=symkey_decryption_request['keychain_uid'],
@@ -105,7 +106,7 @@ def submit_revelation_request(authenticator_keystore_uid: uuid.UUID, requester_u
 
 def list_wadevice_revelation_requests(requester_uid: uuid.UUID):
     #  Called by NVR
-
+    # FIXME validate params with SCHEMA here
     revelation_request_for_requester_uid = RevelationRequest.objects.filter(requester_uid=requester_uid)
     if not revelation_request_for_requester_uid.exists():
         raise ExistenceError(
@@ -124,7 +125,7 @@ def _check_authenticator_authorization(public_authenticator, authenticator_keyst
 
 def list_authenticator_revelation_requests(authenticator_keystore_uid: uuid.UUID, authenticator_keystore_secret: str):
     # Called by authenticator, authenticated with keystore secret
-
+    # FIXME validate params with tiny SCHEMA here
     try:
         target_public_authenticator = PublicAuthenticator.objects.get(keystore_uid=authenticator_keystore_uid)
         _check_authenticator_authorization(target_public_authenticator, authenticator_keystore_secret)
@@ -132,7 +133,7 @@ def list_authenticator_revelation_requests(authenticator_keystore_uid: uuid.UUID
     except PublicAuthenticator.DoesNotExist:
         raise AuthenticatorDoesNotExist("Authenticator User does not exist")
 
-    except PermissionAuthenticatorError:
+    except PermissionAuthenticatorError:   # FIXME - useless interception here
         raise PermissionAuthenticatorError("The provided keystore secret is not correct for target authenticator")
 
     revelation_requests_for_keystore_uid = RevelationRequest.objects.filter(
@@ -147,7 +148,7 @@ def list_authenticator_revelation_requests(authenticator_keystore_uid: uuid.UUID
 
 def reject_revelation_request(authenticator_keystore_secret: str, revelation_request_uid: uuid.UUID):
     # Called by authenticator, authenticated with keystore secret
-
+    # FIXME validate params with tiny SCHEMA here
     try:
         revelation_request = RevelationRequest.objects.get(revelation_request_uid=revelation_request_uid)
 
@@ -159,7 +160,7 @@ def reject_revelation_request(authenticator_keystore_secret: str, revelation_req
         raise ExistenceError(
             "Decryption request %s does not exist" % revelation_request_uid)  # TODO Change this exception
 
-    except PermissionAuthenticatorError:
+    except PermissionAuthenticatorError:   # FIXME - useless interception here
         raise PermissionAuthenticatorError("The provided keystore secret is not correct for target authenticator")
 
     revelation_request.revelation_request_status = RevelationRequestStatus.REJECTED
@@ -169,6 +170,7 @@ def reject_revelation_request(authenticator_keystore_secret: str, revelation_req
 def accept_revelation_request(authenticator_keystore_secret: str, revelation_request_uid, symkey_decryption_results: list):
     #  Called by authenticator, authenticated with keystore secret
 
+    # FIXME - NO, must query RevelationRequest all simply, and then fetch its SymkeyDecryptionRequests via .symkey_decryption_requests relation
     symkey_decryption_requests = SymkeyDecryptionRequest.objects.filter(
         revelation_request__revelation_request_uid=revelation_request_uid)
 
@@ -214,7 +216,7 @@ def accept_revelation_request(authenticator_keystore_secret: str, revelation_req
 
 micro_schema = get_validation_micro_schemas(extended_json_format=False)
 
-SCHEMA_OF_DECRYTION_REQUEST_INPUT_PARAMETERS = Schema({
+SCHEMA_OF_DECRYTION_REQUEST_INPUT_PARAMETERS = Schema({  # FIXME TYPO, and rename XXX_REVELATION_YYY_SCHEMA like below
     "authenticator_keystore_uid": micro_schema.schema_uid,
     "requester_uid": micro_schema.schema_uid,
     "revelation_request_description": And(str, len),

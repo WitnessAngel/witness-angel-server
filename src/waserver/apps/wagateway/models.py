@@ -72,10 +72,9 @@ class RevelationRequest(CreatedModifiedByMixin):
 
     target_public_authenticator = models.ForeignKey(PublicAuthenticator, related_name='revelation_request', on_delete=models.CASCADE) ###
 
-    # FIXME prefiex all fields by revelation_xxx, to diféfrentiate from fields of SymkeyDecryptionRequest?
     revelation_request_status = models.CharField(max_length=128, choices=RevelationRequestStatus.choices, default=RevelationRequestStatus.PENDING)
     revelation_request_uid = models.UUIDField(_("Revelation request uid"), default=generate_uuid0, unique=True)
-    requester_uid = models.UUIDField(_("Requester uid"), db_index=True) #fixme revelation_initiator_uid
+    requester_uid = models.UUIDField(_("Requester uid"), db_index=True) # FIXME revelation_requestor_uid? attention c'est "requestor" dans l'informatique souvent
     revelation_request_description = models.TextField(_("Revelation request description"), blank=True)
     revelation_response_public_key = encrypt(models.BinaryField(_("Revelation response Public key ")))  # For now always RSA
     revelation_response_keychain_uid = models.UUIDField(_("Revelation response keychain uid"), null=True)
@@ -86,7 +85,7 @@ class SymkeyDecryptionStatus(models.TextChoices):
     DECRYPTED = 'DECRYPTED', _('DECRYPTED')
     PRIVATE_KEY_MISSING = 'PRIVATE KEY MISSING', _('PRIVATE KEY MISSING')
     CORRUPTED = 'CORRUPTED', _('CORRUPTED')
-    METADATA_MISMATCH = 'METADATA_MISMATCH', _('METADATA_MISMATCH')  # METADATA MISMATCH ok
+    METADATA_MISMATCH = 'METADATA_MISMATCH', _('METADATA_MISMATCH')  # METADATA MISMATCH ok  # Remove comment
     PENDING = 'PENDING', _('PENDING')
 
 
@@ -95,10 +94,11 @@ class SymkeyDecryptionRequest(CreatedModifiedByMixin):
         unique_together = [("revelation_request", "symkey_decryption_request_data")]
 
     revelation_request = models.ForeignKey(RevelationRequest, related_name='symkey_decryption_requests', on_delete=models.CASCADE)
-    public_authenticator_key = models.ForeignKey(PublicAuthenticatorKey, related_name='symkey_decryption_requests', on_delete=models.CASCADE)  # FIXME check integrity of relation loop
+    public_authenticator_key = models.ForeignKey(PublicAuthenticatorKey, related_name='symkey_decryption_requests', on_delete=models.CASCADE)  # FIXME rename to target_public_authenticator_key
     cryptainer_uid = models.UUIDField(_("Cryptainer uid"), null=True)
     cryptainer_metadata = models.JSONField(_("Cryptainer metadata)"), default=dict, null=True)
     symkey_decryption_request_data = encrypt(models.BinaryField(_("Symkey Request data (symkey/shard encrypted by target authenticator)")))
     symkey_decryption_response_data = encrypt(models.BinaryField(_("Symkey Response data (symkey/shard encrypted by response public key)"), default=b''))
     symkey_decryption_status = models.CharField(max_length=128, choices=SymkeyDecryptionStatus.choices, default=SymkeyDecryptionStatus.PENDING)
 
+    # FIXME in save(), here, check that public_authenticator_key and revelation_request.target_public_authenticator are EQUAL

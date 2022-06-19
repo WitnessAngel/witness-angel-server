@@ -14,6 +14,10 @@ logger = logging.getLogger(__name__)
 wagateway_extended_jsonrpc_site = JsonRpcSite(json_encoder=ExtendedDjangoJSONEncoder)
 
 
+
+# FIXME pass arguments as *args **kwargs here, and let core methods ALL do schema validation
+
+
 @jsonrpc_method("get_public_authenticator", site=wagateway_extended_jsonrpc_site)
 @convert_exceptions_to_jsonrpc_status_slugs
 def get_public_authenticator_view(self, keystore_uid, keystore_secret=None):
@@ -40,6 +44,7 @@ def submit_decryption_request_view(self, authenticator_keystore_uid, requester_u
                                      symkey_decryption_requests=symkey_decryption_requests)
 
 
+# FIXME can we find better than "wadevice" here?
 @jsonrpc_method("list_wadevice_revelation_requests", site=wagateway_extended_jsonrpc_site)
 @convert_exceptions_to_jsonrpc_status_slugs
 def list_wadevice_revelation_requests_view(self, requester_uid):

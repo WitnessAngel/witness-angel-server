@@ -112,7 +112,7 @@ class SqlTrusteeApi(TrusteeApi):
         """
         del passphrases  # For now, SQL keypairs are never passphrase-protected
 
-        # TODO - a redesign of the API could prevent the double DB lookup here, but not sure if it's useful on the long term...
+        # TODO - a redesign of the API could prevent the double DB lookup of keypair_obj here, but not sure if it's useful on the long term...
         keypair_obj = _fetch_key_object_or_raise(
             keychain_uid=keychain_uid, key_algo=cipher_algo
         )

@@ -8,7 +8,7 @@ from waserver.apps.wagateway.models import PublicAuthenticator, PublicAuthentica
 class BinaryField(Field):
     def run_validation(self, data):
         if not isinstance(data, bytes):
-            self.fail('Unsupported data type in BinaryField: %s' % type(data))  # TODO
+            self.fail('Unsupported data type in BinaryField: %s' % type(data))
         return super(BinaryField, self).run_validation(data)
 
     def to_internal_value(self, data):

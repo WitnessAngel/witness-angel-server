@@ -153,7 +153,7 @@ def test_revelation_request(live_server):
     public_authenticators.append(public_authenticator1)
     public_authenticators.append(public_authenticator2)
 
-    # Create response keypair    # FIXME - ENGLISH etc.
+    # Create keypair used by remote server to answer safely
     response_keypair = generate_keypair(key_algo=key_algo)
 
     # Create symkey decryption
