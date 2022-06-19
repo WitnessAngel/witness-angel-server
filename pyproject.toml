@@ -28,7 +28,7 @@ include = ["CHANGELOG", "tox.ini", "settings.ini", "docs/*", "docs/api/*", "test
 exclude = ["_build"]
 
 [tool.poetry.dependencies]
-python = ">=3.7, <=3.10"
+python = ">=3.7, <=3.11"
 
 # Witness Angel system
 wacryptolib = { git = "https://github.com/WitnessAngel/witness-angel-cryptolib.git", branch = "waserver_stable" }
