@@ -70,11 +70,11 @@ class RevelationRequestStatus(models.TextChoices):
 
 class RevelationRequest(CreatedModifiedByMixin):
 
-    target_public_authenticator = models.ForeignKey(PublicAuthenticator, related_name='revelation_request', on_delete=models.CASCADE) ###
+    target_public_authenticator = models.ForeignKey(PublicAuthenticator, related_name='revelation_request', on_delete=models.CASCADE)
 
     revelation_request_status = models.CharField(max_length=128, choices=RevelationRequestStatus.choices, default=RevelationRequestStatus.PENDING)
     revelation_request_uid = models.UUIDField(_("Revelation request uid"), default=generate_uuid0, unique=True)
-    requester_uid = models.UUIDField(_("Requester uid"), db_index=True) # FIXME revelation_requestor_uid? attention c'est "requestor" dans l'informatique souvent
+    revelation_requestor_uid = models.UUIDField(_("Revelation requestor uid"), db_index=True)
     revelation_request_description = models.TextField(_("Revelation request description"), blank=True)
     revelation_response_public_key = encrypt(models.BinaryField(_("Revelation response Public key ")))  # For now always RSA
     revelation_response_keychain_uid = models.UUIDField(_("Revelation response keychain uid"), null=True)
@@ -94,7 +94,7 @@ class SymkeyDecryptionRequest(CreatedModifiedByMixin):
         unique_together = [("revelation_request", "symkey_decryption_request_data")]
 
     revelation_request = models.ForeignKey(RevelationRequest, related_name='symkey_decryption_requests', on_delete=models.CASCADE)
-    public_authenticator_key = models.ForeignKey(PublicAuthenticatorKey, related_name='symkey_decryption_requests', on_delete=models.CASCADE)  # FIXME rename to target_public_authenticator_key
+    target_public_authenticator_key = models.ForeignKey(PublicAuthenticatorKey, related_name='symkey_decryption_requests', on_delete=models.CASCADE)
     cryptainer_uid = models.UUIDField(_("Cryptainer uid"), null=True)
     cryptainer_metadata = models.JSONField(_("Cryptainer metadata)"), default=dict, null=True)
     symkey_decryption_request_data = encrypt(models.BinaryField(_("Symkey Request data (symkey/shard encrypted by target authenticator)")))

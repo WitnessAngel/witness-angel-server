@@ -41,7 +41,7 @@ class Migration(migrations.Migration):
                 ('last_modified_at', models.DateTimeField(auto_now=True, db_index=True, null=True, verbose_name='Date when this element was last modified')),
                 ('revelation_request_status', models.CharField(choices=[('REJECTED', 'REJECTED'), ('ACCEPTED', 'ACCEPTED'), ('PENDING', 'PENDING')], default='PENDING', max_length=128)),
                 ('revelation_request_uid', models.UUIDField(default=wacryptolib.utilities.generate_uuid0, unique=True, verbose_name='Decryption request uid')),
-                ('requester_uid', models.UUIDField(db_index=True, verbose_name='Requester uid')),
+                ('revelation_requestor_uid', models.UUIDField(db_index=True, verbose_name='Revelation requestor uid')),
                 ('revelation_request_description', models.TextField(blank=True, verbose_name='Description')),
                 ('response_public_key', django_cryptography.fields.encrypt(models.BinaryField(verbose_name='Response Public key '))),
                 ('response_keychain_uid', models.UUIDField(null=True, verbose_name='Response keychain uid')),

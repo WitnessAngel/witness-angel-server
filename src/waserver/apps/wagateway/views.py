@@ -34,9 +34,9 @@ def set_public_authenticator_view(self, keystore_owner, keystore_uid, keystore_s
 
 @jsonrpc_method("submit_revelation_request", site=wagateway_extended_jsonrpc_site)
 @convert_exceptions_to_jsonrpc_status_slugs
-def submit_decryption_request_view(self, authenticator_keystore_uid, requester_uid, revelation_request_description, revelation_response_public_key,
+def submit_decryption_request_view(self, authenticator_keystore_uid, revelation_requestor_uid, revelation_request_description, revelation_response_public_key,
                                    revelation_response_keychain_uid, revelation_response_key_algo, symkey_decryption_requests):
-    return submit_revelation_request(authenticator_keystore_uid=authenticator_keystore_uid, requester_uid=requester_uid,
+    return submit_revelation_request(authenticator_keystore_uid=authenticator_keystore_uid, revelation_requestor_uid=revelation_requestor_uid,
                                      revelation_request_description=revelation_request_description,
                                      revelation_response_public_key=revelation_response_public_key,
                                      revelation_response_keychain_uid=revelation_response_keychain_uid,
@@ -47,8 +47,8 @@ def submit_decryption_request_view(self, authenticator_keystore_uid, requester_u
 # FIXME can we find better than "wadevice" here?
 @jsonrpc_method("list_wadevice_revelation_requests", site=wagateway_extended_jsonrpc_site)
 @convert_exceptions_to_jsonrpc_status_slugs
-def list_wadevice_revelation_requests_view(self, requester_uid):
-    return list_wadevice_revelation_requests(requester_uid=requester_uid)
+def list_wadevice_revelation_requests_view(self, revelation_requestor_uid):
+    return list_wadevice_revelation_requests(revelation_requestor_uid=revelation_requestor_uid)
 
 
 @jsonrpc_method("list_authenticator_revelation_requests", site=wagateway_extended_jsonrpc_site)

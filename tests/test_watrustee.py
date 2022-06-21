@@ -198,7 +198,7 @@ def test_jsonrpc_trustee_decryption_authorization_flags(live_server):
 
 
 def test_jsonrpc_trustee_request_decryption_authorization_for_normal_keys(live_server):
-    jsonrpc_url = jsonrpc_url = _get_trustee_jsonrpc_url(live_server)
+    jsonrpc_url = _get_trustee_jsonrpc_url(live_server)
 
     trustee_proxy = JsonRpcProxy(
         url=jsonrpc_url, response_error_handler=status_slugs_response_error_handler
@@ -322,7 +322,7 @@ def test_jsonrpc_trustee_request_decryption_authorization_for_normal_keys(live_s
 
 
 def test_jsonrpc_trustee_request_decryption_authorization_for_free_keys(live_server):
-    jsonrpc_url = jsonrpc_url = _get_trustee_jsonrpc_url(live_server)
+    jsonrpc_url = _get_trustee_jsonrpc_url(live_server)
 
     trustee_proxy = JsonRpcProxy(
         url=jsonrpc_url, response_error_handler=status_slugs_response_error_handler
@@ -411,7 +411,7 @@ def test_jsonrpc_trustee_request_decryption_authorization_for_free_keys(live_ser
 
 
 def test_jsonrpc_trustee_encrypt_decrypt_cryptainer(live_server):
-    jsonrpc_url = jsonrpc_url = _get_trustee_jsonrpc_url(live_server)
+    jsonrpc_url = _get_trustee_jsonrpc_url(live_server)
 
     cryptoconf = dict(
         payload_cipher_layers=[

@@ -50,16 +50,16 @@ class SymkeyDecryptionRequestSerializer(serializers.ModelSerializer):
     cryptainer_uid = TransparentRepresentationUUIDField()
     symkey_decryption_request_data = BinaryField()
     symkey_decryption_response_data = BinaryField()
-    public_authenticator_key = PublicAuthenticatorKeySerializer(read_only=True)
+    target_public_authenticator_key = PublicAuthenticatorKeySerializer(read_only=True)
 
     class Meta:
         model = SymkeyDecryptionRequest
-        fields = ['public_authenticator_key', 'cryptainer_uid', 'cryptainer_metadata', 'symkey_decryption_request_data',
+        fields = ['target_public_authenticator_key', 'cryptainer_uid', 'cryptainer_metadata', 'symkey_decryption_request_data',
                   'symkey_decryption_response_data', 'symkey_decryption_status']
 
 
 class RevelationRequestSerializer(serializers.ModelSerializer):
-    requester_uid = TransparentRepresentationUUIDField()
+    revelation_requestor_uid = TransparentRepresentationUUIDField()
     revelation_request_uid = TransparentRepresentationUUIDField()
     revelation_response_keychain_uid = TransparentRepresentationUUIDField()
     revelation_response_public_key = BinaryField()
@@ -68,7 +68,7 @@ class RevelationRequestSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = RevelationRequest
-        fields = ['target_public_authenticator', 'revelation_request_uid', 'requester_uid',
+        fields = ['target_public_authenticator', 'revelation_request_uid', 'revelation_requestor_uid',
                   'revelation_request_description', 'revelation_response_public_key',
                   'revelation_response_keychain_uid', 'revelation_response_key_algo',
                   'revelation_request_status', 'symkey_decryption_requests']
