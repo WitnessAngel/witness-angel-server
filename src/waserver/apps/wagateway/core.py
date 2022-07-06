@@ -165,6 +165,8 @@ def reject_revelation_request(revelation_request_uid: uuid.UUID, authenticator_k
                                          Schema({"revelation_request_uid": micro_schemas.schema_uid,
                                                  "authenticator_keystore_secret": str}),)
 
+    # FIXME ADD VALIDATION OF REQUEST STATE BEFORE ANYTHING!
+
     with transaction.atomic():
         revelation_request = _get_authorized_revelation_request_by_request_uid(
             revelation_request_uid,
@@ -188,6 +190,8 @@ def accept_revelation_request(revelation_request_uid: uuid.UUID, authenticator_k
                      "symkey_decryption_response_data": micro_schemas.schema_binary,
                      "symkey_decryption_status": Or(*SymkeyDecryptionStatus.values)
                     }])}),)
+
+    # FIXME ADD VALIDATION OF REQUEST STATE BEFORE ANYTHING!
 
     with transaction.atomic():
 

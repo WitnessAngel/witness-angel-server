@@ -15,6 +15,8 @@ from waserver.apps.wagateway.models import PublicAuthenticator, RevelationReques
 from waserver.apps.wagateway.views import set_public_authenticator_view
 
 
+TEST_AUTHENTICATOR_SECRET = "my_keystore_secret"
+
 def _generate_authenticator_parameter_tree(key_count, key_value=None):
     public_keys = []
 
@@ -27,7 +29,7 @@ def _generate_authenticator_parameter_tree(key_count, key_value=None):
 
     parameters = dict(
         keystore_owner="keystore_owner" + str(random.randint(1, 9)),
-        keystore_secret="my_keystore_secret",
+        keystore_secret=TEST_AUTHENTICATOR_SECRET,
         keystore_uid=generate_uuid0(),
         public_keys=public_keys
     )
@@ -121,7 +123,7 @@ def test_jsonrpc_set_and_get_public_authenticator_workflow(live_server):
 
     # Authentication if keystore_secret is given
     public_authenticator1 = gateway_proxy.get_public_authenticator(keystore_uid=parameters["keystore_uid"],
-                                                                   keystore_secret="my_keystore_secret")
+                                                                   keystore_secret=TEST_AUTHENTICATOR_SECRET)
 
     # No authentication if no keystore_secret is given
     public_authenticator2 = gateway_proxy.get_public_authenticator(keystore_uid=parameters["keystore_uid"])
@@ -293,8 +295,8 @@ def test_revelation_request_workflow(live_server):
         url=jsonrpc_url, response_error_handler=status_slugs_response_error_handler
     )
 
-    parameters1 = _generate_authenticator_parameter_tree(2)
-    parameters2 = _generate_authenticator_parameter_tree(2)
+    parameters1 = _generate_authenticator_parameter_tree(3)
+    parameters2 = _generate_authenticator_parameter_tree(3)
 
     key_algo = "RSA_OAEP"
 
@@ -309,7 +311,7 @@ def test_revelation_request_workflow(live_server):
     gateway_proxy.set_public_authenticator(**parameters1)
     gateway_proxy.set_public_authenticator(**parameters2)
 
-    revelation_requests = gateway_proxy.list_authenticator_revelation_requests(
+    revelation_requests = gateway_proxy.list_authenticator_revelation_requests(  # Not yet existing server-side!
         authenticator_keystore_uid=parameters1["keystore_uid"],
         authenticator_keystore_secret=parameters1["keystore_secret"])
     assert revelation_requests == []
@@ -324,10 +326,11 @@ def test_revelation_request_workflow(live_server):
     # Create keypair used by remote server to answer safely
     response_keypair = generate_keypair(key_algo=key_algo)
 
-    # Create symkey decryption
-    symkey_dict = generate_symkey(cipher_algo="AES_CBC")
+    # Create symkeys
+    symkey_dict1 = generate_symkey(cipher_algo="AES_CBC")
+    symkey_dict2 = generate_symkey(cipher_algo="AES_EAX")
 
-    revelation_request_parameters = []
+    all_revelation_request_parameters = []
 
     for public_authenticator in public_authenticators:
         revelation_request_parameters = {
@@ -340,141 +343,170 @@ def test_revelation_request_workflow(live_server):
             "symkey_decryption_requests": [{
                 "cryptainer_uid": generate_uuid0(),
                 "cryptainer_metadata": {},
-                "symkey_decryption_request_data": symkey_dict["key"],
-                "keychain_uid": public_authenticator["public_keys"][0]["keychain_uid"],
-                "key_algo": public_authenticator["public_keys"][0]["key_algo"],
-            }]
+                "symkey_decryption_request_data": symkey_dict1["key"],
+                "keychain_uid": public_authenticator["public_keys"][1]["keychain_uid"],
+                "key_algo": public_authenticator["public_keys"][1]["key_algo"],
+                },{
+                "cryptainer_uid": generate_uuid0(),
+                "cryptainer_metadata": {},
+                "symkey_decryption_request_data": symkey_dict2["key"],
+                "keychain_uid": public_authenticator["public_keys"][2]["keychain_uid"],
+                "key_algo": public_authenticator["public_keys"][2]["key_algo"],
+                }
+            ]
         }
 
-        # Submit revelation_request
+        # Submit revelation request
         gateway_proxy.submit_revelation_request(**revelation_request_parameters)
 
         revelation_request_parameters_broken = copy.deepcopy(revelation_request_parameters)
         revelation_request_parameters_broken["symkey_decryption_requests"].append({
             "cryptainer_uid": generate_uuid0(),
             "cryptainer_metadata": {},
-            "symkey_decryption_request_data": symkey_dict["key"],
+            "symkey_decryption_request_data": b"whatever",
             "keychain_uid": generate_uuid0(),  # WRONG VALUE
             "key_algo": public_authenticator["public_keys"][0]["key_algo"],
         })
         with pytest.raises(KeyDoesNotExist):  # Target public authenticator key not found
             gateway_proxy.submit_revelation_request(**revelation_request_parameters_broken)
 
-        revelation_request_parameters.append(revelation_request_parameters)
+        all_revelation_request_parameters.append(revelation_request_parameters)
 
-    # List of decryption requests for the first authenticator
+    revelation_request_parameters1, revelation_request_parameters2 = all_revelation_request_parameters
+
+    # List of revelation requests for the first authenticator
+
     revelation_requests_by_keystore_uid = gateway_proxy.list_authenticator_revelation_requests(
-        authenticator_keystore_uid=revelation_request_parameters[0]["authenticator_keystore_uid"],
-        authenticator_keystore_secret="keystore_secret")
+        authenticator_keystore_uid=revelation_request_parameters1["authenticator_keystore_uid"],
+        authenticator_keystore_secret=TEST_AUTHENTICATOR_SECRET)
 
     assert len(revelation_requests_by_keystore_uid) == 1
     revelation_request = revelation_requests_by_keystore_uid[0]
 
-    # FIXME DRY this code regarding revelation_request_parameters[0] etc., using dict comprehensions and equality comparisons if possible
-
-    assert revelation_request["revelation_requestor_uid"] == revelation_request_parameters[0]["revelation_requestor_uid"]
-    assert revelation_request["revelation_response_public_key"] == revelation_request_parameters[0][
-        "revelation_response_public_key"]
-    assert revelation_request["revelation_response_keychain_uid"] == revelation_request_parameters[0][
+    assert revelation_request["revelation_requestor_uid"] == revelation_request_parameters1["revelation_requestor_uid"]
+    assert revelation_request["revelation_response_public_key"] == revelation_request_parameters1["revelation_response_public_key"]
+    assert revelation_request["revelation_response_keychain_uid"] == revelation_request_parameters1[
         "revelation_response_keychain_uid"]
-    assert revelation_request["revelation_response_key_algo"] == revelation_request_parameters[0][
+    assert revelation_request["revelation_response_key_algo"] == revelation_request_parameters1[
         "revelation_response_key_algo"]
     assert revelation_request["revelation_request_status"] == RevelationRequestStatus.PENDING
 
-    assert len(revelation_request["symkey_decryption_requests"]) == 1
-    symkey_decryption_request = revelation_request["symkey_decryption_requests"][0]
+    assert len(revelation_request["symkey_decryption_requests"]) == 2
 
-    assert symkey_decryption_request["symkey_decryption_status"] == SymkeyDecryptionStatus.PENDING
+    symkey_decryption_request1 = revelation_request["symkey_decryption_requests"][0]
+    assert symkey_decryption_request1["symkey_decryption_status"] == SymkeyDecryptionStatus.PENDING
+    assert symkey_decryption_request1["target_public_authenticator_key"]["keychain_uid"] == \
+           revelation_request_parameters1["symkey_decryption_requests"][0]["keychain_uid"]
+    assert symkey_decryption_request1["target_public_authenticator_key"]["key_algo"] == \
+           revelation_request_parameters1["symkey_decryption_requests"][0]["key_algo"]
 
-    assert symkey_decryption_request["target_public_authenticator_key"][
-               "keychain_uid"] == \
-           revelation_request_parameters[0]["symkey_decryption_requests"][0]["keychain_uid"]
-    assert symkey_decryption_request["target_public_authenticator_key"][
-               "key_algo"] == \
-           revelation_request_parameters[0]["symkey_decryption_requests"][0]["key_algo"]
+    symkey_decryption_request2 = revelation_request["symkey_decryption_requests"][1]
+    assert symkey_decryption_request2["symkey_decryption_status"] == SymkeyDecryptionStatus.PENDING
+    assert symkey_decryption_request2["target_public_authenticator_key"]["keychain_uid"] == \
+           revelation_request_parameters1["symkey_decryption_requests"][1]["keychain_uid"]
+    assert symkey_decryption_request1["target_public_authenticator_key"]["key_algo"] == \
+           revelation_request_parameters1["symkey_decryption_requests"][1]["key_algo"]
 
-    # List of decryption requests for the authenticator with keystore ou keystore_secret that does not exist
+    # List of revelation requests for an authenticator that does not exist
     with pytest.raises(AuthenticatorDoesNotExist):
         gateway_proxy.list_authenticator_revelation_requests(authenticator_keystore_uid=generate_uuid0(),
-                                               authenticator_keystore_secret="keystore_secret")
+                                               authenticator_keystore_secret=TEST_AUTHENTICATOR_SECRET)
 
     with pytest.raises(AuthenticationError):
         gateway_proxy.list_authenticator_revelation_requests(
-            authenticator_keystore_uid=revelation_request_parameters[0]["authenticator_keystore_uid"],
+            authenticator_keystore_uid=revelation_request_parameters1["authenticator_keystore_uid"],
             authenticator_keystore_secret="toto")
 
-    # List of decryption requests by NVR
-    revelation_request_for_requestor_uid1 = gateway_proxy.list_requestor_revelation_requests(
-        revelation_requestor_uid=revelation_request_parameters[1]["revelation_requestor_uid"])
-
-    # FIXME DRY this code like above, and rename revelation_request_for_requestor_uid1 which must be PLURAL
-
-    assert revelation_request_for_requestor_uid1[0]["revelation_requestor_uid"] == revelation_request_parameters[1]["revelation_requestor_uid"]
-    assert revelation_request_for_requestor_uid1[0]["revelation_response_public_key"] == revelation_request_parameters[1][
-        "revelation_response_public_key"]
-    assert revelation_request_for_requestor_uid1[0]["revelation_response_keychain_uid"] == revelation_request_parameters[1][
-        "revelation_response_keychain_uid"]
-    assert revelation_request_for_requestor_uid1[0]["revelation_response_key_algo"] == revelation_request_parameters[1][
-        "revelation_response_key_algo"]
-    assert revelation_request_for_requestor_uid1[0]["revelation_request_status"] == RevelationRequestStatus.PENDING
-    assert revelation_request_for_requestor_uid1[0]["symkey_decryption_requests"][0][
-               "symkey_decryption_status"] == SymkeyDecryptionStatus.PENDING
-    assert revelation_request_for_requestor_uid1[0]["symkey_decryption_requests"][0]["target_public_authenticator_key"][
-               "keychain_uid"] == revelation_request_parameters[1]["symkey_decryption_requests"][0]["keychain_uid"]
-    assert revelation_request_for_requestor_uid1[0]["symkey_decryption_requests"][0]["target_public_authenticator_key"]["key_algo"] == \
-           revelation_request_parameters[1]["symkey_decryption_requests"][0]["key_algo"]
+    # List of revelation requests for NVR and similar WA devices (for SECOND revelation request)
 
     assert gateway_proxy.list_requestor_revelation_requests(revelation_requestor_uid=generate_uuid0()) == []  # No error on unknown revelation_requestor_uid
 
-    # Reject a decryption request for requester1
-    gateway_proxy.reject_revelation_request(authenticator_keystore_secret="keystore_secret",
-                              revelation_request_uid=revelation_request_for_requestor_uid1[0]["revelation_request_uid"])
+    revelation_requests_for_requestor_uid = gateway_proxy.list_requestor_revelation_requests(
+        revelation_requestor_uid=revelation_request_parameters2["revelation_requestor_uid"])
+    assert len(revelation_requests_for_requestor_uid) == 1
+    revelation_request = revelation_requests_for_requestor_uid[0]
 
-    revelation_request_for_requestor_uid1 = gateway_proxy.list_requestor_revelation_requests(  # FIXME NAMING - must be PLURAL
-        revelation_requestor_uid=revelation_request_parameters[1]["revelation_requestor_uid"])
-    assert revelation_request_for_requestor_uid1[0]["revelation_request_status"] == RevelationRequestStatus.REJECTED
-    assert revelation_request_for_requestor_uid1[0]["symkey_decryption_requests"][0][
-               "symkey_decryption_status"] == SymkeyDecryptionStatus.PENDING
-    assert revelation_request_for_requestor_uid1[0]["symkey_decryption_requests"][0]["symkey_decryption_response_data"] == b""
+    assert revelation_request["revelation_requestor_uid"] == revelation_request_parameters2["revelation_requestor_uid"]
+    assert revelation_request["revelation_response_public_key"] == revelation_request_parameters2[
+        "revelation_response_public_key"]
+    assert revelation_request["revelation_response_keychain_uid"] == revelation_request_parameters2[
+        "revelation_response_keychain_uid"]
+    assert revelation_request["revelation_response_key_algo"] == revelation_request_parameters2[
+        "revelation_response_key_algo"]
+    assert revelation_request["revelation_request_status"] == RevelationRequestStatus.PENDING
+
+    symkey_decryption_request1 = revelation_request["symkey_decryption_requests"][0]
+    assert symkey_decryption_request1["symkey_decryption_status"] == SymkeyDecryptionStatus.PENDING
+    assert symkey_decryption_request1["target_public_authenticator_key"]["keychain_uid"] == \
+           revelation_request_parameters2["symkey_decryption_requests"][0]["keychain_uid"]
+    assert revelation_request_parameters2["symkey_decryption_requests"][0]["key_algo"]
+
+    symkey_decryption_request2 = revelation_request["symkey_decryption_requests"][1]
+    assert symkey_decryption_request2["symkey_decryption_status"] == SymkeyDecryptionStatus.PENDING
+    assert symkey_decryption_request2["target_public_authenticator_key"]["keychain_uid"] == \
+           revelation_request_parameters2["symkey_decryption_requests"][1]["keychain_uid"]
+    assert symkey_decryption_request2["target_public_authenticator_key"]["key_algo"] == \
+           revelation_request_parameters2["symkey_decryption_requests"][1]["key_algo"]
+
+    # API to reject revelation requests (considering FIRST revelation request)
+
+    revelation_requests_for_requestor_uid = gateway_proxy.list_requestor_revelation_requests(
+        revelation_requestor_uid=revelation_request_parameters1["revelation_requestor_uid"])
+    assert len(revelation_requests_for_requestor_uid) == 1
+    revelation_request = revelation_requests_for_requestor_uid[0]
 
     # Reject a revelation request that does not exist
     with pytest.raises(ExistenceError):
-        gateway_proxy.reject_revelation_request(authenticator_keystore_secret="keystore_secret",
+        gateway_proxy.reject_revelation_request(authenticator_keystore_secret=TEST_AUTHENTICATOR_SECRET,
                                   revelation_request_uid=generate_uuid0())
 
-    #  Reject a revelation request with keystore secret unrecognized
+    # Reject a revelation request with keystore secret not matching
     with pytest.raises(AuthenticationError):
         gateway_proxy.reject_revelation_request(
             authenticator_keystore_secret="toto",
-            revelation_request_uid=revelation_request_for_requestor_uid1[0]["revelation_request_uid"])
+            revelation_request_uid=revelation_request["revelation_request_uid"])
+
+    # Reject FIRST revelation request
+
+    gateway_proxy.reject_revelation_request(authenticator_keystore_secret=TEST_AUTHENTICATOR_SECRET,
+                              revelation_request_uid=revelation_request["revelation_request_uid"])
+
+    revelation_requests_for_requestor_uid1 = gateway_proxy.list_requestor_revelation_requests(
+        revelation_requestor_uid=revelation_request_parameters1["revelation_requestor_uid"])
+    assert len(revelation_requests_for_requestor_uid1) == 1
+    revelation_request = revelation_requests_for_requestor_uid1[0]
+    assert revelation_request["revelation_request_status"] == RevelationRequestStatus.REJECTED
+    assert len(revelation_request["symkey_decryption_requests"]) == 2
+    assert revelation_request["symkey_decryption_requests"][0]["symkey_decryption_status"] == \
+           SymkeyDecryptionStatus.PENDING  # Symkey decryption request REMAINS in status PENDING
+    assert revelation_request["symkey_decryption_requests"][0]["symkey_decryption_response_data"] == b""
+    assert revelation_request["symkey_decryption_requests"][1]["symkey_decryption_status"] == \
+           SymkeyDecryptionStatus.PENDING  # Symkey decryption request REMAINS in status PENDING
+    assert revelation_request["symkey_decryption_requests"][1]["symkey_decryption_response_data"] == b""
+
+
+    # API to accept revelation requests (considering SECOND revelation request)
 
     revelation_request_for_requestor_uid2 = gateway_proxy.list_requestor_revelation_requests(
-        revelation_requestor_uid=revelation_request_parameters[1]["revelation_requestor_uid"])
+        revelation_requestor_uid=revelation_request_parameters2["revelation_requestor_uid"])[0]
 
     symkey_decryption_results = [{
-        "symkey_decryption_request_data": revelation_request_parameters[1]["symkey_decryption_requests"][0]["symkey_decryption_request_data"],
+        "symkey_decryption_request_data": revelation_request_for_requestor_uid2["symkey_decryption_requests"][0][
+            "symkey_decryption_request_data"],
         "symkey_decryption_response_data": get_random_bytes(20),
         "symkey_decryption_status": SymkeyDecryptionStatus.DECRYPTED
-    }]
-
-    # Accept the second revelation request
-    gateway_proxy.accept_revelation_request(authenticator_keystore_secret="keystore_secret",
-                              revelation_request_uid=revelation_request_for_requestor_uid2[0]["revelation_request_uid"],
-                              symkey_decryption_results=symkey_decryption_results)
-
-    revelation_request_for_requestor_uid2 = gateway_proxy.list_requestor_revelation_requests(
-        revelation_requestor_uid=revelation_request_parameters[1]["revelation_requestor_uid"])
-    assert revelation_request_for_requestor_uid2[0]["revelation_request_status"] == RevelationRequestStatus.ACCEPTED
-    assert revelation_request_for_requestor_uid2[0]["symkey_decryption_requests"][0]["symkey_decryption_status"] == \
-           symkey_decryption_results[0]["symkey_decryption_status"]
-    assert revelation_request_for_requestor_uid2[0]["symkey_decryption_requests"][0]["symkey_decryption_request_data"] == \
-           symkey_decryption_results[0]["symkey_decryption_request_data"]
-    assert revelation_request_for_requestor_uid2[0]["symkey_decryption_requests"][0]["symkey_decryption_response_data"] == \
-           symkey_decryption_results[0]["symkey_decryption_response_data"]
+    },
+        {
+            "symkey_decryption_request_data": revelation_request_for_requestor_uid2["symkey_decryption_requests"][1][
+                "symkey_decryption_request_data"],
+            "symkey_decryption_response_data": get_random_bytes(20),
+            "symkey_decryption_status": SymkeyDecryptionStatus.PRIVATE_KEY_MISSING
+        }
+    ]
 
     # Accept a revelation request that does not exist
     with pytest.raises(ExistenceError):
-        gateway_proxy.accept_revelation_request(authenticator_keystore_secret="keystore_secret",
+        gateway_proxy.accept_revelation_request(authenticator_keystore_secret=TEST_AUTHENTICATOR_SECRET,
                                   revelation_request_uid=generate_uuid0(),
                                   symkey_decryption_results=symkey_decryption_results)
 
@@ -482,5 +514,28 @@ def test_revelation_request_workflow(live_server):
     with pytest.raises(AuthenticationError):
         gateway_proxy.accept_revelation_request(
             authenticator_keystore_secret="",
-            revelation_request_uid=revelation_request_for_requestor_uid2[0]["revelation_request_uid"],
+            revelation_request_uid=revelation_request_for_requestor_uid2["revelation_request_uid"],
             symkey_decryption_results=symkey_decryption_results)
+
+    # Accept SECOND revelation request
+
+    gateway_proxy.accept_revelation_request(authenticator_keystore_secret=TEST_AUTHENTICATOR_SECRET,
+                              revelation_request_uid=revelation_request_for_requestor_uid2["revelation_request_uid"],
+                              symkey_decryption_results=symkey_decryption_results)
+
+    revelation_requests_for_requestor_uid2 = gateway_proxy.list_requestor_revelation_requests(  # Reload
+        revelation_requestor_uid=revelation_request_parameters2["revelation_requestor_uid"])
+    assert len(revelation_requests_for_requestor_uid2) == 1
+    revelation_request = revelation_requests_for_requestor_uid2[0]
+
+    assert revelation_request["revelation_request_status"] == RevelationRequestStatus.ACCEPTED
+    assert revelation_request["symkey_decryption_requests"][0]["symkey_decryption_status"] == SymkeyDecryptionStatus.DECRYPTED
+    assert revelation_request["symkey_decryption_requests"][0]["symkey_decryption_request_data"] == \
+           symkey_decryption_results[0]["symkey_decryption_request_data"]
+    assert revelation_request["symkey_decryption_requests"][0]["symkey_decryption_response_data"] == \
+           symkey_decryption_results[0]["symkey_decryption_response_data"]
+    assert revelation_request["symkey_decryption_requests"][1]["symkey_decryption_status"] == SymkeyDecryptionStatus.PRIVATE_KEY_MISSING
+    assert revelation_request["symkey_decryption_requests"][1]["symkey_decryption_request_data"] == \
+           symkey_decryption_results[1]["symkey_decryption_request_data"]
+    assert revelation_request["symkey_decryption_requests"][1]["symkey_decryption_response_data"] == \
+           symkey_decryption_results[1]["symkey_decryption_response_data"]
