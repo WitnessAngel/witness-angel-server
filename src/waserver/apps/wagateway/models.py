@@ -27,7 +27,7 @@ class PublicAuthenticator(CreatedModifiedByMixin):  # Fixme think about this nam
     keystore_secret_hash = models.CharField(_('Keystore secret hash'), max_length=128)
 
     def __str__(self):
-        return self.keystore_owner or self.pk
+        return self.keystore_owner or str(self.pk)
 
     # API mimicking AbstractBaseUser password management
 
