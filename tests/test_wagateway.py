@@ -1,10 +1,11 @@
+import copy
 import pytest
 import random
 import requests
 from Crypto.Random import get_random_bytes
 
 from wacryptolib.exceptions import KeystoreAlreadyExists, ExistenceError, \
-    SchemaValidationError, ValidationError
+    SchemaValidationError, ValidationError, KeyDoesNotExist
 from wacryptolib.jsonrpc_client import JsonRpcProxy, status_slugs_response_error_handler
 from wacryptolib.keygen import generate_symkey, generate_keypair
 from wacryptolib.utilities import generate_uuid0
@@ -329,7 +330,7 @@ def test_revelation_request_workflow(live_server):
     revelation_request_parameters = []
 
     for public_authenticator in public_authenticators:
-        revelation_request_parameter = {
+        revelation_request_parameters = {
             "authenticator_keystore_uid": public_authenticator["keystore_uid"],
             "revelation_requestor_uid": generate_uuid0(),
             "revelation_request_description": "Merci de bien vouloir nous aider pour le déchiffrement de cette clé.",
@@ -346,16 +347,20 @@ def test_revelation_request_workflow(live_server):
         }
 
         # Submit revelation_request
-        gateway_proxy.submit_revelation_request(
-            authenticator_keystore_uid=revelation_request_parameter["authenticator_keystore_uid"],
-                                  revelation_requestor_uid=revelation_request_parameter["revelation_requestor_uid"],
-                                  revelation_request_description=revelation_request_parameter["revelation_request_description"],
-                                  revelation_response_public_key=revelation_request_parameter["revelation_response_public_key"],
-                                  revelation_response_keychain_uid=revelation_request_parameter["revelation_response_keychain_uid"],
-                                  revelation_response_key_algo=revelation_request_parameter["revelation_response_key_algo"],
-                                  symkey_decryption_requests=revelation_request_parameter["symkey_decryption_requests"])
+        gateway_proxy.submit_revelation_request(**revelation_request_parameters)
 
-        revelation_request_parameters.append(revelation_request_parameter)
+        revelation_request_parameters_broken = copy.deepcopy(revelation_request_parameters)
+        revelation_request_parameters_broken["symkey_decryption_requests"].append({
+            "cryptainer_uid": generate_uuid0(),
+            "cryptainer_metadata": {},
+            "symkey_ciphertext": symkey_dict["key"],
+            "keychain_uid": generate_uuid0(),  # WRONG VALUE
+            "key_algo": public_authenticator["public_keys"][0]["key_algo"],
+        })
+        with pytest.raises(KeyDoesNotExist):  # Target public authenticator key not found
+            gateway_proxy.submit_revelation_request(**revelation_request_parameters_broken)
+
+        revelation_request_parameters.append(revelation_request_parameters)
 
     # List of decryption requests for the first authenticator
     revelation_requests_by_keystore_uid = gateway_proxy.list_authenticator_revelation_requests(
