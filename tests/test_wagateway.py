@@ -517,6 +517,29 @@ def test_revelation_request_workflow(live_server):
             revelation_request_uid=revelation_request_for_requestor_uid2["revelation_request_uid"],
             symkey_decryption_results=symkey_decryption_results)
 
+    # Trigger errors on mismatch between expected and received symkey data
+    symkey_decryption_results_bad1 = copy.deepcopy(symkey_decryption_results)
+    symkey_decryption_results_bad1.pop()
+
+    symkey_decryption_results_bad2 = copy.deepcopy(symkey_decryption_results)
+    symkey_decryption_results_bad2.append({
+        "symkey_decryption_request_data": get_random_bytes(20),
+        "symkey_decryption_response_data": get_random_bytes(20),
+        "symkey_decryption_status": SymkeyDecryptionStatus.DECRYPTED
+    })
+
+    with pytest.raises(ValidationError, match="symkey_decryption_results"):
+        gateway_proxy.accept_revelation_request(
+            authenticator_keystore_secret=TEST_AUTHENTICATOR_SECRET,
+            revelation_request_uid=revelation_request_for_requestor_uid2["revelation_request_uid"],
+            symkey_decryption_results=symkey_decryption_results_bad1)
+
+    with pytest.raises(ValidationError, match="symkey_decryption_results"):
+        gateway_proxy.accept_revelation_request(
+            authenticator_keystore_secret=TEST_AUTHENTICATOR_SECRET,
+            revelation_request_uid=revelation_request_for_requestor_uid2["revelation_request_uid"],
+            symkey_decryption_results=symkey_decryption_results_bad2)
+
     # Accept SECOND revelation request
 
     gateway_proxy.accept_revelation_request(authenticator_keystore_secret=TEST_AUTHENTICATOR_SECRET,

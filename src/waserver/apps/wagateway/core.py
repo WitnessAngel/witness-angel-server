@@ -201,24 +201,19 @@ def accept_revelation_request(revelation_request_uid: uuid.UUID, authenticator_k
 
         symkey_decryption_requests = revelation_request.symkey_decryption_requests.all()
 
-        expected_request_data = set()
+        expected_request_data = set(symkey_decryption_request.symkey_decryption_request_data
+                                    for symkey_decryption_request in symkey_decryption_requests)
 
-        for symkey_decryption_request in symkey_decryption_requests:
-            request_data = symkey_decryption_request.symkey_decryption_request_data
-            expected_request_data.add(request_data)
+        received_request_data = set(symkey_decryption_result["symkey_decryption_request_data"]
+                                    for symkey_decryption_result in symkey_decryption_results)
 
-        received_request_data = set(
-            symkey_decryption_result["symkey_decryption_request_data"] for symkey_decryption_result in
-            symkey_decryption_results)
-
-        exceeding_request_data_among_received = received_request_data - expected_request_data
-        missing_request_data_among_received = expected_request_data - received_request_data
-
-        if exceeding_request_data_among_received or missing_request_data_among_received:
-            raise ValidationError("Difference between expected and received request data, %s does not exist in expected "
-                                 "request data and %s is expected but not received",
-                                 exceeding_request_data_among_received,
-                                 missing_request_data_among_received)
+        if received_request_data != expected_request_data:
+            exceeding_request_data_among_received = received_request_data - expected_request_data
+            missing_request_data_among_received = expected_request_data - received_request_data
+            assert exceeding_request_data_among_received or missing_request_data_among_received
+            raise ValidationError("Difference between expected and received symkey_decryption_results, "
+                                  "%s is received but unexpected and %s is expected but not received" %
+                                  (exceeding_request_data_among_received, missing_request_data_among_received))
 
         for symkey_decryption_request in symkey_decryption_requests:
 
