@@ -484,6 +484,21 @@ def test_revelation_request_workflow(live_server):
            SymkeyDecryptionStatus.PENDING  # Symkey decryption request REMAINS in status PENDING
     assert revelation_request["symkey_decryption_requests"][1]["symkey_decryption_response_data"] == b""
 
+    # Ensure that revelation requests can't be accepted/rejected anymore when REJECTED
+
+    with pytest.raises(ValidationError, match="revelation request in status"):
+        gateway_proxy.accept_revelation_request(authenticator_keystore_secret=TEST_AUTHENTICATOR_SECRET,
+                                  revelation_request_uid=revelation_requests_for_requestor_uid1[0]["revelation_request_uid"],
+                                  symkey_decryption_results=[{
+                                          "symkey_decryption_request_data": get_random_bytes(20),
+                                          "symkey_decryption_response_data": get_random_bytes(20),
+                                          "symkey_decryption_status": SymkeyDecryptionStatus.DECRYPTED
+                                      }])
+
+    with pytest.raises(ValidationError, match="revelation request in status"):
+        gateway_proxy.reject_revelation_request(
+            authenticator_keystore_secret=TEST_AUTHENTICATOR_SECRET,
+            revelation_request_uid=revelation_requests_for_requestor_uid1[0]["revelation_request_uid"])
 
     # API to accept revelation requests (considering SECOND revelation request)
 
@@ -562,3 +577,15 @@ def test_revelation_request_workflow(live_server):
            symkey_decryption_results[1]["symkey_decryption_request_data"]
     assert revelation_request["symkey_decryption_requests"][1]["symkey_decryption_response_data"] == \
            symkey_decryption_results[1]["symkey_decryption_response_data"]
+
+    # Ensure that revelation requests can't be accepted/rejected anymore when ACCEPTED
+
+    with pytest.raises(ValidationError, match="revelation request in status"):
+        gateway_proxy.accept_revelation_request(authenticator_keystore_secret=TEST_AUTHENTICATOR_SECRET,
+                                  revelation_request_uid=revelation_request_for_requestor_uid2["revelation_request_uid"],
+                                  symkey_decryption_results=symkey_decryption_results)
+
+    with pytest.raises(ValidationError, match="revelation request in status"):
+        gateway_proxy.reject_revelation_request(
+            authenticator_keystore_secret=TEST_AUTHENTICATOR_SECRET,
+            revelation_request_uid=revelation_request_for_requestor_uid2["revelation_request_uid"])

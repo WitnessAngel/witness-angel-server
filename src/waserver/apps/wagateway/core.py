@@ -158,26 +158,28 @@ def list_authenticator_revelation_requests(authenticator_keystore_uid: uuid.UUID
 
 
 def reject_revelation_request(revelation_request_uid: uuid.UUID, authenticator_keystore_secret: str):
-    # Called by authenticator, and authenticated with keystore secret
+    """Called by authenticator, and authenticated with keystore secret"""
 
     validate_data_tree_with_pythonschema(dict(revelation_request_uid=revelation_request_uid,
                                               authenticator_keystore_secret=authenticator_keystore_secret),
                                          Schema({"revelation_request_uid": micro_schemas.schema_uid,
                                                  "authenticator_keystore_secret": str}),)
 
-    # FIXME ADD VALIDATION OF REQUEST STATE BEFORE ANYTHING!
-
     with transaction.atomic():
         revelation_request = _get_authorized_revelation_request_by_request_uid(
             revelation_request_uid,
             authenticator_keystore_secret=authenticator_keystore_secret)
+
+        if revelation_request.revelation_request_status != RevelationRequestStatus.PENDING:
+            raise ValidationError("Cannot reject a revelation request in status %s" % revelation_request.revelation_request_status)
+
         revelation_request.revelation_request_status = RevelationRequestStatus.REJECTED
         revelation_request.save()
 
 
 def accept_revelation_request(revelation_request_uid: uuid.UUID, authenticator_keystore_secret: str,
                               symkey_decryption_results: list):
-    # Called by authenticator, and authenticated with keystore secret
+    """Called by authenticator, and authenticated with keystore secret"""
 
     validate_data_tree_with_pythonschema(
         dict(revelation_request_uid=revelation_request_uid,
@@ -191,13 +193,14 @@ def accept_revelation_request(revelation_request_uid: uuid.UUID, authenticator_k
                      "symkey_decryption_status": Or(*SymkeyDecryptionStatus.values)
                     }])}),)
 
-    # FIXME ADD VALIDATION OF REQUEST STATE BEFORE ANYTHING!
-
     with transaction.atomic():
 
         revelation_request = _get_authorized_revelation_request_by_request_uid(
                     revelation_request_uid,
                     authenticator_keystore_secret=authenticator_keystore_secret)
+
+        if revelation_request.revelation_request_status != RevelationRequestStatus.PENDING:
+            raise ValidationError("Cannot accept a revelation request in status %s" % revelation_request.revelation_request_status)
 
         symkey_decryption_requests = revelation_request.symkey_decryption_requests.all()
 
