@@ -108,11 +108,11 @@ def submit_revelation_request(authenticator_keystore_uid: uuid.UUID, revelation_
 
 
 def list_wadevice_revelation_requests(revelation_requestor_uid: uuid.UUID):
-    #  Called by NVR
+    # Called by NVR
     # FIXME validate params with SCHEMA here
-    revelation_request_for_requestor_uid = RevelationRequest.objects.filter(
+    revelation_request_for_requestor_uid = RevelationRequest.objects.filter(  # FIXME this is PLURAL ("_requests_")
         revelation_requestor_uid=revelation_requestor_uid)
-    if not revelation_request_for_requestor_uid.exists():
+    if not revelation_request_for_requestor_uid.exists():  # FIXME - no exception here, just return empty list
         raise ExistenceError(
             "Requestor uid %s does not have a decryption requests" % revelation_requestor_uid)  # TODO Change this exception
     return RevelationRequestSerializer(revelation_request_for_requestor_uid, many=True).data
@@ -139,7 +139,7 @@ def list_authenticator_revelation_requests(authenticator_keystore_uid: uuid.UUID
     revelation_requests_for_keystore_uid = RevelationRequest.objects.filter(
         target_public_authenticator__keystore_uid=authenticator_keystore_uid)
 
-    if not revelation_requests_for_keystore_uid.exists():
+    if not revelation_requests_for_keystore_uid.exists():  # FIXME - no exception here, just return empty list
         raise ExistenceError(
             "No revelation request concerns %s authenticator" % authenticator_keystore_uid)  # TODO Change this exception
 
