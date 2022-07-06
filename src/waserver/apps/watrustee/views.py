@@ -43,7 +43,7 @@ def get_message_signature(request, keychain_uid, message, signature_algo):
 
 @jsonrpc_method("decrypt_with_private_key", site=watrustee_extended_jsonrpc_site)
 @convert_exceptions_to_jsonrpc_status_slugs
-def decrypt_with_private_key(request, keychain_uid, cipher_algo, cipherdict, passphrases=None):
+def decrypt_with_private_key(request, keychain_uid, cipher_algo, cipherdict, passphrases=None, cryptainer_metadata=None):
     logger.info(
         "Got webservice request on decrypt_with_private_key() for encryption algo %s and keychain uid %s",
         cipher_algo,
@@ -55,6 +55,7 @@ def decrypt_with_private_key(request, keychain_uid, cipher_algo, cipherdict, pas
         cipher_algo=cipher_algo,
         cipherdict=cipherdict,
         passphrases=passphrases,
+        cryptainer_metadata=cryptainer_metadata,
     )
 
 

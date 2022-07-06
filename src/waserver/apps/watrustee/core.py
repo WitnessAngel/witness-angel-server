@@ -105,12 +105,14 @@ class SqlKeystore(KeystoreReadWriteBase):
 class SqlTrusteeApi(TrusteeApi):
     DECRYPTION_AUTHORIZATION_GRACE_PERIOD_S = 5 * 60
 
-    def decrypt_with_private_key(self, keychain_uid, cipher_algo, cipherdict, passphrases: Optional[list] = None):
+    def decrypt_with_private_key(self, keychain_uid, cipher_algo, cipherdict,
+                                 passphrases: Optional[list]=None, cryptainer_metadata=None):
         """
         This implementation checks for a dedicated timestamp flag on the keypair, in DB, and
         only allows decryption for a certain time after that timestamp.
         """
         del passphrases  # For now, SQL keypairs are never passphrase-protected
+        del cryptainer_metadata  # For now, this cryptainer metadata is not checked for coherence
 
         # TODO - a redesign of the API could prevent the double DB lookup of keypair_obj here, but not sure if it's useful on the long term...
         keypair_obj = _fetch_key_object_or_raise(
