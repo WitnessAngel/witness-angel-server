@@ -1,20 +1,16 @@
-import random
-from uuid import UUID
-
-import requests
-
 import pytest
+import random
+import requests
 from Crypto.Random import get_random_bytes
 
-from wacryptolib.exceptions import KeystoreDoesNotExist, KeystoreAlreadyExists, KeyDoesNotExist, ExistenceError, \
+from wacryptolib.exceptions import KeystoreAlreadyExists, ExistenceError, \
     SchemaValidationError, ValidationError
 from wacryptolib.jsonrpc_client import JsonRpcProxy, status_slugs_response_error_handler
-from wacryptolib.keygen import generate_symkey, generate_keypair, load_asymmetric_key_from_pem_bytestring
+from wacryptolib.keygen import generate_symkey, generate_keypair
 from wacryptolib.utilities import generate_uuid0
 from waserver.apps.wagateway.core import validate_data_tree_with_pythonschema, PUBLIC_AUTHENTICATOR_SCHEMA, \
     AuthenticationError, AuthenticatorDoesNotExist
 from waserver.apps.wagateway.models import PublicAuthenticator, RevelationRequestStatus, SymkeyDecryptionStatus
-
 from waserver.apps.wagateway.views import set_public_authenticator_view
 
 
@@ -425,12 +421,12 @@ def test_revelation_request_workflow(live_server):
                "symkey_decryption_status"] == SymkeyDecryptionStatus.PENDING
     assert revelation_request_for_requestor_uid1[0]["symkey_decryption_requests"][0]["symkey_decryption_response_data"] == b""
 
-    # Reject a decryption request that does not exist
+    # Reject a revelation request that does not exist
     with pytest.raises(ExistenceError):
         gateway_proxy.reject_revelation_request(authenticator_keystore_secret="keystore_secret",
                                   revelation_request_uid=generate_uuid0())
 
-    #  Reject a decryption request with keystore secret unrecognized
+    #  Reject a revelation request with keystore secret unrecognized
     with pytest.raises(AuthenticationError):
         gateway_proxy.reject_revelation_request(
             authenticator_keystore_secret="toto",
@@ -445,7 +441,7 @@ def test_revelation_request_workflow(live_server):
         "symkey_decryption_status": SymkeyDecryptionStatus.DECRYPTED
     }]
 
-    # Accept the second decryption request
+    # Accept the second revelation request
     gateway_proxy.accept_revelation_request(authenticator_keystore_secret="keystore_secret",
                               revelation_request_uid=revelation_request_for_requestor_uid2[0]["revelation_request_uid"],
                               symkey_decryption_results=symkey_decryption_results)
@@ -460,13 +456,13 @@ def test_revelation_request_workflow(live_server):
     assert revelation_request_for_requestor_uid2[0]["symkey_decryption_requests"][0]["symkey_decryption_response_data"] == \
            symkey_decryption_results[0]["symkey_decryption_response_data"]
 
-    # Accept a decryption request that does not exist
+    # Accept a revelation request that does not exist
     with pytest.raises(ExistenceError):
         gateway_proxy.accept_revelation_request(authenticator_keystore_secret="keystore_secret",
                                   revelation_request_uid=generate_uuid0(),
-                                  symkey_decryption_results=[])
+                                  symkey_decryption_results=symkey_decryption_results)
 
-    # Accept a decryption request having the keystore_secret not matching
+    # Accept a revelation request having the keystore_secret not matching
     with pytest.raises(AuthenticationError):
         gateway_proxy.accept_revelation_request(
             authenticator_keystore_secret="",

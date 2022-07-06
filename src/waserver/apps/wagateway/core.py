@@ -1,15 +1,14 @@
 import uuid
 
 from django.db import transaction
-
 from schema import And, Or, Optional, Schema, SchemaError
+
 from wacryptolib.cipher import SUPPORTED_CIPHER_ALGOS
 from wacryptolib.exceptions import SchemaValidationError, KeystoreAlreadyExists, KeyDoesNotExist, ExistenceError, \
     AuthenticationError, AuthenticatorDoesNotExist, ValidationError
 from wacryptolib.utilities import get_validation_micro_schemas
 from waserver.apps.wagateway.models import PublicAuthenticator, PublicAuthenticatorKey, RevelationRequest, \
     SymkeyDecryptionRequest, RevelationRequestStatus, SymkeyDecryptionStatus
-
 from waserver.apps.wagateway.serializers import PublicAuthenticatorSerializer, RevelationRequestSerializer
 
 
@@ -25,6 +24,7 @@ def _get_public_authenticator_by_keystore_uid(keystore_uid):
     except PublicAuthenticator.DoesNotExist:
         raise AuthenticatorDoesNotExist("Authenticator %s does not exist in database" % keystore_uid) from None
     return public_authenticator
+
 
 def _get_authorized_revelation_request_by_request_uid(revelation_request_uid, authenticator_keystore_secret):
     try:
@@ -84,7 +84,7 @@ def submit_revelation_request(authenticator_keystore_uid: uuid.UUID, revelation_
                               revelation_response_public_key: bytes, revelation_response_keychain_uid: uuid.UUID,
                               revelation_response_key_algo: str,
                               symkey_decryption_requests: list):
-    # TODO Handle the case where symkey request_data must be unique for the same decryption request
+    # TODO Ensure that the different symkey "request_data" are unique for the same revelation request
     with transaction.atomic():
 
         revelation_request_tree = {
@@ -144,7 +144,7 @@ def list_authenticator_revelation_requests(authenticator_keystore_uid: uuid.UUID
 
     validate_data_tree_with_pythonschema(dict(authenticator_keystore_uid=authenticator_keystore_uid,
                                               authenticator_keystore_secret=authenticator_keystore_secret),
-                                         Schema({"revelation_requestor_uid": micro_schemas.schema_uid,
+                                         Schema({"authenticator_keystore_uid": micro_schemas.schema_uid,
                                                  "authenticator_keystore_secret": str}))
 
     target_public_authenticator = _get_public_authenticator_by_keystore_uid(authenticator_keystore_uid)
@@ -186,7 +186,7 @@ def accept_revelation_request(revelation_request_uid: uuid.UUID, authenticator_k
                  "symkey_decryption_results": And(len, [{
                      "symkey_decryption_request_data": micro_schemas.schema_binary,
                      "symkey_decryption_response_data": micro_schemas.schema_binary,
-                     "symkey_decryption_status": SymkeyDecryptionStatus.values
+                     "symkey_decryption_status": Or(*SymkeyDecryptionStatus.values)
                     }])}),)
 
     with transaction.atomic():
