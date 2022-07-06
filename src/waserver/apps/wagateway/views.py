@@ -15,7 +15,7 @@ wagateway_extended_jsonrpc_site = JsonRpcSite(json_encoder=ExtendedDjangoJSONEnc
 
 
 
-# FIXME pass arguments as *args **kwargs here, and let core methods ALL do schema validation
+# FIXME pass arguments as *args **kwargs here, and let core methods ALL do schema validation (and forbid *args, only kwargs arguents must be accepted)
 
 
 @jsonrpc_method("get_public_authenticator", site=wagateway_extended_jsonrpc_site)
@@ -26,17 +26,19 @@ def get_public_authenticator_view(self, keystore_uid, keystore_secret=None):
 
 @jsonrpc_method("set_public_authenticator", site=wagateway_extended_jsonrpc_site)
 @convert_exceptions_to_jsonrpc_status_slugs
-def set_public_authenticator_view(self, keystore_owner, keystore_uid, keystore_secret, public_keys):
-    return set_public_authenticator(keystore_owner=keystore_owner, keystore_uid=keystore_uid,
-                                    keystore_secret=keystore_secret,
-                                    public_keys=public_keys)
+def set_public_authenticator_view(self, keystore_uid, keystore_owner, public_keys, keystore_secret,):
+    return set_public_authenticator(keystore_uid=keystore_uid,
+                                    keystore_owner=keystore_owner,
+                                    public_keys=public_keys,
+                                    keystore_secret=keystore_secret)
 
 
 @jsonrpc_method("submit_revelation_request", site=wagateway_extended_jsonrpc_site)
 @convert_exceptions_to_jsonrpc_status_slugs
-def submit_decryption_request_view(self, authenticator_keystore_uid, revelation_requestor_uid, revelation_request_description, revelation_response_public_key,
-                                   revelation_response_keychain_uid, revelation_response_key_algo, symkey_decryption_requests):
-    return submit_revelation_request(authenticator_keystore_uid=authenticator_keystore_uid, revelation_requestor_uid=revelation_requestor_uid,
+def submit_decryption_request_view(self, authenticator_keystore_uid, revelation_requestor_uid, revelation_request_description,
+                                   revelation_response_public_key, revelation_response_keychain_uid, revelation_response_key_algo, symkey_decryption_requests):
+    return submit_revelation_request(authenticator_keystore_uid=authenticator_keystore_uid,
+                                     revelation_requestor_uid=revelation_requestor_uid,
                                      revelation_request_description=revelation_request_description,
                                      revelation_response_public_key=revelation_response_public_key,
                                      revelation_response_keychain_uid=revelation_response_keychain_uid,
@@ -44,7 +46,6 @@ def submit_decryption_request_view(self, authenticator_keystore_uid, revelation_
                                      symkey_decryption_requests=symkey_decryption_requests)
 
 
-# FIXME can we find better than "wadevice" here?
 @jsonrpc_method("list_requestor_revelation_requests", site=wagateway_extended_jsonrpc_site)
 @convert_exceptions_to_jsonrpc_status_slugs
 def list_requestor_revelation_requests_view(self, revelation_requestor_uid):
@@ -54,17 +55,21 @@ def list_requestor_revelation_requests_view(self, revelation_requestor_uid):
 @jsonrpc_method("list_authenticator_revelation_requests", site=wagateway_extended_jsonrpc_site)
 @convert_exceptions_to_jsonrpc_status_slugs
 def list_authenticator_decryption_requests_view(self, authenticator_keystore_uid, authenticator_keystore_secret):
-    return list_authenticator_revelation_requests(authenticator_keystore_uid=authenticator_keystore_uid, authenticator_keystore_secret=authenticator_keystore_secret)
+    return list_authenticator_revelation_requests(authenticator_keystore_uid=authenticator_keystore_uid,
+                                                  authenticator_keystore_secret=authenticator_keystore_secret)
 
 
 @jsonrpc_method("reject_revelation_request", site=wagateway_extended_jsonrpc_site)
 @convert_exceptions_to_jsonrpc_status_slugs
-def reject_revelation_request_view(self, authenticator_keystore_secret, revelation_request_uid):
-    return reject_revelation_request(authenticator_keystore_secret=authenticator_keystore_secret, revelation_request_uid=revelation_request_uid)
+def reject_revelation_request_view(self, revelation_request_uid, authenticator_keystore_secret):
+    return reject_revelation_request(revelation_request_uid=revelation_request_uid,
+                                     authenticator_keystore_secret=authenticator_keystore_secret)
 
 
 @jsonrpc_method("accept_revelation_request", site=wagateway_extended_jsonrpc_site)
 @convert_exceptions_to_jsonrpc_status_slugs
-def accept_revelation_request_view(self, authenticator_keystore_secret, revelation_request_uid, symkey_decryption_results):
-    return accept_revelation_request(authenticator_keystore_secret=authenticator_keystore_secret, revelation_request_uid=revelation_request_uid, symkey_decryption_results=symkey_decryption_results)
+def accept_revelation_request_view(self, revelation_request_uid, symkey_decryption_results, authenticator_keystore_secret):
+    return accept_revelation_request(revelation_request_uid=revelation_request_uid,
+                                     symkey_decryption_results=symkey_decryption_results,
+                                     authenticator_keystore_secret=authenticator_keystore_secret)
 
