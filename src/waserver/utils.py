@@ -113,6 +113,8 @@ def validate_input_parameters(f):
 
     @functools.wraps(f)
     def wrapper(*args, **kwargs):
+        if len(args) > 1:  # First parameter is always the WSGI request
+            raise wacryptolib_exceptions.ValidationError("Json-Rpc parameters must be passed as keyword arguments for this API, not by position")
         try:
             signature.bind(*args, **kwargs)
         except TypeError as exc:
