@@ -1,23 +1,17 @@
-import functools
-
-import base64
-import builtins
-import logging
 import inspect
 
-from rest_framework.renderers import JSONRenderer as DRFJSONRenderer
-from rest_framework.utils.encoders import JSONEncoder as DRFJSONEncoder
-
+import base64
+import functools
 import jsonrpc
 from decorator import decorator
 from django.core.serializers.json import DjangoJSONEncoder
 from django.views.decorators.csrf import csrf_exempt
 from jsonrpc.site import JsonRpcSite
+from rest_framework.renderers import JSONRenderer as DRFJSONRenderer
+from rest_framework.utils.encoders import JSONEncoder as DRFJSONEncoder
 
 from wacryptolib import exceptions as wacryptolib_exceptions
 from wacryptolib.error_handling import StatusSlugsMapper
-
-
 # This is for the REST API only #
 from wacryptolib.utilities import load_from_json_str, dump_to_json_str
 

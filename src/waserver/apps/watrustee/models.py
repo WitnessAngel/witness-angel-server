@@ -2,9 +2,8 @@
 
 from django.db import models
 from django.utils.translation import ugettext_lazy as _
-from django_cryptography.fields import encrypt
 from django_changeset.models import CreatedModifiedByMixin
-
+from django_cryptography.fields import encrypt
 
 DECRYPTION_AUTHORIZATION_LIFESPAN_H = (
     24

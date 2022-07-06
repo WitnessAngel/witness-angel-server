@@ -1,7 +1,6 @@
 
 import logging
 
-
 from jsonrpc import jsonrpc_method
 from jsonrpc.site import JsonRpcSite
 

@@ -1,8 +1,9 @@
 from django.contrib.auth.hashers import make_password, check_password, is_password_usable
 from django.db import models
 from django.utils.translation import ugettext_lazy as _
-from django_cryptography.fields import encrypt
 from django_changeset.models import CreatedModifiedByMixin
+from django_cryptography.fields import encrypt
+
 from wacryptolib.utilities import generate_uuid0
 
 

@@ -2,19 +2,12 @@ import uuid
 from datetime import timedelta
 from typing import Optional
 
-from django.db import transaction
 from django.utils import timezone
 
-from schema import And, Or, Schema, SchemaError
-from wacryptolib.cipher import SUPPORTED_CIPHER_ALGOS
+from wacryptolib.exceptions import KeyDoesNotExist, AuthorizationError, OperationNotSupported
 from wacryptolib.keystore import KeystoreReadWriteBase
-
 from wacryptolib.trustee import TrusteeApi
-from wacryptolib.exceptions import KeyDoesNotExist, AuthorizationError, SchemaValidationError, OperationNotSupported, KeystoreAlreadyExists, KeystoreDoesNotExist
-from wacryptolib.utilities import get_validation_micro_schemas
-
 from waserver.apps.watrustee.models import TrusteeKeypair, DECRYPTION_AUTHORIZATION_LIFESPAN_H
-from waserver.apps.wagateway.serializers import PublicAuthenticatorSerializer
 
 
 def _fetch_key_object_or_none(keychain_uid: uuid.UUID, key_algo: str) -> TrusteeKeypair:

@@ -1,31 +1,25 @@
-from django.core.management import call_command
-from io import StringIO
-
-import random
-
-import requests
 from datetime import timedelta
 
 import pytest
 from Crypto.Random import get_random_bytes
-from django.conf import settings
+from django.core.management import call_command
 from django.db import IntegrityError
-from django.test import Client
 from django.utils import timezone
 from freezegun import freeze_time
+from io import StringIO
 
+from wacryptolib.cipher import _encrypt_via_rsa_oaep
 from wacryptolib.cryptainer import (
     encrypt_payload_into_cryptainer,
     decrypt_payload_from_cryptainer, gather_trustee_dependencies, request_decryption_authorizations,
     CRYPTAINER_TRUSTEE_TYPES,
 )
-from wacryptolib.cipher import _encrypt_via_rsa_oaep
-from wacryptolib.keystore import generate_free_keypair_for_least_provisioned_key_algo
 from wacryptolib.exceptions import KeyDoesNotExist, SignatureVerificationError, AuthorizationError, \
-    KeystoreDoesNotExist, KeystoreAlreadyExists, ValidationError, DecryptionError
+    ValidationError, DecryptionError
 from wacryptolib.jsonrpc_client import JsonRpcProxy, status_slugs_response_error_handler
 from wacryptolib.keygen import load_asymmetric_key_from_pem_bytestring
 from wacryptolib.keystore import InMemoryKeystore
+from wacryptolib.keystore import generate_free_keypair_for_least_provisioned_key_algo
 from wacryptolib.scaffolding import (
     check_keystore_basic_get_set_api,
     check_keystore_free_keys_api,

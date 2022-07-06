@@ -1,13 +1,12 @@
 from unittest.mock import patch
 from uuid import UUID
 
+import pytest
 import random
 import requests
-
-import pytest
 from jsonrpc_requests import TransportError
 
-from wacryptolib.exceptions import  AuthenticatorDoesNotExist
+from wacryptolib.exceptions import AuthenticatorDoesNotExist
 from wacryptolib.jsonrpc_client import JsonRpcProxy, status_slugs_response_error_handler
 
 

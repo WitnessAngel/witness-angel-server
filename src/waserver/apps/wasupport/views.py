@@ -6,7 +6,6 @@ from django.http import HttpResponse, HttpResponseBadRequest
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 
-
 logger = logging.getLogger(__name__)
 
 

@@ -6,7 +6,6 @@ from jsonrpc.site import JsonRpcSite
 from waserver.apps.wagateway.core import get_public_authenticator, set_public_authenticator, \
     submit_revelation_request, list_requestor_revelation_requests, \
     list_authenticator_revelation_requests, reject_revelation_request, accept_revelation_request
-
 from waserver.utils import convert_exceptions_to_jsonrpc_status_slugs, ExtendedDjangoJSONEncoder, \
     validate_input_parameters
 

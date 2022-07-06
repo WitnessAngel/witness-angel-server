@@ -1,9 +1,7 @@
 
-from django.urls import include, path
 from django.contrib import admin
-from django.contrib.admindocs import urls as admindocs_urls
+from django.urls import include, path
 from django.views.generic import TemplateView
-
 
 admin.autodiscover()
 
