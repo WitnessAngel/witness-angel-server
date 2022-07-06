@@ -26,7 +26,7 @@ def _generate_authenticator_parameter_tree(key_count, key_value=None):
 
     parameters = dict(
         keystore_owner="keystore_owner" + str(random.randint(1, 9)),
-        keystore_secret="keystore_secret",
+        keystore_secret="my_keystore_secret",
         keystore_uid=generate_uuid0(),
         public_keys=public_keys
     )
@@ -115,12 +115,23 @@ def test_jsonrpc_set_and_get_public_authenticator_workflow(live_server):
     public_authenticator_obj.refresh_from_db()  # Unusable password was NOT saved
     assert public_authenticator_obj.has_usable_keystore_secret()
 
-    public_authenticator = gateway_proxy.get_public_authenticator(keystore_uid=parameters["keystore_uid"])
-    del parameters["keystore_secret"]
-    assert parameters == public_authenticator
+    with pytest.raises(AuthenticationError):
+        gateway_proxy.get_public_authenticator(keystore_uid=parameters["keystore_uid"], keystore_secret="wrongvalue")
 
-    # check_public_authenticator_sanity(public_authenticator)
-    validate_data_tree_with_pythonschema(public_authenticator, PUBLIC_AUTHENTICATOR_SCHEMA)
+    # Authentication if keystore_secret is given
+    public_authenticator1 = gateway_proxy.get_public_authenticator(keystore_uid=parameters["keystore_uid"],
+                                                                   keystore_secret="my_keystore_secret")
+
+    # No authentication if no keystore_secret is given
+    public_authenticator2 = gateway_proxy.get_public_authenticator(keystore_uid=parameters["keystore_uid"])
+
+    expected_authenticator_dict = parameters.copy()
+    del expected_authenticator_dict["keystore_secret"]
+
+    assert public_authenticator1 == expected_authenticator_dict
+    assert public_authenticator2 == expected_authenticator_dict
+
+    validate_data_tree_with_pythonschema(public_authenticator1, PUBLIC_AUTHENTICATOR_SCHEMA)
 
 
 def __NOPE_DISABLED_NOW_test_rest_api_get_public_authenticator(live_server):

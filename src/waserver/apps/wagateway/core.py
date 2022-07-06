@@ -117,7 +117,7 @@ def submit_revelation_request(authenticator_keystore_uid: uuid.UUID, revelation_
                     key_algo=symkey_decryption_request['key_algo'])
             except PublicAuthenticatorKey.DoesNotExist:
                 raise KeyDoesNotExist(
-                    "Public key %s does not exists in key storage in %s authenticator" % (
+                    "Public key %s does not exist in key storage for authenticator %s" % (
                         symkey_decryption_request['keychain_uid'], authenticator_keystore_uid))
 
             SymkeyDecryptionRequest.objects.create(revelation_request=revelation_request,
