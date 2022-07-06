@@ -190,7 +190,7 @@ def accept_revelation_request(revelation_request_uid: uuid.UUID, authenticator_k
                  "symkey_decryption_results": And(len, [{
                      "symkey_decryption_request_data": micro_schemas.schema_binary,
                      "symkey_decryption_response_data": micro_schemas.schema_binary,
-                     "symkey_decryption_status": Or(*SymkeyDecryptionStatus.values)
+                     "symkey_decryption_status": Or(*(set(SymkeyDecryptionStatus.values) - {SymkeyDecryptionStatus.PENDING}))
                     }])}),)
 
     with transaction.atomic():
@@ -217,6 +217,19 @@ def accept_revelation_request(revelation_request_uid: uuid.UUID, authenticator_k
             raise ValidationError("Difference between expected and received symkey_decryption_results, "
                                   "%s is received but unexpected and %s is expected but not received" %
                                   (exceeding_request_data_among_received, missing_request_data_among_received))
+
+        # Ensure it's "all or nothing" for response data
+        for symkey_decryption_result in symkey_decryption_results:
+            assert symkey_decryption_result["symkey_decryption_status"] != SymkeyDecryptionStatus.PENDING  # Schema must ensure that above
+            if symkey_decryption_result["symkey_decryption_status"] == SymkeyDecryptionStatus.DECRYPTED and \
+                    symkey_decryption_result["symkey_decryption_response_data"]:
+                pass
+            elif symkey_decryption_result["symkey_decryption_status"] != SymkeyDecryptionStatus.DECRYPTED and \
+                    not symkey_decryption_result["symkey_decryption_response_data"]:
+                pass
+            else:
+                raise ValidationError("Incoherence between symkey_decryption_status=%s and presence of symkey_decryption_response_data" %
+                                      symkey_decryption_result["symkey_decryption_status"])
 
         for symkey_decryption_request in symkey_decryption_requests:
 

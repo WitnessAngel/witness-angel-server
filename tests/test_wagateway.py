@@ -514,7 +514,7 @@ def test_revelation_request_workflow(live_server):
         {
             "symkey_decryption_request_data": revelation_request_for_requestor_uid2["symkey_decryption_requests"][1][
                 "symkey_decryption_request_data"],
-            "symkey_decryption_response_data": get_random_bytes(20),
+            "symkey_decryption_response_data": b"",  # EMPTY of course
             "symkey_decryption_status": SymkeyDecryptionStatus.PRIVATE_KEY_MISSING
         }
     ]
@@ -532,7 +532,8 @@ def test_revelation_request_workflow(live_server):
             revelation_request_uid=revelation_request_for_requestor_uid2["revelation_request_uid"],
             symkey_decryption_results=symkey_decryption_results)
 
-    # Trigger errors on mismatch between expected and received symkey data
+    # Trigger errors on mismatch between expected and received symkey data, or regarding symkey decryption status
+
     symkey_decryption_results_bad1 = copy.deepcopy(symkey_decryption_results)
     symkey_decryption_results_bad1.pop()
 
@@ -541,6 +542,23 @@ def test_revelation_request_workflow(live_server):
         "symkey_decryption_request_data": get_random_bytes(20),
         "symkey_decryption_response_data": get_random_bytes(20),
         "symkey_decryption_status": SymkeyDecryptionStatus.DECRYPTED
+    })
+
+    symkey_decryption_results_bad3 = copy.deepcopy(symkey_decryption_results)
+    symkey_decryption_results_bad3[-1].update({
+        "symkey_decryption_response_data": get_random_bytes(20),
+        "symkey_decryption_status": SymkeyDecryptionStatus.PRIVATE_KEY_MISSING  # Should NOT have response_data
+    })
+
+    symkey_decryption_results_bad4 = copy.deepcopy(symkey_decryption_results)
+    symkey_decryption_results_bad4[-1].update({
+        "symkey_decryption_response_data": b"",
+        "symkey_decryption_status": SymkeyDecryptionStatus.DECRYPTED  # SHOULD have response_data
+    })
+
+    symkey_decryption_results_bad5 = copy.deepcopy(symkey_decryption_results)
+    symkey_decryption_results_bad5[-1].update({
+        "symkey_decryption_status": SymkeyDecryptionStatus.PENDING  # FORBIDDEN status
     })
 
     with pytest.raises(ValidationError, match="symkey_decryption_results"):
@@ -554,6 +572,24 @@ def test_revelation_request_workflow(live_server):
             authenticator_keystore_secret=TEST_AUTHENTICATOR_SECRET,
             revelation_request_uid=revelation_request_for_requestor_uid2["revelation_request_uid"],
             symkey_decryption_results=symkey_decryption_results_bad2)
+
+    with pytest.raises(ValidationError, match="symkey_decryption_status=PRIVATE_KEY_MISSING"):
+        gateway_proxy.accept_revelation_request(
+            authenticator_keystore_secret=TEST_AUTHENTICATOR_SECRET,
+            revelation_request_uid=revelation_request_for_requestor_uid2["revelation_request_uid"],
+            symkey_decryption_results=symkey_decryption_results_bad3)
+
+    with pytest.raises(ValidationError, match="symkey_decryption_status=DECRYPTED"):
+        gateway_proxy.accept_revelation_request(
+            authenticator_keystore_secret=TEST_AUTHENTICATOR_SECRET,
+            revelation_request_uid=revelation_request_for_requestor_uid2["revelation_request_uid"],
+            symkey_decryption_results=symkey_decryption_results_bad4)
+
+    with pytest.raises(ValidationError, match="schema"):  # "PENDING" status blocked at initial schema validation
+        gateway_proxy.accept_revelation_request(
+            authenticator_keystore_secret=TEST_AUTHENTICATOR_SECRET,
+            revelation_request_uid=revelation_request_for_requestor_uid2["revelation_request_uid"],
+            symkey_decryption_results=symkey_decryption_results_bad5)
 
     # Accept SECOND revelation request
 

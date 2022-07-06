@@ -14,10 +14,6 @@ logger = logging.getLogger(__name__)
 wagateway_extended_jsonrpc_site = JsonRpcSite(json_encoder=ExtendedDjangoJSONEncoder)
 
 
-
-# FIXME pass arguments as *args **kwargs here, and let core methods ALL do schema validation (and forbid *args, only kwargs arguents must be accepted)
-
-
 @jsonrpc_method("get_public_authenticator", site=wagateway_extended_jsonrpc_site)
 @convert_exceptions_to_jsonrpc_status_slugs
 @validate_input_parameters
