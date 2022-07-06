@@ -38,7 +38,10 @@ def _get_authorized_revelation_request_by_request_uid(revelation_request_uid, au
 
 
 def get_public_authenticator(keystore_uid, keystore_secret=None):
-    # FIXME validate with tiny SCHEMA, here, too!
+
+    validate_data_tree_with_pythonschema(dict(keystore_uid=keystore_uid, keystore_secret=keystore_secret),
+                                         Schema({"keystore_uid": micro_schemas.schema_uid,
+                                                 "keystore_secret": Or(None, str)}),)
 
     public_authenticator = _get_public_authenticator_by_keystore_uid(keystore_uid)
 
@@ -49,13 +52,14 @@ def get_public_authenticator(keystore_uid, keystore_secret=None):
 
 
 def set_public_authenticator(keystore_uid: uuid.UUID, keystore_owner: str, public_keys: list, keystore_secret: str):
+
     with transaction.atomic():
 
         public_authenticator_tree = {
-            "keystore_owner": keystore_owner,
-            "keystore_secret": keystore_secret,
             "keystore_uid": keystore_uid,
-            "public_keys": public_keys
+            "keystore_owner": keystore_owner,
+            "public_keys": public_keys,
+            "keystore_secret": keystore_secret,
         }
 
         validate_data_tree_with_pythonschema(data_tree=public_authenticator_tree,

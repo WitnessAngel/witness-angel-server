@@ -39,7 +39,40 @@ def _generate_authenticator_parameter_tree(key_count, key_value=None):
     return parameters
 
 
-def test_jsonrpc_set_and_get_public_authenticator(live_server):
+def test_jsonrpc_set_and_get_public_authenticator_validation_errors(live_server):
+    jsonrpc_url = live_server.url + "/gateway/jsonrpc/"
+
+    gateway_proxy = JsonRpcProxy(
+        url=jsonrpc_url, response_error_handler=status_slugs_response_error_handler
+    )
+
+    with pytest.raises(ValidationError):
+        gateway_proxy.get_public_authenticator()  # Missing arguments
+
+    with pytest.raises(ValidationError):
+        gateway_proxy.get_public_authenticator(keystore_uid="bad-uid")
+
+    with pytest.raises(ValidationError):
+        gateway_proxy.get_public_authenticator(keystore_uid=generate_uuid0(), weird_arg=22)  # Unexpected argument
+
+
+    with pytest.raises(ValidationError):
+        gateway_proxy.set_public_authenticator()   # Missing arguments
+
+    with pytest.raises(ValidationError):
+        gateway_proxy.set_public_authenticator(keystore_uid=generate_uuid0(),
+                                               keystore_owner="Some Owner",
+                                               keystore_secret="whatever",
+                                               public_keys=[{}])  # Key format is incorrect
+
+    with pytest.raises(ValidationError):
+        gateway_proxy.set_public_authenticator(keystore_uid=generate_uuid0(),
+                                               keystore_owner="Some Owner",
+                                               keystore_secret="whatever",
+                                               weird_argument=3333)  # Unexpected argument
+
+
+def test_jsonrpc_set_and_get_public_authenticator_workflow(live_server):
     jsonrpc_url = live_server.url + "/gateway/jsonrpc/"
 
     gateway_proxy = JsonRpcProxy(
@@ -47,12 +80,6 @@ def test_jsonrpc_set_and_get_public_authenticator(live_server):
     )
 
     parameters = _generate_authenticator_parameter_tree(2)
-
-    with pytest.raises(ValidationError):
-        gateway_proxy.get_public_authenticator()  # Missing arguments
-
-    with pytest.raises(ValidationError):
-        gateway_proxy.get_public_authenticator(keystore_uid=parameters["keystore_uid"], weird_arg=22)  # Unexpected argument
 
     with pytest.raises(AuthenticatorDoesNotExist):
         gateway_proxy.get_public_authenticator(keystore_uid=parameters["keystore_uid"])
@@ -66,7 +93,7 @@ def test_jsonrpc_set_and_get_public_authenticator(live_server):
         gateway_proxy.set_public_authenticator(keystore_uid=parameters["keystore_uid"],
                                                keystore_owner=parameters["keystore_owner"],
                                                keystore_secret="whatever",
-                                               public_keys=[])  # EMPTY keys not allowed
+                                               public_keys=[])  # Important, EMPTY keys are not allowed
 
     with pytest.raises(SchemaValidationError):
         gateway_proxy.set_public_authenticator(keystore_uid="hello-bad-uid",
@@ -124,6 +151,14 @@ def __NOPE_DISABLED_NOW_test_rest_api_get_public_authenticator(live_server):
                                                     {'key_algo': 'RSA_OAEP',
                                                      'keychain_uid': str(parameters["public_keys"][1]["keychain_uid"]),
                                                      'key_value': 'YcOpJMKjw6kmw7Y='}]}
+
+
+def __test_revelation_request_validation_errors(live_server):
+    jsonrpc_url = live_server.url + "/gateway/jsonrpc/"
+
+    gateway_proxy = JsonRpcProxy(
+        url=jsonrpc_url, response_error_handler=status_slugs_response_error_handler
+    )
 
 
 def test_revelation_request_workflow(live_server):
