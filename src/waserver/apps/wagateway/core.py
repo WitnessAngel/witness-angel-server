@@ -225,13 +225,13 @@ PUBLIC_AUTHENTICATOR_SCHEMA = Schema({
     "keystore_owner": And(str, len),
     Optional("keystore_secret"): And(str, len),
     "keystore_uid": micro_schemas.schema_uid,
-    "public_keys": [
+    "public_keys": And([
         {
             'keychain_uid': micro_schemas.schema_uid,
             'key_algo': Or(*SUPPORTED_CIPHER_ALGOS),
             'key_value': micro_schemas.schema_binary
         }
-    ]
+    ], len)
 })
 
 

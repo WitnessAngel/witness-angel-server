@@ -51,13 +51,19 @@ def test_jsonrpc_set_and_get_public_authenticator(live_server):
     with pytest.raises(AuthenticatorDoesNotExist):
         gateway_proxy.get_public_authenticator(keystore_uid=parameters["keystore_uid"])
 
-    gateway_proxy.set_public_authenticator(keystore_uid=parameters["keystore_uid"],
-                                           keystore_owner=parameters["keystore_owner"],
-                                           keystore_secret=parameters["keystore_secret"],
-                                           public_keys=parameters["public_keys"])
+    gateway_proxy.set_public_authenticator(**parameters)
 
     with pytest.raises(KeystoreAlreadyExists):
+        gateway_proxy.set_public_authenticator(**parameters)
+
+    with pytest.raises(SchemaValidationError):
         gateway_proxy.set_public_authenticator(keystore_uid=parameters["keystore_uid"],
+                                               keystore_owner=parameters["keystore_owner"],
+                                               keystore_secret="whatever",
+                                               public_keys=[])  # EMPTY keys not allowed
+
+    with pytest.raises(SchemaValidationError):
+        gateway_proxy.set_public_authenticator(keystore_uid="hello-bad-uid",
                                                keystore_owner=parameters["keystore_owner"],
                                                keystore_secret="whatever",
                                                public_keys=parameters["public_keys"])
@@ -89,10 +95,7 @@ def __NOPE_DISABLED_NOW_test_rest_api_get_public_authenticator(live_server):
     parameters = _generate_authenticator_parameter_tree(2, key_value="aé$£é&ö".encode("utf8"))
 
     set_public_authenticator_view(None,
-                                  keystore_uid=parameters["keystore_uid"],
-                                  keystore_owner=parameters["keystore_owner"],
-                                  keystore_secret=parameters["keystore_secret"],
-                                  public_keys=parameters["public_keys"])
+                                  **parameters)
 
     url = live_server.url + "/gateway/rest/public-authenticators/"
     response = requests.get(url)
