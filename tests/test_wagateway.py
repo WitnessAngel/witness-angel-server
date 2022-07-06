@@ -340,7 +340,7 @@ def test_revelation_request_workflow(live_server):
             "symkey_decryption_requests": [{
                 "cryptainer_uid": generate_uuid0(),
                 "cryptainer_metadata": {},
-                "symkey_ciphertext": symkey_dict["key"],
+                "symkey_decryption_request_data": symkey_dict["key"],
                 "keychain_uid": public_authenticator["public_keys"][0]["keychain_uid"],
                 "key_algo": public_authenticator["public_keys"][0]["key_algo"],
             }]
@@ -353,7 +353,7 @@ def test_revelation_request_workflow(live_server):
         revelation_request_parameters_broken["symkey_decryption_requests"].append({
             "cryptainer_uid": generate_uuid0(),
             "cryptainer_metadata": {},
-            "symkey_ciphertext": symkey_dict["key"],
+            "symkey_decryption_request_data": symkey_dict["key"],
             "keychain_uid": generate_uuid0(),  # WRONG VALUE
             "key_algo": public_authenticator["public_keys"][0]["key_algo"],
         })
@@ -452,7 +452,7 @@ def test_revelation_request_workflow(live_server):
         revelation_requestor_uid=revelation_request_parameters[1]["revelation_requestor_uid"])
 
     symkey_decryption_results = [{
-        "symkey_decryption_request_data": revelation_request_parameters[1]["symkey_decryption_requests"][0]["symkey_ciphertext"],
+        "symkey_decryption_request_data": revelation_request_parameters[1]["symkey_decryption_requests"][0]["symkey_decryption_request_data"],
         "symkey_decryption_response_data": get_random_bytes(20),
         "symkey_decryption_status": SymkeyDecryptionStatus.DECRYPTED
     }]

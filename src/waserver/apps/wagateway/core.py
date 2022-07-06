@@ -125,7 +125,7 @@ def submit_revelation_request(authenticator_keystore_uid: uuid.UUID, revelation_
                                                    cryptainer_metadata=symkey_decryption_request["cryptainer_metadata"],
                                                    target_public_authenticator_key=target_public_authenticator_key,
                                                    symkey_decryption_request_data=symkey_decryption_request[
-                                                       "symkey_ciphertext"])
+                                                       "symkey_decryption_request_data"])
 
 
 def list_requestor_revelation_requests(revelation_requestor_uid: uuid.UUID):
@@ -244,7 +244,7 @@ REVELATION_REQUEST_INPUT_PARAMETERS_SCHEMA = Schema({
     "symkey_decryption_requests": [{
         "cryptainer_uid": micro_schemas.schema_uid,
         "cryptainer_metadata": Or(dict, None),
-        "symkey_ciphertext": micro_schemas.schema_binary,
+        "symkey_decryption_request_data": micro_schemas.schema_binary,
         "keychain_uid": micro_schemas.schema_uid,
         "key_algo": Or(*SUPPORTED_CIPHER_ALGOS),
     }]
