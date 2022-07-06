@@ -116,7 +116,7 @@ def __NOPE_DISABLED_NOW_test_rest_api_get_public_authenticator(live_server):
                                                      'key_value': 'YcOpJMKjw6kmw7Y='}]}
 
 
-def test_revelation_request(live_server):
+def test_revelation_request_workflow(live_server):
     jsonrpc_url = live_server.url + "/gateway/jsonrpc/"
 
     gateway_proxy = JsonRpcProxy(
@@ -136,15 +136,9 @@ def test_revelation_request(live_server):
         gateway_proxy.get_public_authenticator(keystore_uid=parameters2["keystore_uid"])
 
     # Publish the two authenticators on the server
-    gateway_proxy.set_public_authenticator(keystore_uid=parameters1["keystore_uid"],
-                                           keystore_owner=parameters1["keystore_owner"],
-                                           keystore_secret=parameters1["keystore_secret"],
-                                           public_keys=parameters1["public_keys"])
+    gateway_proxy.set_public_authenticator(**parameters1)
 
-    gateway_proxy.set_public_authenticator(keystore_uid=parameters2["keystore_uid"],
-                                           keystore_owner=parameters2["keystore_owner"],
-                                           keystore_secret=parameters2["keystore_secret"],
-                                           public_keys=parameters2["public_keys"])
+    gateway_proxy.set_public_authenticator(**parameters2)
 
     # Retrieve in a list all the public authenticators
     public_authenticators = []
@@ -165,7 +159,7 @@ def test_revelation_request(live_server):
         revelation_request_parameter = {
             "authenticator_keystore_uid": public_authenticator["keystore_uid"],
             "revelation_requestor_uid": generate_uuid0(),
-            "revelation_request_description": "Bien vouloir nous aider pour le déchiffrement de cette clé.",
+            "revelation_request_description": "Merci de bien vouloir nous aider pour le déchiffrement de cette clé.",
             "revelation_response_public_key": response_keypair["public_key"],
             "revelation_response_keychain_uid": generate_uuid0(),
             "revelation_response_key_algo": key_algo,
@@ -212,8 +206,8 @@ def test_revelation_request(live_server):
                "key_algo"] == \
            revelation_request_parameters[0]["symkey_decryption_requests"][0]["key_algo"]
 
-    # List of decryption requests for the authenticator with  keystore ou keystore_secret that does not exist
-    with pytest.raises(ExistenceError):
+    # List of decryption requests for the authenticator with keystore ou keystore_secret that does not exist
+    with pytest.raises(AuthenticatorDoesNotExist):
         list_authenticator_revelation_requests(authenticator_keystore_uid=generate_uuid0(),
                                                authenticator_keystore_secret="keystore_secret")
 
@@ -242,7 +236,7 @@ def test_revelation_request(live_server):
            revelation_request_parameters[1]["symkey_decryption_requests"][0]["key_algo"]
 
     # List of decryption requests by the authenticator for NVR with revelation_requestor_uid that does not exist
-    with pytest.raises(ExistenceError):
+    with pytest.raises(AuthenticatorDoesNotExist):
         list_wadevice_revelation_requests(revelation_requestor_uid=generate_uuid0())
 
     # Reject a decryption request for requester1
