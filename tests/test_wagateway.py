@@ -140,8 +140,12 @@ def test_revelation_request_workflow(live_server):
 
     # Publish the two authenticators on the server
     gateway_proxy.set_public_authenticator(**parameters1)
-
     gateway_proxy.set_public_authenticator(**parameters2)
+
+    revelation_requests = list_authenticator_revelation_requests(
+        authenticator_keystore_uid=parameters1["keystore_uid"],
+        authenticator_keystore_secret=parameters1["keystore_secret"])
+    assert revelation_requests == []
 
     # Retrieve in a list all the public authenticators
     public_authenticators = []
@@ -187,25 +191,33 @@ def test_revelation_request_workflow(live_server):
         revelation_request_parameters.append(revelation_request_parameter)
 
     # List of decryption requests for the first authenticator
-    revelation_request_by_keystore_uid = list_authenticator_revelation_requests(
+    revelation_requests_by_keystore_uid = list_authenticator_revelation_requests(
         authenticator_keystore_uid=revelation_request_parameters[0]["authenticator_keystore_uid"],
         authenticator_keystore_secret="keystore_secret")
 
-    assert revelation_request_by_keystore_uid[0]["revelation_requestor_uid"] == revelation_request_parameters[0]["revelation_requestor_uid"]
-    assert revelation_request_by_keystore_uid[0]["revelation_response_public_key"] == revelation_request_parameters[0][
+    assert len(revelation_requests_by_keystore_uid) == 1
+    revelation_request = revelation_requests_by_keystore_uid[0]
+
+    # FIXME DRY this code regarding revelation_request_parameters[0] etc., using dict comprehensions and equality comparisons if possible
+
+    assert revelation_request["revelation_requestor_uid"] == revelation_request_parameters[0]["revelation_requestor_uid"]
+    assert revelation_request["revelation_response_public_key"] == revelation_request_parameters[0][
         "revelation_response_public_key"]
-    assert revelation_request_by_keystore_uid[0]["revelation_response_keychain_uid"] == revelation_request_parameters[0][
+    assert revelation_request["revelation_response_keychain_uid"] == revelation_request_parameters[0][
         "revelation_response_keychain_uid"]
-    assert revelation_request_by_keystore_uid[0]["revelation_response_key_algo"] == revelation_request_parameters[0][
+    assert revelation_request["revelation_response_key_algo"] == revelation_request_parameters[0][
         "revelation_response_key_algo"]
-    assert revelation_request_by_keystore_uid[0]["revelation_request_status"] == RevelationRequestStatus.PENDING
+    assert revelation_request["revelation_request_status"] == RevelationRequestStatus.PENDING
 
-    assert revelation_request_by_keystore_uid[0]["symkey_decryption_requests"][0]["symkey_decryption_status"] == SymkeyDecryptionStatus.PENDING
+    assert len(revelation_request["symkey_decryption_requests"]) == 1
+    symkey_decryption_request = revelation_request["symkey_decryption_requests"][0]
 
-    assert revelation_request_by_keystore_uid[0]["symkey_decryption_requests"][0]["target_public_authenticator_key"][
+    assert symkey_decryption_request["symkey_decryption_status"] == SymkeyDecryptionStatus.PENDING
+
+    assert symkey_decryption_request["target_public_authenticator_key"][
                "keychain_uid"] == \
            revelation_request_parameters[0]["symkey_decryption_requests"][0]["keychain_uid"]
-    assert revelation_request_by_keystore_uid[0]["symkey_decryption_requests"][0]["target_public_authenticator_key"][
+    assert symkey_decryption_request["target_public_authenticator_key"][
                "key_algo"] == \
            revelation_request_parameters[0]["symkey_decryption_requests"][0]["key_algo"]
 
@@ -223,6 +235,8 @@ def test_revelation_request_workflow(live_server):
     revelation_request_for_requestor_uid1 = list_requestor_revelation_requests(
         revelation_requestor_uid=revelation_request_parameters[1]["revelation_requestor_uid"])
 
+    # FIXME DRY this code like above, and rename revelation_request_for_requestor_uid1 which must be PLURAL
+
     assert revelation_request_for_requestor_uid1[0]["revelation_requestor_uid"] == revelation_request_parameters[1]["revelation_requestor_uid"]
     assert revelation_request_for_requestor_uid1[0]["revelation_response_public_key"] == revelation_request_parameters[1][
         "revelation_response_public_key"]
@@ -238,15 +252,13 @@ def test_revelation_request_workflow(live_server):
     assert revelation_request_for_requestor_uid1[0]["symkey_decryption_requests"][0]["target_public_authenticator_key"]["key_algo"] == \
            revelation_request_parameters[1]["symkey_decryption_requests"][0]["key_algo"]
 
-    # List of decryption requests by the authenticator for NVR with revelation_requestor_uid that does not exist
-    with pytest.raises(AuthenticatorDoesNotExist):
-        list_requestor_revelation_requests(revelation_requestor_uid=generate_uuid0())
+    assert list_requestor_revelation_requests(revelation_requestor_uid=generate_uuid0()) == []  # No error on unknown revelation_requestor_uid
 
     # Reject a decryption request for requester1
     reject_revelation_request(authenticator_keystore_secret="keystore_secret",
                               revelation_request_uid=revelation_request_for_requestor_uid1[0]["revelation_request_uid"])
 
-    revelation_request_for_requestor_uid1 = list_requestor_revelation_requests(
+    revelation_request_for_requestor_uid1 = list_requestor_revelation_requests(  # FIXME NAMING - must be PLURAL
         revelation_requestor_uid=revelation_request_parameters[1]["revelation_requestor_uid"])
     assert revelation_request_for_requestor_uid1[0]["revelation_request_status"] == RevelationRequestStatus.REJECTED
     assert revelation_request_for_requestor_uid1[0]["symkey_decryption_requests"][0][
@@ -258,7 +270,7 @@ def test_revelation_request_workflow(live_server):
         reject_revelation_request(authenticator_keystore_secret="keystore_secret",
                                   revelation_request_uid=generate_uuid0())
 
-    #  Reject a decryption requestwith keystore secret that does not exist
+    #  Reject a decryption request with keystore secret unrecognized
     with pytest.raises(AuthenticationError):
         reject_revelation_request(
             authenticator_keystore_secret="toto",
@@ -294,7 +306,7 @@ def test_revelation_request_workflow(live_server):
                                   revelation_request_uid=generate_uuid0(),
                                   symkey_decryption_results=[])
 
-    # Accept a decryption request have the keystore_secret does not match
+    # Accept a decryption request having the keystore_secret not matching
     with pytest.raises(AuthenticationError):
         accept_revelation_request(
             authenticator_keystore_secret="",
