@@ -12,7 +12,7 @@ from wacryptolib.jsonrpc_client import JsonRpcProxy, status_slugs_response_error
 from wacryptolib.keygen import generate_symkey, generate_keypair, load_asymmetric_key_from_pem_bytestring
 from wacryptolib.utilities import generate_uuid0
 from waserver.apps.wagateway.core import validate_data_tree_with_pythonschema, PUBLIC_AUTHENTICATOR_SCHEMA, \
-    PermissionAuthenticatorError, submit_revelation_request, list_wadevice_revelation_requests, \
+    AuthenticationError, submit_revelation_request, list_wadevice_revelation_requests, \
     list_authenticator_revelation_requests, reject_revelation_request, accept_revelation_request, \
     AuthenticatorDoesNotExist
 from waserver.apps.wagateway.models import PublicAuthenticator, RevelationRequestStatus, SymkeyDecryptionStatus
@@ -217,7 +217,7 @@ def test_revelation_request(live_server):
         list_authenticator_revelation_requests(authenticator_keystore_uid=generate_uuid0(),
                                                authenticator_keystore_secret="keystore_secret")
 
-    with pytest.raises(PermissionAuthenticatorError):
+    with pytest.raises(AuthenticationError):
         list_authenticator_revelation_requests(
             authenticator_keystore_uid=decryption_request_parameters[0]["authenticator_keystore_uid"],
             authenticator_keystore_secret="toto")
@@ -262,7 +262,7 @@ def test_revelation_request(live_server):
                                   revelation_request_uid=generate_uuid0())
 
     #  Reject a decryption requestwith keystore secret that does not exist
-    with pytest.raises(PermissionAuthenticatorError):
+    with pytest.raises(AuthenticationError):
         reject_revelation_request(
             authenticator_keystore_secret="toto",
             revelation_request_uid=decryption_request_for_requestor_uid1[0]["revelation_request_uid"])
@@ -298,7 +298,7 @@ def test_revelation_request(live_server):
                                   symkey_decryption_results=[])
 
     # Accept a decryption request have the keystore_secret does not match
-    with pytest.raises(PermissionAuthenticatorError):
+    with pytest.raises(AuthenticationError):
         accept_revelation_request(
             authenticator_keystore_secret="",
             revelation_request_uid=decryption_request_for_requestor_uid2[0]["revelation_request_uid"],

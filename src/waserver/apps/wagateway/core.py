@@ -5,7 +5,7 @@ from django.db import transaction
 from schema import And, Or, Optional, Schema, SchemaError
 from wacryptolib.cipher import SUPPORTED_CIPHER_ALGOS
 from wacryptolib.exceptions import SchemaValidationError, KeystoreAlreadyExists, KeyDoesNotExist, ExistenceError, \
-    PermissionAuthenticatorError, AuthenticatorDoesNotExist
+    AuthenticationError, AuthenticatorDoesNotExist
 from wacryptolib.utilities import get_validation_micro_schemas
 from waserver.apps.wagateway.models import PublicAuthenticator, PublicAuthenticatorKey, RevelationRequest, \
     SymkeyDecryptionRequest, RevelationRequestStatus
@@ -19,7 +19,7 @@ def get_public_authenticator(keystore_uid, keystore_secret=None):
         authenticator_user = PublicAuthenticator.objects.get(keystore_uid=keystore_uid)
         if keystore_secret:  # Optional, only provided to check if owned keystore_secret is still OK
             if keystore_secret != authenticator_user.keystore_secret:
-                raise PermissionAuthenticatorError("Wrong authenticator secret")
+                raise AuthenticationError("Wrong authenticator secret")
         return PublicAuthenticatorSerializer(authenticator_user).data
     except PublicAuthenticator.DoesNotExist:
         raise AuthenticatorDoesNotExist("Authenticator User does not exist") from None
@@ -121,7 +121,7 @@ def list_wadevice_revelation_requests(revelation_requestor_uid: uuid.UUID):
 def _check_authenticator_authorization(public_authenticator, authenticator_keystore_secret: str):
     password_is_correct = public_authenticator.check_keystore_secret(authenticator_keystore_secret)
     if not password_is_correct:
-        raise PermissionAuthenticatorError("The provided keystore secret is not correct for target authenticator")
+        raise AuthenticationError("The provided keystore secret is not correct for target authenticator")
 
     return password_is_correct
 
