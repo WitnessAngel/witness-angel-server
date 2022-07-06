@@ -7,7 +7,7 @@ import pytest
 from Crypto.Random import get_random_bytes
 
 from wacryptolib.exceptions import KeystoreDoesNotExist, KeystoreAlreadyExists, KeyDoesNotExist, ExistenceError, \
-    SchemaValidationError
+    SchemaValidationError, ValidationError
 from wacryptolib.jsonrpc_client import JsonRpcProxy, status_slugs_response_error_handler
 from wacryptolib.keygen import generate_symkey, generate_keypair, load_asymmetric_key_from_pem_bytestring
 from wacryptolib.utilities import generate_uuid0
@@ -48,6 +48,12 @@ def test_jsonrpc_set_and_get_public_authenticator(live_server):
 
     parameters = _generate_authenticator_parameter_tree(2)
 
+    with pytest.raises(ValidationError):
+        gateway_proxy.get_public_authenticator()  # Missing arguments
+
+    with pytest.raises(ValidationError):
+        gateway_proxy.get_public_authenticator(keystore_uid=parameters["keystore_uid"], weird_arg=22)  # Unexpected argument
+
     with pytest.raises(AuthenticatorDoesNotExist):
         gateway_proxy.get_public_authenticator(keystore_uid=parameters["keystore_uid"])
 
@@ -71,6 +77,7 @@ def test_jsonrpc_set_and_get_public_authenticator(live_server):
     # Check handling of secret hash, similar to a password!
     public_authenticator_obj: PublicAuthenticator = PublicAuthenticator.objects.get(
         keystore_uid=parameters["keystore_uid"])
+
     _keystore_secret_hash = public_authenticator_obj.keystore_secret_hash
     assert _keystore_secret_hash
     assert _keystore_secret_hash != parameters["keystore_secret"]

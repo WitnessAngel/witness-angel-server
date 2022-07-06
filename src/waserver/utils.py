@@ -1,6 +1,9 @@
+import functools
+
 import base64
 import builtins
 import logging
+import inspect
 
 from rest_framework.renderers import JSONRenderer as DRFJSONRenderer
 from rest_framework.utils.encoders import JSONEncoder as DRFJSONEncoder
@@ -16,7 +19,6 @@ from wacryptolib.error_handling import StatusSlugsMapper
 
 
 # This is for the REST API only #
-from wacryptolib.exceptions import FunctionalError
 from wacryptolib.utilities import load_from_json_str, dump_to_json_str
 
 
@@ -87,7 +89,7 @@ exception_mapper = StatusSlugsMapper(
 def convert_exceptions_to_jsonrpc_status_slugs(f, *args, **kwargs):
     try:
         return f(*args, **kwargs)
-    except FunctionalError as exc:
+    except wacryptolib_exceptions.FunctionalError as exc:
         status_slugs = exception_mapper.slugify_exception_class(exc.__class__)
         jsonrpc_error = jsonrpc.Error(
             "Server-side exception occurred, see error data for details"
@@ -101,3 +103,20 @@ def convert_exceptions_to_jsonrpc_status_slugs(f, *args, **kwargs):
             message_untranslated=str(exc),
         )
         raise jsonrpc_error from exc
+
+
+# We can't use decorator module, because we want a TOLERANT callable here!
+def validate_input_parameters(f):
+    """Must be applied JUST BEFORE the actual function, to see its real signature."""
+
+    signature = inspect.signature(f)
+
+    @functools.wraps(f)
+    def wrapper(*args, **kwargs):
+        try:
+            signature.bind(*args, **kwargs)
+        except TypeError as exc:
+            raise wacryptolib_exceptions.ValidationError("Incorrect input arguments (%s)" % exc) from exc
+        return f(*args, **kwargs)
+
+    return wrapper
