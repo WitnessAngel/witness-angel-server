@@ -13,16 +13,22 @@ from waserver.apps.wagateway.models import PublicAuthenticator, PublicAuthentica
 from waserver.apps.wagateway.serializers import PublicAuthenticatorSerializer, RevelationRequestSerializer
 
 
+def _validate_public_authenticator_secret(public_authenticator, keystore_secret):
+    if keystore_secret != public_authenticator.keystore_secret:
+        raise AuthenticationError("Wrong authenticator secret")
+
+
 def get_public_authenticator(keystore_uid, keystore_secret=None):
     # FIXME validate with tiny SCHEMA, here, too!
     try:
-        authenticator_user = PublicAuthenticator.objects.get(keystore_uid=keystore_uid)
-        if keystore_secret:  # Optional, only provided to check if owned keystore_secret is still OK
-            if keystore_secret != authenticator_user.keystore_secret:
-                raise AuthenticationError("Wrong authenticator secret")
-        return PublicAuthenticatorSerializer(authenticator_user).data
+        public_authenticator = PublicAuthenticator.objects.get(keystore_uid=keystore_uid)
     except PublicAuthenticator.DoesNotExist:
-        raise AuthenticatorDoesNotExist("Authenticator User does not exist") from None
+        raise AuthenticatorDoesNotExist("Authenticator %s does not exist" % keystore_uid) from None
+
+    if keystore_secret:  # Optional, only provided to check if owned keystore_secret is still OK
+        _validate_public_authenticator_secret(public_authenticator, keystore_secret=keystore_secret)
+
+    return PublicAuthenticatorSerializer(public_authenticator).data
 
 
 def set_public_authenticator(keystore_owner: str, keystore_secret: str, keystore_uid: uuid.UUID, public_keys: list):
@@ -46,7 +52,7 @@ def set_public_authenticator(keystore_owner: str, keystore_secret: str, keystore
             public_authenticator.set_keystore_secret(keystore_secret)
             public_authenticator.save()
             for public_key in public_keys:
-                PublicAuthenticatorKey.objects.create(authenticator_user=public_authenticator,
+                PublicAuthenticatorKey.objects.create(public_authenticator=public_authenticator,
                                                       keychain_uid=public_key["keychain_uid"],
                                                       key_algo=public_key["key_algo"],
                                                       key_value=public_key["key_value"])

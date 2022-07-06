@@ -52,10 +52,8 @@ class PublicAuthenticator(CreatedModifiedByMixin):  # Fixme think about this nam
 
 
 class PublicAuthenticatorKey(CreatedModifiedByMixin):
-    # authenticator_user = models.ForeignKey(AuthenticatorUser, on_delete=models.CASCADE, verbose_name=_(
-    # 'authenticator user'))
 
-    authenticator_user = models.ForeignKey(PublicAuthenticator, related_name='public_keys', on_delete=models.CASCADE)
+    public_authenticator = models.ForeignKey(PublicAuthenticator, related_name='public_keys', on_delete=models.CASCADE)
 
     keychain_uid = models.UUIDField(_("Keychain uid"), null=True)
     key_algo = models.CharField(_("Key algo"), max_length=20)
