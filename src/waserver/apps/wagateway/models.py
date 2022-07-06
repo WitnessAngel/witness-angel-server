@@ -79,6 +79,9 @@ class RevelationRequest(CreatedModifiedByMixin):
     revelation_response_keychain_uid = models.UUIDField(_("Revelation response keychain uid"), null=True)
     revelation_response_key_algo = models.CharField(_("Revelation response Key algo"), max_length=20)
 
+    def __str__(self):
+        return str(self.revelation_request_uid)
+
 
 class SymkeyDecryptionStatus(models.TextChoices):
     DECRYPTED = 'DECRYPTED', _('DECRYPTED')

@@ -32,6 +32,7 @@ class PublicAuthenticatorAdmin(admin.ModelAdmin):
 
 admin.site.register(PublicAuthenticator, PublicAuthenticatorAdmin)
 
+# Fixme customize this admin display with inlines:
 admin.site.register(RevelationRequest)
 admin.site.register(SymkeyDecryptionRequest)
 
