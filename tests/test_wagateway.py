@@ -12,9 +12,7 @@ from wacryptolib.jsonrpc_client import JsonRpcProxy, status_slugs_response_error
 from wacryptolib.keygen import generate_symkey, generate_keypair, load_asymmetric_key_from_pem_bytestring
 from wacryptolib.utilities import generate_uuid0
 from waserver.apps.wagateway.core import validate_data_tree_with_pythonschema, PUBLIC_AUTHENTICATOR_SCHEMA, \
-    AuthenticationError, submit_revelation_request, list_requestor_revelation_requests, \
-    list_authenticator_revelation_requests, reject_revelation_request, accept_revelation_request, \
-    AuthenticatorDoesNotExist
+    AuthenticationError, AuthenticatorDoesNotExist
 from waserver.apps.wagateway.models import PublicAuthenticator, RevelationRequestStatus, SymkeyDecryptionStatus
 
 from waserver.apps.wagateway.views import set_public_authenticator_view
@@ -46,6 +44,9 @@ def test_jsonrpc_set_and_get_public_authenticator_validation_errors(live_server)
         url=jsonrpc_url, response_error_handler=status_slugs_response_error_handler
     )
 
+    with pytest.raises(ValidationError, match="keyword arguments"):
+        gateway_proxy.get_public_authenticator(generate_uuid0())  # SPECIAL - Passing parameters by position is forbidden
+
     with pytest.raises(ValidationError):
         gateway_proxy.get_public_authenticator()  # Missing arguments
 
@@ -55,6 +56,7 @@ def test_jsonrpc_set_and_get_public_authenticator_validation_errors(live_server)
     with pytest.raises(ValidationError):
         gateway_proxy.get_public_authenticator(keystore_uid=generate_uuid0(), weird_arg=22)  # Unexpected argument
 
+    # ---
 
     with pytest.raises(ValidationError):
         gateway_proxy.set_public_authenticator()   # Missing arguments
@@ -153,12 +155,127 @@ def __NOPE_DISABLED_NOW_test_rest_api_get_public_authenticator(live_server):
                                                      'key_value': 'YcOpJMKjw6kmw7Y='}]}
 
 
-def __test_revelation_request_validation_errors(live_server):
+def test_revelation_request_validation_errors(live_server):
     jsonrpc_url = live_server.url + "/gateway/jsonrpc/"
 
     gateway_proxy = JsonRpcProxy(
         url=jsonrpc_url, response_error_handler=status_slugs_response_error_handler
     )
+
+    with pytest.raises(ValidationError):
+        gateway_proxy.list_requestor_revelation_requests()
+
+    with pytest.raises(ValidationError):
+        gateway_proxy.list_requestor_revelation_requests(
+            revelation_requestor_uid="bad-uid-really",
+        )
+
+    with pytest.raises(ValidationError):
+        gateway_proxy.list_requestor_revelation_requests(
+            revelation_requestor_uid=generate_uuid0(),
+            weird_argument=-29236
+        )
+
+    # ---
+
+    with pytest.raises(ValidationError):
+        gateway_proxy.list_authenticator_revelation_requests()
+
+    with pytest.raises(ValidationError):
+        gateway_proxy.list_authenticator_revelation_requests(
+            authenticator_keystore_uid="bad-uid-really",
+            authenticator_keystore_secret="ssqsqsd",
+        )
+
+    with pytest.raises(ValidationError):
+        gateway_proxy.list_authenticator_revelation_requests(
+            authenticator_keystore_uid=generate_uuid0(),
+            authenticator_keystore_secret="some secret key",
+            weird_argument=27252827
+        )
+
+    # ---
+
+    with pytest.raises(ValidationError):
+        gateway_proxy.submit_revelation_request()
+
+    with pytest.raises(ValidationError):
+        gateway_proxy.submit_revelation_request(
+            authenticator_keystore_uid="bad uid",
+            revelation_requestor_uid=generate_uuid0(),
+            revelation_request_description="some description",
+            revelation_response_public_key=b"sdsds",
+            revelation_response_keychain_uid=generate_uuid0(),
+            revelation_response_key_algo="RSA_OAEP",
+            symkey_decryption_requests=[],
+        )
+
+    with pytest.raises(ValidationError):
+        gateway_proxy.submit_revelation_request(
+            authenticator_keystore_uid=generate_uuid0(),
+            weird_argument=27252827)
+
+    # ---
+
+    with pytest.raises(ValidationError):
+        gateway_proxy.reject_revelation_request()
+
+    with pytest.raises(ValidationError):
+        gateway_proxy.reject_revelation_request(
+            revelation_request_uid="bad uid",
+            authenticator_keystore_secret="some str",
+        )
+
+    with pytest.raises(ValidationError):
+        gateway_proxy.reject_revelation_request(
+            revelation_request_uid=generate_uuid0(),
+            authenticator_keystore_secret="some str again",
+            weird_argument=27252827)
+
+    # ---
+
+    with pytest.raises(ValidationError):
+        gateway_proxy.reject_revelation_request()
+
+    with pytest.raises(ValidationError):
+        gateway_proxy.reject_revelation_request(
+            revelation_request_uid="bad uid",
+            authenticator_keystore_secret="some str",
+        )
+
+    with pytest.raises(ValidationError):
+        gateway_proxy.reject_revelation_request(
+            revelation_request_uid=generate_uuid0(),
+            authenticator_keystore_secret="some str again",
+            weird_argument=27252827)
+
+    # ---
+
+    with pytest.raises(ValidationError):
+        gateway_proxy.accept_revelation_request()
+
+    with pytest.raises(ValidationError):
+        gateway_proxy.accept_revelation_request(
+            revelation_request_uid=generate_uuid0(),
+            authenticator_keystore_secret="some str secret",
+            symkey_decryption_results=[],
+        )
+
+    with pytest.raises(ValidationError):
+        gateway_proxy.accept_revelation_request(
+            revelation_request_uid=generate_uuid0(),
+            authenticator_keystore_secret="some str secret",
+            symkey_decryption_results=[dict(symkey_decryption_request_data=b"ssasd",
+                                            symkey_decryption_response_data=b"azeze",
+                                            symkey_decryption_status="UNEXISTING-STATUS")],
+        )
+
+    with pytest.raises(ValidationError):
+        gateway_proxy.accept_revelation_request(
+            revelation_request_uid=generate_uuid0(),
+            authenticator_keystore_secret="some str secret",
+            weird_argument=1156252
+        )
 
 
 def test_revelation_request_workflow(live_server):
@@ -184,7 +301,7 @@ def test_revelation_request_workflow(live_server):
     gateway_proxy.set_public_authenticator(**parameters1)
     gateway_proxy.set_public_authenticator(**parameters2)
 
-    revelation_requests = list_authenticator_revelation_requests(
+    revelation_requests = gateway_proxy.list_authenticator_revelation_requests(
         authenticator_keystore_uid=parameters1["keystore_uid"],
         authenticator_keystore_secret=parameters1["keystore_secret"])
     assert revelation_requests == []
@@ -222,7 +339,8 @@ def test_revelation_request_workflow(live_server):
         }
 
         # Submit revelation_request
-        submit_revelation_request(authenticator_keystore_uid=revelation_request_parameter["authenticator_keystore_uid"],
+        gateway_proxy.submit_revelation_request(
+            authenticator_keystore_uid=revelation_request_parameter["authenticator_keystore_uid"],
                                   revelation_requestor_uid=revelation_request_parameter["revelation_requestor_uid"],
                                   revelation_request_description=revelation_request_parameter["revelation_request_description"],
                                   revelation_response_public_key=revelation_request_parameter["revelation_response_public_key"],
@@ -233,7 +351,7 @@ def test_revelation_request_workflow(live_server):
         revelation_request_parameters.append(revelation_request_parameter)
 
     # List of decryption requests for the first authenticator
-    revelation_requests_by_keystore_uid = list_authenticator_revelation_requests(
+    revelation_requests_by_keystore_uid = gateway_proxy.list_authenticator_revelation_requests(
         authenticator_keystore_uid=revelation_request_parameters[0]["authenticator_keystore_uid"],
         authenticator_keystore_secret="keystore_secret")
 
@@ -265,16 +383,16 @@ def test_revelation_request_workflow(live_server):
 
     # List of decryption requests for the authenticator with keystore ou keystore_secret that does not exist
     with pytest.raises(AuthenticatorDoesNotExist):
-        list_authenticator_revelation_requests(authenticator_keystore_uid=generate_uuid0(),
+        gateway_proxy.list_authenticator_revelation_requests(authenticator_keystore_uid=generate_uuid0(),
                                                authenticator_keystore_secret="keystore_secret")
 
     with pytest.raises(AuthenticationError):
-        list_authenticator_revelation_requests(
+        gateway_proxy.list_authenticator_revelation_requests(
             authenticator_keystore_uid=revelation_request_parameters[0]["authenticator_keystore_uid"],
             authenticator_keystore_secret="toto")
 
     # List of decryption requests by NVR
-    revelation_request_for_requestor_uid1 = list_requestor_revelation_requests(
+    revelation_request_for_requestor_uid1 = gateway_proxy.list_requestor_revelation_requests(
         revelation_requestor_uid=revelation_request_parameters[1]["revelation_requestor_uid"])
 
     # FIXME DRY this code like above, and rename revelation_request_for_requestor_uid1 which must be PLURAL
@@ -294,13 +412,13 @@ def test_revelation_request_workflow(live_server):
     assert revelation_request_for_requestor_uid1[0]["symkey_decryption_requests"][0]["target_public_authenticator_key"]["key_algo"] == \
            revelation_request_parameters[1]["symkey_decryption_requests"][0]["key_algo"]
 
-    assert list_requestor_revelation_requests(revelation_requestor_uid=generate_uuid0()) == []  # No error on unknown revelation_requestor_uid
+    assert gateway_proxy.list_requestor_revelation_requests(revelation_requestor_uid=generate_uuid0()) == []  # No error on unknown revelation_requestor_uid
 
     # Reject a decryption request for requester1
-    reject_revelation_request(authenticator_keystore_secret="keystore_secret",
+    gateway_proxy.reject_revelation_request(authenticator_keystore_secret="keystore_secret",
                               revelation_request_uid=revelation_request_for_requestor_uid1[0]["revelation_request_uid"])
 
-    revelation_request_for_requestor_uid1 = list_requestor_revelation_requests(  # FIXME NAMING - must be PLURAL
+    revelation_request_for_requestor_uid1 = gateway_proxy.list_requestor_revelation_requests(  # FIXME NAMING - must be PLURAL
         revelation_requestor_uid=revelation_request_parameters[1]["revelation_requestor_uid"])
     assert revelation_request_for_requestor_uid1[0]["revelation_request_status"] == RevelationRequestStatus.REJECTED
     assert revelation_request_for_requestor_uid1[0]["symkey_decryption_requests"][0][
@@ -309,16 +427,16 @@ def test_revelation_request_workflow(live_server):
 
     # Reject a decryption request that does not exist
     with pytest.raises(ExistenceError):
-        reject_revelation_request(authenticator_keystore_secret="keystore_secret",
+        gateway_proxy.reject_revelation_request(authenticator_keystore_secret="keystore_secret",
                                   revelation_request_uid=generate_uuid0())
 
     #  Reject a decryption request with keystore secret unrecognized
     with pytest.raises(AuthenticationError):
-        reject_revelation_request(
+        gateway_proxy.reject_revelation_request(
             authenticator_keystore_secret="toto",
             revelation_request_uid=revelation_request_for_requestor_uid1[0]["revelation_request_uid"])
 
-    revelation_request_for_requestor_uid2 = list_requestor_revelation_requests(
+    revelation_request_for_requestor_uid2 = gateway_proxy.list_requestor_revelation_requests(
         revelation_requestor_uid=revelation_request_parameters[1]["revelation_requestor_uid"])
 
     symkey_decryption_results = [{
@@ -328,11 +446,11 @@ def test_revelation_request_workflow(live_server):
     }]
 
     # Accept the second decryption request
-    accept_revelation_request(authenticator_keystore_secret="keystore_secret",
+    gateway_proxy.accept_revelation_request(authenticator_keystore_secret="keystore_secret",
                               revelation_request_uid=revelation_request_for_requestor_uid2[0]["revelation_request_uid"],
                               symkey_decryption_results=symkey_decryption_results)
 
-    revelation_request_for_requestor_uid2 = list_requestor_revelation_requests(
+    revelation_request_for_requestor_uid2 = gateway_proxy.list_requestor_revelation_requests(
         revelation_requestor_uid=revelation_request_parameters[1]["revelation_requestor_uid"])
     assert revelation_request_for_requestor_uid2[0]["revelation_request_status"] == RevelationRequestStatus.ACCEPTED
     assert revelation_request_for_requestor_uid2[0]["symkey_decryption_requests"][0]["symkey_decryption_status"] == \
@@ -344,13 +462,13 @@ def test_revelation_request_workflow(live_server):
 
     # Accept a decryption request that does not exist
     with pytest.raises(ExistenceError):
-        accept_revelation_request(authenticator_keystore_secret="keystore_secret",
+        gateway_proxy.accept_revelation_request(authenticator_keystore_secret="keystore_secret",
                                   revelation_request_uid=generate_uuid0(),
                                   symkey_decryption_results=[])
 
     # Accept a decryption request having the keystore_secret not matching
     with pytest.raises(AuthenticationError):
-        accept_revelation_request(
+        gateway_proxy.accept_revelation_request(
             authenticator_keystore_secret="",
             revelation_request_uid=revelation_request_for_requestor_uid2[0]["revelation_request_uid"],
             symkey_decryption_results=symkey_decryption_results)

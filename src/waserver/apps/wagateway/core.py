@@ -8,7 +8,7 @@ from wacryptolib.exceptions import SchemaValidationError, KeystoreAlreadyExists,
     AuthenticationError, AuthenticatorDoesNotExist, ValidationError
 from wacryptolib.utilities import get_validation_micro_schemas
 from waserver.apps.wagateway.models import PublicAuthenticator, PublicAuthenticatorKey, RevelationRequest, \
-    SymkeyDecryptionRequest, RevelationRequestStatus
+    SymkeyDecryptionRequest, RevelationRequestStatus, SymkeyDecryptionStatus
 
 from waserver.apps.wagateway.serializers import PublicAuthenticatorSerializer, RevelationRequestSerializer
 
@@ -130,7 +130,10 @@ def submit_revelation_request(authenticator_keystore_uid: uuid.UUID, revelation_
 
 def list_requestor_revelation_requests(revelation_requestor_uid: uuid.UUID):
     # Called by NVR and other WA revelation-station software
-    # FIXME validate params with SCHEMA here
+
+    validate_data_tree_with_pythonschema(dict(revelation_requestor_uid=revelation_requestor_uid),
+                                         Schema({"revelation_requestor_uid": micro_schemas.schema_uid}))
+
     revelation_requests_for_requestor_uid = RevelationRequest.objects.filter(
         revelation_requestor_uid=revelation_requestor_uid)
     return RevelationRequestSerializer(revelation_requests_for_requestor_uid, many=True).data
@@ -138,7 +141,11 @@ def list_requestor_revelation_requests(revelation_requestor_uid: uuid.UUID):
 
 def list_authenticator_revelation_requests(authenticator_keystore_uid: uuid.UUID, authenticator_keystore_secret: str):
     # Called by authenticator, authenticated with keystore secret
-    # FIXME validate params with tiny SCHEMA here
+
+    validate_data_tree_with_pythonschema(dict(authenticator_keystore_uid=authenticator_keystore_uid,
+                                              authenticator_keystore_secret=authenticator_keystore_secret),
+                                         Schema({"revelation_requestor_uid": micro_schemas.schema_uid,
+                                                 "authenticator_keystore_secret": str}))
 
     target_public_authenticator = _get_public_authenticator_by_keystore_uid(authenticator_keystore_uid)
     _validate_public_authenticator_secret(target_public_authenticator,
@@ -150,9 +157,14 @@ def list_authenticator_revelation_requests(authenticator_keystore_uid: uuid.UUID
     return RevelationRequestSerializer(revelation_requests_for_keystore_uid, many=True).data
 
 
-def reject_revelation_request(authenticator_keystore_secret: str, revelation_request_uid: uuid.UUID):
-    # Called by authenticator, authenticated with keystore secret
-    # FIXME validate params with tiny SCHEMA here
+def reject_revelation_request(revelation_request_uid: uuid.UUID, authenticator_keystore_secret: str):
+    # Called by authenticator, and authenticated with keystore secret
+
+    validate_data_tree_with_pythonschema(dict(revelation_request_uid=revelation_request_uid,
+                                              authenticator_keystore_secret=authenticator_keystore_secret),
+                                         Schema({"revelation_request_uid": micro_schemas.schema_uid,
+                                                 "authenticator_keystore_secret": str}),)
+
     with transaction.atomic():
         revelation_request = _get_authorized_revelation_request_by_request_uid(
             revelation_request_uid,
@@ -161,9 +173,22 @@ def reject_revelation_request(authenticator_keystore_secret: str, revelation_req
         revelation_request.save()
 
 
-def accept_revelation_request(authenticator_keystore_secret: str, revelation_request_uid: uuid.UUID,
+def accept_revelation_request(revelation_request_uid: uuid.UUID, authenticator_keystore_secret: str,
                               symkey_decryption_results: list):
-    #  Called by authenticator, authenticated with keystore secret
+    # Called by authenticator, and authenticated with keystore secret
+
+    validate_data_tree_with_pythonschema(
+        dict(revelation_request_uid=revelation_request_uid,
+              authenticator_keystore_secret=authenticator_keystore_secret,
+              symkey_decryption_results=symkey_decryption_results),
+         Schema({"revelation_request_uid": micro_schemas.schema_uid,
+                 "authenticator_keystore_secret": str,
+                 "symkey_decryption_results": And(len, [{
+                     "symkey_decryption_request_data": micro_schemas.schema_binary,
+                     "symkey_decryption_response_data": micro_schemas.schema_binary,
+                     "symkey_decryption_status": SymkeyDecryptionStatus.values
+                    }])}),)
+
     with transaction.atomic():
 
         revelation_request = _get_authorized_revelation_request_by_request_uid(
@@ -189,7 +214,7 @@ def accept_revelation_request(authenticator_keystore_secret: str, revelation_req
             raise ValidationError("Difference between expected and received request data, %s does not exist in expected "
                                  "request data and %s is expected but not received",
                                  exceeding_request_data_among_received,
-                                 missing_request_data_among_received)  # FIXME wrong exception class
+                                 missing_request_data_among_received)
 
         for symkey_decryption_request in symkey_decryption_requests:
 
@@ -209,7 +234,7 @@ def accept_revelation_request(authenticator_keystore_secret: str, revelation_req
 
 micro_schemas = get_validation_micro_schemas(extended_json_format=False)
 
-REVELATION_REQUEST_INPUT_PARAMETERS_SCHEMA = Schema({  # FIXME TYPO, and rename XXX_REVELATION_YYY_SCHEMA like below
+REVELATION_REQUEST_INPUT_PARAMETERS_SCHEMA = Schema({
     "authenticator_keystore_uid": micro_schemas.schema_uid,
     "revelation_requestor_uid": micro_schemas.schema_uid,
     "revelation_request_description": And(str, len),
