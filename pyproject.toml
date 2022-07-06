@@ -4,13 +4,13 @@ build-backend = "poetry.core.masonry.api"
 
 
 [tool.poetry]
-name = "waescrow"
-description = "Witness Angel Escrow Webservices"
-version = "0.2"
+name = "waserver"
+description = "Witness Angel Webservices"
+version = "0.3"
 license = "MIT"
 readme = "Readme.rst"
 authors = ["Pascal Chambon", "Manon Michelet", "Francinette Atchade"]
-homepage = "https://github.com/WitnessAngel/witness-angel-escrow"
+homepage = "https://github.com/WitnessAngel/witness-angel-server"
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
@@ -28,7 +28,7 @@ include = ["CHANGELOG", "tox.ini", "settings.ini", "docs/*", "docs/api/*", "test
 exclude = ["_build"]
 
 [tool.poetry.dependencies]
-python = ">=3.7, <=3.11"
+python = ">=3.7, <3.10"
 
 # Witness Angel system
 wacryptolib = { git = "https://github.com/WitnessAngel/witness-angel-cryptolib.git", branch = "waserver_stable" }
