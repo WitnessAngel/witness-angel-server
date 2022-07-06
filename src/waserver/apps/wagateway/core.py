@@ -46,7 +46,7 @@ def set_public_authenticator(keystore_owner: str, keystore_secret: str, keystore
 
         try:
             PublicAuthenticator.objects.get(keystore_uid=keystore_uid)
-            raise KeystoreAlreadyExists("Authenticator %s already exists in sql storage" % keystore_uid)
+            raise KeystoreAlreadyExists("Authenticator %s already exists in database" % keystore_uid)
         except PublicAuthenticator.DoesNotExist:
             public_authenticator = PublicAuthenticator(keystore_owner=keystore_owner, keystore_uid=keystore_uid)
             public_authenticator.set_keystore_secret(keystore_secret)
@@ -63,7 +63,6 @@ def submit_revelation_request(authenticator_keystore_uid: uuid.UUID, revelation_
                               revelation_response_public_key: bytes, revelation_response_keychain_uid: uuid.UUID,
                               revelation_response_key_algo: str,
                               symkey_decryption_requests: list):
-    #  Called by NVR
     # TODO Handle the case where symkey request_data must be unique for the same decryption request
     with transaction.atomic():
 
@@ -85,7 +84,7 @@ def submit_revelation_request(authenticator_keystore_uid: uuid.UUID, revelation_
 
         except PublicAuthenticator.DoesNotExist:
             raise AuthenticatorDoesNotExist(
-                "Authenticator %s does not exists in sql storage" % authenticator_keystore_uid)
+                "Authenticator %s does not exist in database" % authenticator_keystore_uid)
 
         revelation_request = RevelationRequest.objects.create(target_public_authenticator=target_public_authenticator,
                                                               revelation_requestor_uid=revelation_requestor_uid,
@@ -113,7 +112,7 @@ def submit_revelation_request(authenticator_keystore_uid: uuid.UUID, revelation_
                                                        "symkey_ciphertext"])
 
 
-def list_wadevice_revelation_requests(revelation_requestor_uid: uuid.UUID):
+def list_requestor_revelation_requests(revelation_requestor_uid: uuid.UUID):
     # Called by NVR
     # FIXME validate params with SCHEMA here
     revelation_request_for_requestor_uid = RevelationRequest.objects.filter(  # FIXME this is PLURAL ("_requests_")

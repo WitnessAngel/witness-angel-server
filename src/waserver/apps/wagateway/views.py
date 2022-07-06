@@ -4,7 +4,7 @@ from jsonrpc import jsonrpc_method
 from jsonrpc.site import JsonRpcSite
 
 from waserver.apps.wagateway.core import get_public_authenticator, set_public_authenticator, \
-    submit_revelation_request, list_wadevice_revelation_requests, \
+    submit_revelation_request, list_requestor_revelation_requests, \
     list_authenticator_revelation_requests, reject_revelation_request, accept_revelation_request
 
 from waserver.utils import convert_exceptions_to_jsonrpc_status_slugs, ExtendedDjangoJSONEncoder
@@ -45,10 +45,10 @@ def submit_decryption_request_view(self, authenticator_keystore_uid, revelation_
 
 
 # FIXME can we find better than "wadevice" here?
-@jsonrpc_method("list_wadevice_revelation_requests", site=wagateway_extended_jsonrpc_site)
+@jsonrpc_method("list_requestor_revelation_requests", site=wagateway_extended_jsonrpc_site)
 @convert_exceptions_to_jsonrpc_status_slugs
-def list_wadevice_revelation_requests_view(self, revelation_requestor_uid):
-    return list_wadevice_revelation_requests(revelation_requestor_uid=revelation_requestor_uid)
+def list_requestor_revelation_requests_view(self, revelation_requestor_uid):
+    return list_requestor_revelation_requests(revelation_requestor_uid=revelation_requestor_uid)
 
 
 @jsonrpc_method("list_authenticator_revelation_requests", site=wagateway_extended_jsonrpc_site)

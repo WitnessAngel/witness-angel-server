@@ -12,7 +12,7 @@ from wacryptolib.jsonrpc_client import JsonRpcProxy, status_slugs_response_error
 from wacryptolib.keygen import generate_symkey, generate_keypair, load_asymmetric_key_from_pem_bytestring
 from wacryptolib.utilities import generate_uuid0
 from waserver.apps.wagateway.core import validate_data_tree_with_pythonschema, PUBLIC_AUTHENTICATOR_SCHEMA, \
-    AuthenticationError, submit_revelation_request, list_wadevice_revelation_requests, \
+    AuthenticationError, submit_revelation_request, list_requestor_revelation_requests, \
     list_authenticator_revelation_requests, reject_revelation_request, accept_revelation_request, \
     AuthenticatorDoesNotExist
 from waserver.apps.wagateway.models import PublicAuthenticator, RevelationRequestStatus, SymkeyDecryptionStatus
@@ -217,7 +217,7 @@ def test_revelation_request_workflow(live_server):
             authenticator_keystore_secret="toto")
 
     # List of decryption requests by NVR
-    revelation_request_for_requestor_uid1 = list_wadevice_revelation_requests(
+    revelation_request_for_requestor_uid1 = list_requestor_revelation_requests(
         revelation_requestor_uid=revelation_request_parameters[1]["revelation_requestor_uid"])
 
     assert revelation_request_for_requestor_uid1[0]["revelation_requestor_uid"] == revelation_request_parameters[1]["revelation_requestor_uid"]
@@ -237,13 +237,13 @@ def test_revelation_request_workflow(live_server):
 
     # List of decryption requests by the authenticator for NVR with revelation_requestor_uid that does not exist
     with pytest.raises(AuthenticatorDoesNotExist):
-        list_wadevice_revelation_requests(revelation_requestor_uid=generate_uuid0())
+        list_requestor_revelation_requests(revelation_requestor_uid=generate_uuid0())
 
     # Reject a decryption request for requester1
     reject_revelation_request(authenticator_keystore_secret="keystore_secret",
                               revelation_request_uid=revelation_request_for_requestor_uid1[0]["revelation_request_uid"])
 
-    revelation_request_for_requestor_uid1 = list_wadevice_revelation_requests(
+    revelation_request_for_requestor_uid1 = list_requestor_revelation_requests(
         revelation_requestor_uid=revelation_request_parameters[1]["revelation_requestor_uid"])
     assert revelation_request_for_requestor_uid1[0]["revelation_request_status"] == RevelationRequestStatus.REJECTED
     assert revelation_request_for_requestor_uid1[0]["symkey_decryption_requests"][0][
@@ -261,7 +261,7 @@ def test_revelation_request_workflow(live_server):
             authenticator_keystore_secret="toto",
             revelation_request_uid=revelation_request_for_requestor_uid1[0]["revelation_request_uid"])
 
-    revelation_request_for_requestor_uid2 = list_wadevice_revelation_requests(
+    revelation_request_for_requestor_uid2 = list_requestor_revelation_requests(
         revelation_requestor_uid=revelation_request_parameters[1]["revelation_requestor_uid"])
 
     symkey_decryption_results = [{
@@ -275,7 +275,7 @@ def test_revelation_request_workflow(live_server):
                               revelation_request_uid=revelation_request_for_requestor_uid2[0]["revelation_request_uid"],
                               symkey_decryption_results=symkey_decryption_results)
 
-    revelation_request_for_requestor_uid2 = list_wadevice_revelation_requests(
+    revelation_request_for_requestor_uid2 = list_requestor_revelation_requests(
         revelation_requestor_uid=revelation_request_parameters[1]["revelation_requestor_uid"])
     assert revelation_request_for_requestor_uid2[0]["revelation_request_status"] == RevelationRequestStatus.ACCEPTED
     assert revelation_request_for_requestor_uid2[0]["symkey_decryption_requests"][0]["symkey_decryption_status"] == \
