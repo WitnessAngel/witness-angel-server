@@ -7,7 +7,7 @@ from django_cryptography.fields import encrypt
 from wacryptolib.utilities import generate_uuid0
 
 
-class PublicAuthenticator(CreatedModifiedByMixin):  # Fixme think about this name PublicAth..Profile
+class PublicAuthenticator(CreatedModifiedByMixin):
     """
     Published mirror of an authenticator device owned by a Key Guardian.
     Username is set as the authenticator's UUID.
@@ -82,9 +82,9 @@ class RevelationRequest(CreatedModifiedByMixin):
 
 class SymkeyDecryptionStatus(models.TextChoices):
     DECRYPTED = 'DECRYPTED', _('DECRYPTED')
-    PRIVATE_KEY_MISSING = 'PRIVATE KEY MISSING', _('PRIVATE KEY MISSING')
+    PRIVATE_KEY_MISSING = 'PRIVATE_KEY_MISSING', _('PRIVATE KEY MISSING')
     CORRUPTED = 'CORRUPTED', _('CORRUPTED')
-    METADATA_MISMATCH = 'METADATA_MISMATCH', _('METADATA_MISMATCH')  # METADATA MISMATCH ok  # Remove comment
+    METADATA_MISMATCH = 'METADATA_MISMATCH', _('METADATA_MISMATCH')
     PENDING = 'PENDING', _('PENDING')
 
 
@@ -100,4 +100,7 @@ class SymkeyDecryptionRequest(CreatedModifiedByMixin):
     symkey_decryption_response_data = encrypt(models.BinaryField(_("Symkey Response data (symkey/shard encrypted by response public key)"), default=b''))
     symkey_decryption_status = models.CharField(max_length=128, choices=SymkeyDecryptionStatus.choices, default=SymkeyDecryptionStatus.PENDING)
 
-    # FIXME in save(), here, check that public_authenticator_key and revelation_request.target_public_authenticator are EQUAL
+    def save(self, *args, **kwargs):
+        # Check coherence of data tree
+        assert self.target_public_authenticator_key.public_authenticator == self.revelation_request.target_public_authenticator, self.revelation_request
+        return super().save()
