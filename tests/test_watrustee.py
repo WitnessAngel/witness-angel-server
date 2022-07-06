@@ -83,12 +83,18 @@ def test_jsonrpc_trustee_signature(live_server):
     secret = get_random_bytes(101)
     secret_too_big = get_random_bytes(150)
 
+    with pytest.raises(ValidationError):
+        trustee_proxy.fetch_public_key()
+
     public_key_signature_pem = trustee_proxy.fetch_public_key(
         keychain_uid=keychain_uid, key_algo=payload_signature_algo
     )
     public_key_signature = load_asymmetric_key_from_pem_bytestring(
         key_pem=public_key_signature_pem, key_algo=payload_signature_algo
     )
+
+    with pytest.raises(ValidationError):
+        trustee_proxy.get_message_signature()
 
     signature = trustee_proxy.get_message_signature(
         keychain_uid=keychain_uid, message=secret, signature_algo=payload_signature_algo
@@ -162,6 +168,9 @@ def test_jsonrpc_trustee_decryption_authorization_flags(live_server):
             _attempt_decryption()  # Too early
 
         frozen_datetime.tick(delta=timedelta(hours=3))
+
+        with pytest.raises(ValidationError):
+            trustee_proxy.decrypt_with_private_key()
 
         decrypted = _attempt_decryption()
         assert decrypted == secret  # It works!
@@ -243,6 +252,9 @@ def test_jsonrpc_trustee_request_decryption_authorization_for_normal_keys(live_s
         assert result["not_found_count"] == 0
 
         frozen_datetime.tick(delta=timedelta(minutes=2))
+
+        with pytest.raises(ValidationError):
+            trustee_proxy.request_decryption_authorization()
 
         result = trustee_proxy.request_decryption_authorization(
             keypair_identifiers=all_keypair_identifiers,
@@ -362,6 +374,9 @@ def test_jsonrpc_trustee_request_decryption_authorization_for_free_keys(live_ser
             keychain_uid=keychain_uid_free, key_algo=free_key_algo3
         )
         assert public_key_pem3
+
+        with pytest.raises(ValidationError):
+            trustee_proxy.request_decryption_authorization()
 
         result = trustee_proxy.request_decryption_authorization(
             keypair_identifiers=all_requested_keypair_identifiers,
