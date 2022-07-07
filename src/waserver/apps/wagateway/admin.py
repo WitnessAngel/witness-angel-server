@@ -30,10 +30,38 @@ class PublicAuthenticatorAdmin(admin.ModelAdmin):
         return queryset
 
 
+class SymkeyDecryptionRequestInline(admin.StackedInline):
+    model = SymkeyDecryptionRequest
+    extra = 0
+    fields = ["target_public_authenticator_key", "cryptainer_uid", "cryptainer_metadata", "symkey_decryption_status",
+              "symkey_decryption_request_data_length", "symkey_decryption_response_data_length"]
+
+    readonly_fields = ["symkey_decryption_request_data_length", "symkey_decryption_response_data_length", "created_at"]
+
+    def symkey_decryption_request_data_length(self, obj):
+        return len(obj.symkey_decryption_request_data)
+
+    def symkey_decryption_response_data_length(self, obj):
+        return len(obj.symkey_decryption_response_data)
+
+
+class RevelationRequestAdmin(admin.ModelAdmin):
+    list_display = ["revelation_request_uid", "target_public_authenticator", "revelation_request_status", "symkey_decryption_request_count", "created_at"]
+    inlines = [SymkeyDecryptionRequestInline]
+    readonly_fields = ["created_at"]
+    ordering = ["-pk"]
+
+    def symkey_decryption_request_count(self, obj):
+        return obj.symkey_decryption_requests
+
+    def get_queryset(self, request):
+        queryset = super().get_queryset(request)
+        queryset = queryset.annotate(public_key_count=Count("symkey_decryption_requests"))
+        return queryset
+
+
 admin.site.register(PublicAuthenticator, PublicAuthenticatorAdmin)
 
-# Fixme customize this admin display with inlines:
-admin.site.register(RevelationRequest)
-admin.site.register(SymkeyDecryptionRequest)
+admin.site.register(RevelationRequest, RevelationRequestAdmin)
 
 

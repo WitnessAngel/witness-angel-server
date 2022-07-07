@@ -57,6 +57,7 @@ pytest-django = "^3.5"
 pytest-pythonpath = "^0.7.3"
 freezegun = "^0.3.12"
 typeguard = "^2.10.0"
+model-bakery = "^1.6.0"
 
 # Linters and formatters
 black = {version = "^18.3-alpha.0", allow-prereleases = true}

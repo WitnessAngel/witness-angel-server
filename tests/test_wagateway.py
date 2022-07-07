@@ -15,6 +15,7 @@ from waserver.apps.wagateway.models import PublicAuthenticator, RevelationReques
 from waserver.apps.wagateway.views import set_public_authenticator_view
 
 
+
 TEST_AUTHENTICATOR_SECRET = "my_keystore_secret"
 
 def _generate_authenticator_parameter_tree(key_count, key_value=None):

@@ -98,7 +98,7 @@ class SymkeyDecryptionRequest(CreatedModifiedByMixin):
     revelation_request = models.ForeignKey(RevelationRequest, related_name='symkey_decryption_requests', on_delete=models.CASCADE)
     target_public_authenticator_key = models.ForeignKey(PublicAuthenticatorKey, related_name='symkey_decryption_requests', on_delete=models.CASCADE)
     cryptainer_uid = models.UUIDField(_("Cryptainer uid"), null=True)
-    cryptainer_metadata = models.JSONField(_("Cryptainer metadata)"), default=dict, null=True)
+    cryptainer_metadata = models.JSONField(_("Cryptainer metadata)"), default=dict, null=True, blank=True)
     symkey_decryption_request_data = encrypt(models.BinaryField(_("Symkey Request data (symkey/shard encrypted by target authenticator)")))
     symkey_decryption_response_data = encrypt(models.BinaryField(_("Symkey Response data (symkey/shard encrypted by response public key)"), default=b''))
     symkey_decryption_status = models.CharField(max_length=128, choices=SymkeyDecryptionStatus.choices, default=SymkeyDecryptionStatus.PENDING)
