@@ -5,18 +5,13 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('watrustee', '0003_auto_20220130_2337'),
-    ]
+    dependencies = [("watrustee", "0003_auto_20220130_2337")]
 
     operations = [
-        migrations.AlterModelOptions(
-            name='trusteekeypair',
-            options={},
-        ),
+        migrations.AlterModelOptions(name="trusteekeypair", options={}),
         migrations.AlterField(
-            model_name='trusteekeypair',
-            name='keychain_uid',
-            field=models.UUIDField(blank=True, null=True, verbose_name='Keychain uid'),
+            model_name="trusteekeypair",
+            name="keychain_uid",
+            field=models.UUIDField(blank=True, null=True, verbose_name="Keychain uid"),
         ),
     ]

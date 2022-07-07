@@ -16,7 +16,7 @@ class TrusteeKeypairAdmin(admin.ModelAdmin):
 
     ordering = ["-pk"]
 
-    readonly_fields = ("public_key_length", "private_key_length", "created_at",)
+    readonly_fields = ("public_key_length", "private_key_length", "created_at")
 
     def public_key_length(self, obj):
         return len(obj.public_key)

@@ -8,59 +8,93 @@ import django_userforeignkey.models.fields
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        migrations.swappable_dependency(settings.AUTH_USER_MODEL),
-        ('wagateway', '0001_initial'),
-    ]
+    dependencies = [migrations.swappable_dependency(settings.AUTH_USER_MODEL), ("wagateway", "0001_initial")]
 
     operations = [
-        migrations.RemoveField(
-            model_name='authenticatorpublickey',
-            name='active',
+        migrations.RemoveField(model_name="authenticatorpublickey", name="active"),
+        migrations.AddField(
+            model_name="authenticatorpublickey",
+            name="created_at",
+            field=models.DateTimeField(
+                auto_now_add=True, db_index=True, null=True, verbose_name="Date when this element was created"
+            ),
         ),
         migrations.AddField(
-            model_name='authenticatorpublickey',
-            name='created_at',
-            field=models.DateTimeField(auto_now_add=True, db_index=True, null=True, verbose_name='Date when this element was created'),
+            model_name="authenticatorpublickey",
+            name="created_by",
+            field=django_userforeignkey.models.fields.UserForeignKey(
+                blank=True,
+                editable=False,
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name="authenticatorpublickey_created",
+                to=settings.AUTH_USER_MODEL,
+                verbose_name="User that created this element",
+            ),
         ),
         migrations.AddField(
-            model_name='authenticatorpublickey',
-            name='created_by',
-            field=django_userforeignkey.models.fields.UserForeignKey(blank=True, editable=False, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='authenticatorpublickey_created', to=settings.AUTH_USER_MODEL, verbose_name='User that created this element'),
+            model_name="authenticatorpublickey",
+            name="last_modified_at",
+            field=models.DateTimeField(
+                auto_now=True, db_index=True, null=True, verbose_name="Date when this element was last modified"
+            ),
         ),
         migrations.AddField(
-            model_name='authenticatorpublickey',
-            name='last_modified_at',
-            field=models.DateTimeField(auto_now=True, db_index=True, null=True, verbose_name='Date when this element was last modified'),
+            model_name="authenticatorpublickey",
+            name="last_modified_by",
+            field=django_userforeignkey.models.fields.UserForeignKey(
+                blank=True,
+                editable=False,
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name="authenticatorpublickey_modified",
+                to=settings.AUTH_USER_MODEL,
+                verbose_name="User that last modified this element",
+            ),
         ),
         migrations.AddField(
-            model_name='authenticatorpublickey',
-            name='last_modified_by',
-            field=django_userforeignkey.models.fields.UserForeignKey(blank=True, editable=False, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='authenticatorpublickey_modified', to=settings.AUTH_USER_MODEL, verbose_name='User that last modified this element'),
+            model_name="publicauthenticator",
+            name="created_at",
+            field=models.DateTimeField(
+                auto_now_add=True, db_index=True, null=True, verbose_name="Date when this element was created"
+            ),
         ),
         migrations.AddField(
-            model_name='publicauthenticator',
-            name='created_at',
-            field=models.DateTimeField(auto_now_add=True, db_index=True, null=True, verbose_name='Date when this element was created'),
+            model_name="publicauthenticator",
+            name="created_by",
+            field=django_userforeignkey.models.fields.UserForeignKey(
+                blank=True,
+                editable=False,
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name="publicauthenticator_created",
+                to=settings.AUTH_USER_MODEL,
+                verbose_name="User that created this element",
+            ),
         ),
         migrations.AddField(
-            model_name='publicauthenticator',
-            name='created_by',
-            field=django_userforeignkey.models.fields.UserForeignKey(blank=True, editable=False, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='publicauthenticator_created', to=settings.AUTH_USER_MODEL, verbose_name='User that created this element'),
+            model_name="publicauthenticator",
+            name="last_modified_at",
+            field=models.DateTimeField(
+                auto_now=True, db_index=True, null=True, verbose_name="Date when this element was last modified"
+            ),
         ),
         migrations.AddField(
-            model_name='publicauthenticator',
-            name='last_modified_at',
-            field=models.DateTimeField(auto_now=True, db_index=True, null=True, verbose_name='Date when this element was last modified'),
-        ),
-        migrations.AddField(
-            model_name='publicauthenticator',
-            name='last_modified_by',
-            field=django_userforeignkey.models.fields.UserForeignKey(blank=True, editable=False, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='publicauthenticator_modified', to=settings.AUTH_USER_MODEL, verbose_name='User that last modified this element'),
+            model_name="publicauthenticator",
+            name="last_modified_by",
+            field=django_userforeignkey.models.fields.UserForeignKey(
+                blank=True,
+                editable=False,
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name="publicauthenticator_modified",
+                to=settings.AUTH_USER_MODEL,
+                verbose_name="User that last modified this element",
+            ),
         ),
         migrations.AlterField(
-            model_name='authenticatorpublickey',
-            name='key_algo',
-            field=models.CharField(max_length=20, verbose_name='Key algo'),
+            model_name="authenticatorpublickey",
+            name="key_algo",
+            field=models.CharField(max_length=20, verbose_name="Key algo"),
         ),
     ]

@@ -1,13 +1,9 @@
-
-
 from django.db import models
 from django.utils.translation import ugettext_lazy as _
 from django_changeset.models import CreatedModifiedByMixin
 from django_cryptography.fields import encrypt
 
-DECRYPTION_AUTHORIZATION_LIFESPAN_H = (
-    24
-)  # Access remains only authorized for that duration
+DECRYPTION_AUTHORIZATION_LIFESPAN_H = 24  # Access remains only authorized for that duration
 
 
 class TrusteeKeypair(CreatedModifiedByMixin):
@@ -17,8 +13,8 @@ class TrusteeKeypair(CreatedModifiedByMixin):
     """
 
     class Meta:
-        #verbose_name = _("trustee key pair")
-        #verbose_name_plural = _("trustee key pairs")
+        # verbose_name = _("trustee key pair")
+        # verbose_name_plural = _("trustee key pairs")
         unique_together = [("keychain_uid", "key_algo")]
 
     keychain_uid = models.UUIDField(_("Keychain uid"), null=True, blank=True)  # Null for free keys

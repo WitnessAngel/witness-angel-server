@@ -5,13 +5,6 @@ from django.db import migrations
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('wagateway', '0002_auto_20220130_2329'),
-    ]
+    dependencies = [("wagateway", "0002_auto_20220130_2329")]
 
-    operations = [
-        migrations.AlterModelOptions(
-            name='publicauthenticator',
-            options={},
-        ),
-    ]
+    operations = [migrations.AlterModelOptions(name="publicauthenticator", options={})]

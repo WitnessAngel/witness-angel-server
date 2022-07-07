@@ -5,14 +5,10 @@ from django.db import migrations
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('wagateway', '0004_auto_20220201_1126'),
-    ]
+    dependencies = [("wagateway", "0004_auto_20220201_1126")]
 
     operations = [
         migrations.RenameField(
-            model_name='publicauthenticator',
-            old_name='keystore_secret',
-            new_name='keystore_secret_hash',
-        ),
+            model_name="publicauthenticator", old_name="keystore_secret", new_name="keystore_secret_hash"
+        )
     ]

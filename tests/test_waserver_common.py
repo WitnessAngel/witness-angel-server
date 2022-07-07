@@ -26,8 +26,7 @@ def test_robots_txt(client):
 def test_jsonrpc_invalid_method(live_server):
     jsonrpc_url = live_server.url + random.choice(["/gateway/jsonrpc/", "/trustee/jsonrpc/"])
 
-    gateway_proxy = JsonRpcProxy(
-        url=jsonrpc_url, response_error_handler=status_slugs_response_error_handler)
+    gateway_proxy = JsonRpcProxy(url=jsonrpc_url, response_error_handler=status_slugs_response_error_handler)
 
     with pytest.raises(TransportError, match="Got non-200 response from server, status code: 404"):
         gateway_proxy.unexistingmethod()
@@ -38,18 +37,21 @@ def test_jsonrpc_invalid_http_get_request(live_server):
 
     response = requests.get(jsonrpc_url)
     assert response.headers["Content-Type"] == "application/json"
-    assert response.json() == \
-           {'error': {'code': {'$numberInt': '-32600'},
-                      'data': None,
-                      'message': 'InvalidRequestError: The method you are trying to access is not available by GET requests',
-                      'name': 'InvalidRequestError'}, 'id': None}
+    assert response.json() == {
+        "error": {
+            "code": {"$numberInt": "-32600"},
+            "data": None,
+            "message": "InvalidRequestError: The method you are trying to access is not available by GET requests",
+            "name": "InvalidRequestError",
+        },
+        "id": None,
+    }
 
 
 def test_waserver_abnormal_error_masking(live_server):
     jsonrpc_url = live_server.url + "/gateway/jsonrpc/"
 
-    gateway_proxy = JsonRpcProxy(
-        url=jsonrpc_url, response_error_handler=status_slugs_response_error_handler)
+    gateway_proxy = JsonRpcProxy(url=jsonrpc_url, response_error_handler=status_slugs_response_error_handler)
 
     keystore_uid = UUID("cac682a8-809f-4de5-bbfd-72b533a37a21")
 
@@ -61,4 +63,3 @@ def test_waserver_abnormal_error_masking(live_server):
 
         with pytest.raises(TransportError):  # Server error NOT translated!
             gateway_proxy.get_public_authenticator(keystore_uid=keystore_uid)
-

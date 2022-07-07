@@ -1,12 +1,14 @@
-
 import logging
 
 from jsonrpc import jsonrpc_method
 from jsonrpc.site import JsonRpcSite
 
 from waserver.apps.watrustee.core import SQL_TRUSTEE_API
-from waserver.utils import convert_exceptions_to_jsonrpc_status_slugs, ExtendedDjangoJSONEncoder, \
-    validate_input_parameters
+from waserver.utils import (
+    convert_exceptions_to_jsonrpc_status_slugs,
+    ExtendedDjangoJSONEncoder,
+    validate_input_parameters,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -14,6 +16,7 @@ logger = logging.getLogger(__name__)
 watrustee_extended_jsonrpc_site = JsonRpcSite(json_encoder=ExtendedDjangoJSONEncoder)
 
 # FIXME this API needs pythonschema validations of input arguments too, like wagateway!
+
 
 @jsonrpc_method("fetch_public_key", site=watrustee_extended_jsonrpc_site)
 @convert_exceptions_to_jsonrpc_status_slugs
@@ -47,7 +50,9 @@ def get_message_signature(request, keychain_uid, message, signature_algo):
 @jsonrpc_method("decrypt_with_private_key", site=watrustee_extended_jsonrpc_site)
 @convert_exceptions_to_jsonrpc_status_slugs
 @validate_input_parameters
-def decrypt_with_private_key(request, keychain_uid, cipher_algo, cipherdict, passphrases=None, cryptainer_metadata=None):
+def decrypt_with_private_key(
+    request, keychain_uid, cipher_algo, cipherdict, passphrases=None, cryptainer_metadata=None
+):
     logger.info(
         "Got webservice request on decrypt_with_private_key() for encryption algo %s and keychain uid %s",
         cipher_algo,
@@ -76,4 +81,3 @@ def request_decryption_authorization(request, keypair_identifiers, request_messa
     return SQL_TRUSTEE_API.request_decryption_authorization(
         keypair_identifiers=keypair_identifiers, request_message=request_message, passphrases=passphrases
     )
-

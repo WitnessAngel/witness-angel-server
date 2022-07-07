@@ -1,14 +1,18 @@
 from rest_framework import serializers
 from rest_framework.fields import UUIDField, Field
 
-from waserver.apps.wagateway.models import PublicAuthenticator, PublicAuthenticatorKey, RevelationRequest, \
-    SymkeyDecryptionRequest
+from waserver.apps.wagateway.models import (
+    PublicAuthenticator,
+    PublicAuthenticatorKey,
+    RevelationRequest,
+    SymkeyDecryptionRequest,
+)
 
 
 class BinaryField(Field):
     def run_validation(self, data):
         if not isinstance(data, bytes):
-            self.fail('Unsupported data type in BinaryField: %s' % type(data))
+            self.fail("Unsupported data type in BinaryField: %s" % type(data))
         return super(BinaryField, self).run_validation(data)
 
     def to_internal_value(self, data):
@@ -33,7 +37,7 @@ class PublicAuthenticatorKeySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = PublicAuthenticatorKey
-        fields = ['keychain_uid', 'key_algo', 'key_value']
+        fields = ["keychain_uid", "key_algo", "key_value"]
 
 
 class PublicAuthenticatorSerializer(serializers.ModelSerializer):
@@ -43,7 +47,7 @@ class PublicAuthenticatorSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = PublicAuthenticator
-        fields = ['keystore_owner', 'keystore_uid', 'public_keys']
+        fields = ["keystore_owner", "keystore_uid", "public_keys"]
 
 
 class SymkeyDecryptionRequestSerializer(serializers.ModelSerializer):
@@ -54,8 +58,14 @@ class SymkeyDecryptionRequestSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = SymkeyDecryptionRequest
-        fields = ['target_public_authenticator_key', 'cryptainer_uid', 'cryptainer_metadata', 'symkey_decryption_request_data',
-                  'symkey_decryption_response_data', 'symkey_decryption_status']
+        fields = [
+            "target_public_authenticator_key",
+            "cryptainer_uid",
+            "cryptainer_metadata",
+            "symkey_decryption_request_data",
+            "symkey_decryption_response_data",
+            "symkey_decryption_status",
+        ]
 
 
 class RevelationRequestSerializer(serializers.ModelSerializer):
@@ -68,10 +78,14 @@ class RevelationRequestSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = RevelationRequest
-        fields = ['target_public_authenticator', 'revelation_request_uid', 'revelation_requestor_uid',
-                  'revelation_request_description', 'revelation_response_public_key',
-                  'revelation_response_keychain_uid', 'revelation_response_key_algo',
-                  'revelation_request_status', 'symkey_decryption_requests']
-
-
-
+        fields = [
+            "target_public_authenticator",
+            "revelation_request_uid",
+            "revelation_requestor_uid",
+            "revelation_request_description",
+            "revelation_response_public_key",
+            "revelation_response_keychain_uid",
+            "revelation_response_key_algo",
+            "revelation_request_status",
+            "symkey_decryption_requests",
+        ]

@@ -10,60 +10,175 @@ import wacryptolib.utilities
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        migrations.swappable_dependency(settings.AUTH_USER_MODEL),
-        ('wagateway', '0005_auto_20220201_1551'),
-    ]
+    dependencies = [migrations.swappable_dependency(settings.AUTH_USER_MODEL), ("wagateway", "0005_auto_20220201_1551")]
 
     operations = [
         migrations.CreateModel(
-            name='DecryptionRequest',
+            name="DecryptionRequest",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('created_at', models.DateTimeField(auto_now_add=True, db_index=True, null=True, verbose_name='Date when this element was created')),
-                ('last_modified_at', models.DateTimeField(auto_now=True, db_index=True, null=True, verbose_name='Date when this element was last modified')),
-                ('request_status', models.CharField(choices=[('REJECTED', 'REJECTED'), ('ACCEPTED', 'ACCEPTED'), ('PENDING', 'PENDING')], default='PENDING', max_length=128)),
-                ('decryption_request_uid', models.UUIDField(default=wacryptolib.utilities.generate_uuid0, verbose_name='Decryption request uid')),
-                ('revelation_requestor_uid', models.UUIDField(db_index=True, verbose_name='Requester uid')),
-                ('description', models.TextField(blank=True, verbose_name='Description')),
-                ('response_public_key', django_cryptography.fields.encrypt(models.BinaryField(verbose_name='Response Public key '))),
-                ('response_keychain_uid', models.UUIDField(null=True, verbose_name='Response keychain uid')),
-                ('response_key_algo', models.CharField(max_length=20, verbose_name='Response Key algo')),
-                ('created_by', django_userforeignkey.models.fields.UserForeignKey(blank=True, editable=False, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='decryptionrequest_created', to=settings.AUTH_USER_MODEL, verbose_name='User that created this element')),
-                ('last_modified_by', django_userforeignkey.models.fields.UserForeignKey(blank=True, editable=False, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='decryptionrequest_modified', to=settings.AUTH_USER_MODEL, verbose_name='User that last modified this element')),
+                ("id", models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                (
+                    "created_at",
+                    models.DateTimeField(
+                        auto_now_add=True, db_index=True, null=True, verbose_name="Date when this element was created"
+                    ),
+                ),
+                (
+                    "last_modified_at",
+                    models.DateTimeField(
+                        auto_now=True, db_index=True, null=True, verbose_name="Date when this element was last modified"
+                    ),
+                ),
+                (
+                    "request_status",
+                    models.CharField(
+                        choices=[("REJECTED", "REJECTED"), ("ACCEPTED", "ACCEPTED"), ("PENDING", "PENDING")],
+                        default="PENDING",
+                        max_length=128,
+                    ),
+                ),
+                (
+                    "decryption_request_uid",
+                    models.UUIDField(
+                        default=wacryptolib.utilities.generate_uuid0, verbose_name="Decryption request uid"
+                    ),
+                ),
+                ("revelation_requestor_uid", models.UUIDField(db_index=True, verbose_name="Requester uid")),
+                ("description", models.TextField(blank=True, verbose_name="Description")),
+                (
+                    "response_public_key",
+                    django_cryptography.fields.encrypt(models.BinaryField(verbose_name="Response Public key ")),
+                ),
+                ("response_keychain_uid", models.UUIDField(null=True, verbose_name="Response keychain uid")),
+                ("response_key_algo", models.CharField(max_length=20, verbose_name="Response Key algo")),
+                (
+                    "created_by",
+                    django_userforeignkey.models.fields.UserForeignKey(
+                        blank=True,
+                        editable=False,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="decryptionrequest_created",
+                        to=settings.AUTH_USER_MODEL,
+                        verbose_name="User that created this element",
+                    ),
+                ),
+                (
+                    "last_modified_by",
+                    django_userforeignkey.models.fields.UserForeignKey(
+                        blank=True,
+                        editable=False,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="decryptionrequest_modified",
+                        to=settings.AUTH_USER_MODEL,
+                        verbose_name="User that last modified this element",
+                    ),
+                ),
             ],
-            options={
-                'abstract': False,
-            },
+            options={"abstract": False},
         ),
         migrations.AlterField(
-            model_name='publicauthenticator',
-            name='keystore_secret_hash',
-            field=models.CharField(max_length=128, verbose_name='Keystore secret hash'),
+            model_name="publicauthenticator",
+            name="keystore_secret_hash",
+            field=models.CharField(max_length=128, verbose_name="Keystore secret hash"),
         ),
         migrations.CreateModel(
-            name='SymkeyDecryption',
+            name="SymkeyDecryption",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('created_at', models.DateTimeField(auto_now_add=True, db_index=True, null=True, verbose_name='Date when this element was created')),
-                ('last_modified_at', models.DateTimeField(auto_now=True, db_index=True, null=True, verbose_name='Date when this element was last modified')),
-                ('cryptainer_uid', models.UUIDField(null=True, verbose_name='Cryptainer uid')),
-                ('cryptainer_metadata', models.JSONField(default=dict, null=True, verbose_name='Cryptainer metadata)')),
-                ('request_data', django_cryptography.fields.encrypt(models.BinaryField(verbose_name='Request data (symkey/shard encrypted by target authenticator)'))),
-                ('response_data', django_cryptography.fields.encrypt(models.BinaryField(default=b'', verbose_name='Response data (symkey/shard encrypted by response public key)'))),
-                ('decryption_status', models.CharField(choices=[('DECRYPTED', 'DECRYPTED'), ('PRIVATE KEY MISSING', 'PRIVATE KEY MISSING'), ('CORRUPTED', 'CORRUPTED'), ('MISMATCH', 'MISMATCH'), ('PENDING', 'PENDING')], default='PENDING', max_length=128)),
-                ('authenticator_public_key', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='symkeys_decryption', to='wagateway.authenticatorpublickey')),
-                ('created_by', django_userforeignkey.models.fields.UserForeignKey(blank=True, editable=False, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='symkeydecryption_created', to=settings.AUTH_USER_MODEL, verbose_name='User that created this element')),
-                ('decryption_request', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='symkeys_decryption', to='wagateway.decryptionrequest')),
-                ('last_modified_by', django_userforeignkey.models.fields.UserForeignKey(blank=True, editable=False, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='symkeydecryption_modified', to=settings.AUTH_USER_MODEL, verbose_name='User that last modified this element')),
+                ("id", models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                (
+                    "created_at",
+                    models.DateTimeField(
+                        auto_now_add=True, db_index=True, null=True, verbose_name="Date when this element was created"
+                    ),
+                ),
+                (
+                    "last_modified_at",
+                    models.DateTimeField(
+                        auto_now=True, db_index=True, null=True, verbose_name="Date when this element was last modified"
+                    ),
+                ),
+                ("cryptainer_uid", models.UUIDField(null=True, verbose_name="Cryptainer uid")),
+                ("cryptainer_metadata", models.JSONField(default=dict, null=True, verbose_name="Cryptainer metadata)")),
+                (
+                    "request_data",
+                    django_cryptography.fields.encrypt(
+                        models.BinaryField(verbose_name="Request data (symkey/shard encrypted by target authenticator)")
+                    ),
+                ),
+                (
+                    "response_data",
+                    django_cryptography.fields.encrypt(
+                        models.BinaryField(
+                            default=b"", verbose_name="Response data (symkey/shard encrypted by response public key)"
+                        )
+                    ),
+                ),
+                (
+                    "decryption_status",
+                    models.CharField(
+                        choices=[
+                            ("DECRYPTED", "DECRYPTED"),
+                            ("PRIVATE KEY MISSING", "PRIVATE KEY MISSING"),
+                            ("CORRUPTED", "CORRUPTED"),
+                            ("MISMATCH", "MISMATCH"),
+                            ("PENDING", "PENDING"),
+                        ],
+                        default="PENDING",
+                        max_length=128,
+                    ),
+                ),
+                (
+                    "authenticator_public_key",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="symkeys_decryption",
+                        to="wagateway.authenticatorpublickey",
+                    ),
+                ),
+                (
+                    "created_by",
+                    django_userforeignkey.models.fields.UserForeignKey(
+                        blank=True,
+                        editable=False,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="symkeydecryption_created",
+                        to=settings.AUTH_USER_MODEL,
+                        verbose_name="User that created this element",
+                    ),
+                ),
+                (
+                    "decryption_request",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="symkeys_decryption",
+                        to="wagateway.decryptionrequest",
+                    ),
+                ),
+                (
+                    "last_modified_by",
+                    django_userforeignkey.models.fields.UserForeignKey(
+                        blank=True,
+                        editable=False,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="symkeydecryption_modified",
+                        to=settings.AUTH_USER_MODEL,
+                        verbose_name="User that last modified this element",
+                    ),
+                ),
             ],
-            options={
-                'abstract': False,
-            },
+            options={"abstract": False},
         ),
         migrations.AddField(
-            model_name='decryptionrequest',
-            name='public_authenticator',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='decryption_request', to='wagateway.publicauthenticator'),
+            model_name="decryptionrequest",
+            name="public_authenticator",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="decryption_request",
+                to="wagateway.publicauthenticator",
+            ),
         ),
     ]

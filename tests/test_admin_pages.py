@@ -1,4 +1,3 @@
-
 import pytest
 from waserver.apps.wagateway.models import PublicAuthenticator, RevelationRequest
 from model_bakery import baker
@@ -11,17 +10,21 @@ def test_admin_listing_pages(client):
     client.force_login(superuser)
 
     public_authenticator = baker.make("wagateway.PublicAuthenticator")
-    public_authenticator_key = baker.make("wagateway.PublicAuthenticatorKey",
-                                          public_authenticator=public_authenticator,
-                                          key_value=b"sjdshd")
-    revelation_request = baker.make("wagateway.RevelationRequest",
-                                    target_public_authenticator=public_authenticator,
-                                    revelation_response_public_key=b"dgzer")
-    symkey_decryption_request = baker.make("wagateway.SymkeyDecryptionRequest",
-                                           target_public_authenticator_key=public_authenticator_key,
-                                           revelation_request=revelation_request,
-                                           symkey_decryption_request_data=b"xwsd",
-                                           symkey_decryption_response_data=b"xwsd")
+    public_authenticator_key = baker.make(
+        "wagateway.PublicAuthenticatorKey", public_authenticator=public_authenticator, key_value=b"sjdshd"
+    )
+    revelation_request = baker.make(
+        "wagateway.RevelationRequest",
+        target_public_authenticator=public_authenticator,
+        revelation_response_public_key=b"dgzer",
+    )
+    symkey_decryption_request = baker.make(
+        "wagateway.SymkeyDecryptionRequest",
+        target_public_authenticator_key=public_authenticator_key,
+        revelation_request=revelation_request,
+        symkey_decryption_request_data=b"xwsd",
+        symkey_decryption_response_data=b"xwsd",
+    )
 
     admin_endpoint_confs = [
         ("/admin/wagateway/publicauthenticator/", PublicAuthenticator),

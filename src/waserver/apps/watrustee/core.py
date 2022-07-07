@@ -55,10 +55,7 @@ class SqlKeystore(KeystoreReadWriteBase):
 
     def _set_public_key(self, *, keychain_uid, key_algo, public_key):
         TrusteeKeypair.objects.create(
-            keychain_uid=keychain_uid,
-            key_algo=key_algo,
-            public_key=public_key,
-            private_key=None,
+            keychain_uid=keychain_uid, key_algo=key_algo, public_key=public_key, private_key=None
         )
 
     def _set_private_key(self, *, keychain_uid, key_algo, private_key):
@@ -69,27 +66,18 @@ class SqlKeystore(KeystoreReadWriteBase):
 
     def _get_free_keypairs_count(self, key_algo):
         assert key_algo, key_algo
-        return TrusteeKeypair.objects.filter(
-            keychain_uid=None, key_algo=key_algo
-        ).count()
+        return TrusteeKeypair.objects.filter(keychain_uid=None, key_algo=key_algo).count()
 
     def _add_free_keypair(self, *, key_algo, public_key, private_key):
         TrusteeKeypair.objects.create(
-            keychain_uid=None,
-            key_algo=key_algo,
-            public_key=public_key,
-            private_key=private_key,
+            keychain_uid=None, key_algo=key_algo, public_key=public_key, private_key=private_key
         )
 
     def _attach_free_keypair_to_uuid(self, *, keychain_uid, key_algo):
         # Beware, SPECIAL LOOKUP for the first available free key, here
-        keypair_obj_or_none = TrusteeKeypair.objects.filter(
-            keychain_uid=None, key_algo=key_algo
-        ).first()
+        keypair_obj_or_none = TrusteeKeypair.objects.filter(keychain_uid=None, key_algo=key_algo).first()
         if not keypair_obj_or_none:
-            raise KeyDoesNotExist(
-                "No free keypair of type %s available in sql storage" % key_algo
-            )
+            raise KeyDoesNotExist("No free keypair of type %s available in sql storage" % key_algo)
         keypair_obj_or_none.keychain_uid = keychain_uid
         keypair_obj_or_none.attached_at = timezone.now()
         keypair_obj_or_none.save()
@@ -98,8 +86,9 @@ class SqlKeystore(KeystoreReadWriteBase):
 class SqlTrusteeApi(TrusteeApi):
     DECRYPTION_AUTHORIZATION_GRACE_PERIOD_S = 5 * 60
 
-    def decrypt_with_private_key(self, keychain_uid, cipher_algo, cipherdict,
-                                 passphrases: Optional[list]=None, cryptainer_metadata=None):
+    def decrypt_with_private_key(
+        self, keychain_uid, cipher_algo, cipherdict, passphrases: Optional[list] = None, cryptainer_metadata=None
+    ):
         """
         This implementation checks for a dedicated timestamp flag on the keypair, in DB, and
         only allows decryption for a certain time after that timestamp.
@@ -108,19 +97,13 @@ class SqlTrusteeApi(TrusteeApi):
         del cryptainer_metadata  # For now, this cryptainer metadata is not checked for coherence
 
         # TODO - a redesign of the API could prevent the double DB lookup of keypair_obj here, but not sure if it's useful on the long term...
-        keypair_obj = _fetch_key_object_or_raise(
-            keychain_uid=keychain_uid, key_algo=cipher_algo
-        )
+        keypair_obj = _fetch_key_object_or_raise(keychain_uid=keychain_uid, key_algo=cipher_algo)
         decryption_authorized_at = keypair_obj.decryption_authorized_at
 
         if not decryption_authorized_at:
-            raise AuthorizationError(
-                "Decryption not authorized"
-            )
+            raise AuthorizationError("Decryption not authorized")
 
-        decryption_authorized_until = decryption_authorized_at + timedelta(
-            hours=DECRYPTION_AUTHORIZATION_LIFESPAN_H
-        )
+        decryption_authorized_until = decryption_authorized_at + timedelta(hours=DECRYPTION_AUTHORIZATION_LIFESPAN_H)
 
         now = timezone.now()
         _format_datetime = lambda dt: dt.isoformat(sep="_", timespec="seconds")
@@ -136,9 +119,7 @@ class SqlTrusteeApi(TrusteeApi):
             )
 
         return super().decrypt_with_private_key(
-            keychain_uid=keychain_uid,
-            cipher_algo=cipher_algo,
-            cipherdict=cipherdict,
+            keychain_uid=keychain_uid, cipher_algo=cipher_algo, cipherdict=cipherdict
         )
 
     def request_decryption_authorization(self, keypair_identifiers, request_message, passphrases=None):
@@ -157,15 +138,12 @@ class SqlTrusteeApi(TrusteeApi):
         not_found_count = 0
 
         now = timezone.now()
-        min_attached_at = now - timedelta(
-            seconds=self.DECRYPTION_AUTHORIZATION_GRACE_PERIOD_S
-        )
+        min_attached_at = now - timedelta(seconds=self.DECRYPTION_AUTHORIZATION_GRACE_PERIOD_S)
 
         for keypair_identifier in keypair_identifiers:
             try:
                 keypair_obj = _fetch_key_object_or_raise(
-                    keychain_uid=keypair_identifier["keychain_uid"],
-                    key_algo=keypair_identifier["key_algo"],
+                    keychain_uid=keypair_identifier["keychain_uid"], key_algo=keypair_identifier["key_algo"]
                 )
             except KeyDoesNotExist:
                 not_found_count += 1
@@ -179,9 +157,7 @@ class SqlTrusteeApi(TrusteeApi):
                 continue
 
             # SUCCESS case
-            keypair_obj.decryption_authorized_at = (
-                now
-            )  # Might renew existing authorization
+            keypair_obj.decryption_authorized_at = now  # Might renew existing authorization
             keypair_obj.save()
             success_count += 1
 
@@ -193,7 +169,6 @@ class SqlTrusteeApi(TrusteeApi):
             too_old_count=too_old_count,
             not_found_count=not_found_count,
         )
-
 
 
 SQL_TRUSTEE_API = SqlTrusteeApi(keystore=SqlKeystore())

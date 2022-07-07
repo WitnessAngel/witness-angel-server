@@ -15,16 +15,16 @@ class PublicAuthenticator(CreatedModifiedByMixin):
     Only public information is stored here, of course.
     """
 
-    #class Meta:
-        #verbose_name = _("public authenticator")
-        #verbose_name_plural = _("public authenticators")
-        # unique_together = [("keychain_uid", "key_algo")]
+    # class Meta:
+    # verbose_name = _("public authenticator")
+    # verbose_name_plural = _("public authenticators")
+    # unique_together = [("keychain_uid", "key_algo")]
 
     keystore_uid = models.UUIDField(_("Keystore uid"), unique=True)
 
     keystore_owner = models.CharField(_("Keystore owner"), max_length=100)
 
-    keystore_secret_hash = models.CharField(_('Keystore secret hash'), max_length=128)
+    keystore_secret_hash = models.CharField(_("Keystore secret hash"), max_length=128)
 
     def __str__(self):
         return self.keystore_owner or str(self.pk)
@@ -54,7 +54,7 @@ class PublicAuthenticator(CreatedModifiedByMixin):
 
 class PublicAuthenticatorKey(CreatedModifiedByMixin):
 
-    public_authenticator = models.ForeignKey(PublicAuthenticator, related_name='public_keys', on_delete=models.CASCADE)
+    public_authenticator = models.ForeignKey(PublicAuthenticator, related_name="public_keys", on_delete=models.CASCADE)
 
     keychain_uid = models.UUIDField(_("Keychain uid"), null=True)
     key_algo = models.CharField(_("Key algo"), max_length=20)
@@ -62,20 +62,26 @@ class PublicAuthenticatorKey(CreatedModifiedByMixin):
 
 
 class RevelationRequestStatus(models.TextChoices):
-    REJECTED = 'REJECTED', _('REJECTED')
-    ACCEPTED = 'ACCEPTED', _('ACCEPTED')
-    PENDING = 'PENDING', _('PENDING')
+    REJECTED = "REJECTED", _("REJECTED")
+    ACCEPTED = "ACCEPTED", _("ACCEPTED")
+    PENDING = "PENDING", _("PENDING")
 
 
 class RevelationRequest(CreatedModifiedByMixin):
 
-    target_public_authenticator = models.ForeignKey(PublicAuthenticator, related_name='revelation_request', on_delete=models.CASCADE)
+    target_public_authenticator = models.ForeignKey(
+        PublicAuthenticator, related_name="revelation_request", on_delete=models.CASCADE
+    )
 
-    revelation_request_status = models.CharField(max_length=128, choices=RevelationRequestStatus.choices, default=RevelationRequestStatus.PENDING)
+    revelation_request_status = models.CharField(
+        max_length=128, choices=RevelationRequestStatus.choices, default=RevelationRequestStatus.PENDING
+    )
     revelation_request_uid = models.UUIDField(_("Revelation request uid"), default=generate_uuid0, unique=True)
     revelation_requestor_uid = models.UUIDField(_("Revelation requestor uid"), db_index=True)
     revelation_request_description = models.TextField(_("Revelation request description"), blank=True)
-    revelation_response_public_key = encrypt(models.BinaryField(_("Revelation response Public key ")))  # For now always RSA
+    revelation_response_public_key = encrypt(
+        models.BinaryField(_("Revelation response Public key "))
+    )  # For now always RSA
     revelation_response_keychain_uid = models.UUIDField(_("Revelation response keychain uid"), null=True)
     revelation_response_key_algo = models.CharField(_("Revelation response Key algo"), max_length=20)
 
@@ -84,26 +90,39 @@ class RevelationRequest(CreatedModifiedByMixin):
 
 
 class SymkeyDecryptionStatus(models.TextChoices):
-    DECRYPTED = 'DECRYPTED', _('DECRYPTED')
-    PRIVATE_KEY_MISSING = 'PRIVATE_KEY_MISSING', _('PRIVATE KEY MISSING')
-    CORRUPTED = 'CORRUPTED', _('CORRUPTED')
-    METADATA_MISMATCH = 'METADATA_MISMATCH', _('METADATA_MISMATCH')
-    PENDING = 'PENDING', _('PENDING')
+    DECRYPTED = "DECRYPTED", _("DECRYPTED")
+    PRIVATE_KEY_MISSING = "PRIVATE_KEY_MISSING", _("PRIVATE KEY MISSING")
+    CORRUPTED = "CORRUPTED", _("CORRUPTED")
+    METADATA_MISMATCH = "METADATA_MISMATCH", _("METADATA_MISMATCH")
+    PENDING = "PENDING", _("PENDING")
 
 
 class SymkeyDecryptionRequest(CreatedModifiedByMixin):
     class Meta:
         unique_together = [("revelation_request", "symkey_decryption_request_data")]
 
-    revelation_request = models.ForeignKey(RevelationRequest, related_name='symkey_decryption_requests', on_delete=models.CASCADE)
-    target_public_authenticator_key = models.ForeignKey(PublicAuthenticatorKey, related_name='symkey_decryption_requests', on_delete=models.CASCADE)
+    revelation_request = models.ForeignKey(
+        RevelationRequest, related_name="symkey_decryption_requests", on_delete=models.CASCADE
+    )
+    target_public_authenticator_key = models.ForeignKey(
+        PublicAuthenticatorKey, related_name="symkey_decryption_requests", on_delete=models.CASCADE
+    )
     cryptainer_uid = models.UUIDField(_("Cryptainer uid"), null=True)
     cryptainer_metadata = models.JSONField(_("Cryptainer metadata)"), default=dict, null=True, blank=True)
-    symkey_decryption_request_data = encrypt(models.BinaryField(_("Symkey Request data (symkey/shard encrypted by target authenticator)")))
-    symkey_decryption_response_data = encrypt(models.BinaryField(_("Symkey Response data (symkey/shard encrypted by response public key)"), default=b''))
-    symkey_decryption_status = models.CharField(max_length=128, choices=SymkeyDecryptionStatus.choices, default=SymkeyDecryptionStatus.PENDING)
+    symkey_decryption_request_data = encrypt(
+        models.BinaryField(_("Symkey Request data (symkey/shard encrypted by target authenticator)"))
+    )
+    symkey_decryption_response_data = encrypt(
+        models.BinaryField(_("Symkey Response data (symkey/shard encrypted by response public key)"), default=b"")
+    )
+    symkey_decryption_status = models.CharField(
+        max_length=128, choices=SymkeyDecryptionStatus.choices, default=SymkeyDecryptionStatus.PENDING
+    )
 
     def save(self, *args, **kwargs):
         # Check coherence of data tree
-        assert self.target_public_authenticator_key.public_authenticator == self.revelation_request.target_public_authenticator, self.revelation_request
+        assert (
+            self.target_public_authenticator_key.public_authenticator
+            == self.revelation_request.target_public_authenticator
+        ), self.revelation_request
         return super().save()

@@ -5,14 +5,14 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('watrustee', '0002_auto_20220130_2335'),
-    ]
+    dependencies = [("watrustee", "0002_auto_20220130_2335")]
 
     operations = [
         migrations.AlterField(
-            model_name='trusteekeypair',
-            name='created_at',
-            field=models.DateTimeField(auto_now_add=True, db_index=True, null=True, verbose_name='Date when this element was created'),
-        ),
+            model_name="trusteekeypair",
+            name="created_at",
+            field=models.DateTimeField(
+                auto_now_add=True, db_index=True, null=True, verbose_name="Date when this element was created"
+            ),
+        )
     ]

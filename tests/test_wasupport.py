@@ -1,4 +1,3 @@
-
 import random
 from django.conf import settings
 from django.test import Client

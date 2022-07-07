@@ -1,4 +1,3 @@
-
 import logging
 
 from django.conf import settings
@@ -20,11 +19,7 @@ def crashdump_report_view(request):
         return HttpResponseBadRequest(b"Missing crashdump field")
 
     filename = timezone.now().strftime("%Y%m%d-%H%M%S-%f.dump")
-    logger.info(
-        "Got http request on crashdump report view (%s chars), stored in %s",
-        len(crashdump),
-        filename,
-    )
+    logger.info("Got http request on crashdump report view (%s chars), stored in %s", len(crashdump), filename)
 
     crashdump_path = settings.CRASHDUMPS_DIR.joinpath(filename)
     crashdump_path.write_text(crashdump, encoding="utf8")

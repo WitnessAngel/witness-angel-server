@@ -6,13 +6,11 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('wagateway', '0009_rename_public_authenticator_key_symkeydecryptionrequest_target_public_authenticator_key'),
+        ("wagateway", "0009_rename_public_authenticator_key_symkeydecryptionrequest_target_public_authenticator_key")
     ]
 
     operations = [
         migrations.RenameField(
-            model_name='publicauthenticatorkey',
-            old_name='authenticator_user',
-            new_name='public_authenticator',
-        ),
+            model_name="publicauthenticatorkey", old_name="authenticator_user", new_name="public_authenticator"
+        )
     ]

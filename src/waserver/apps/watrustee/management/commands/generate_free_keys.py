@@ -17,20 +17,14 @@ class Command(BaseCommand):
         sql_keystore = SqlKeystore()
 
         self.stdout.write(
-            "Launching generate_free_keys.py script with max_free_keys_per_algo=%s"
-            % max_free_keys_per_algo
+            "Launching generate_free_keys.py script with max_free_keys_per_algo=%s" % max_free_keys_per_algo
         )
 
         while True:
-            self.stdout.write(
-                "New iteration of generate_free_keypair_for_least_provisioned_key_algo()"
-            )
+            self.stdout.write("New iteration of generate_free_keypair_for_least_provisioned_key_algo()")
             has_generated = generate_free_keypair_for_least_provisioned_key_algo(
-                keystore=sql_keystore,
-                max_free_keys_per_algo=max_free_keys_per_algo,
+                keystore=sql_keystore, max_free_keys_per_algo=max_free_keys_per_algo
             )
             if not has_generated:
-                self.stdout.write(
-                    "No more need for additional free keys, stopping generate_free_keys.py script"
-                )
+                self.stdout.write("No more need for additional free keys, stopping generate_free_keys.py script")
                 break

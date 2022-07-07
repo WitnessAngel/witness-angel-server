@@ -9,32 +9,38 @@ class Migration(migrations.Migration):
 
     initial = True
 
-    dependencies = [
-    ]
+    dependencies = []
 
     operations = [
         migrations.CreateModel(
-            name='PublicAuthenticator',
+            name="PublicAuthenticator",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('keystore_uid', models.UUIDField(unique=True, verbose_name='Keystore uid')),
-                ('keystore_owner', models.CharField(max_length=100, verbose_name='Keystore owner')),
-                ('keystore_secret', models.CharField(max_length=128, verbose_name='Keystore secret')),
+                ("id", models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("keystore_uid", models.UUIDField(unique=True, verbose_name="Keystore uid")),
+                ("keystore_owner", models.CharField(max_length=100, verbose_name="Keystore owner")),
+                ("keystore_secret", models.CharField(max_length=128, verbose_name="Keystore secret")),
             ],
-            options={
-                'verbose_name': 'authenticator user',
-                'verbose_name_plural': 'authenticator users',
-            },
+            options={"verbose_name": "authenticator user", "verbose_name_plural": "authenticator users"},
         ),
         migrations.CreateModel(
-            name='AuthenticatorPublicKey',
+            name="AuthenticatorPublicKey",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('active', models.BooleanField(default=True, verbose_name='active')),
-                ('keychain_uid', models.UUIDField(null=True, verbose_name='Keychain uid')),
-                ('key_algo', models.CharField(max_length=20, verbose_name='Key type')),
-                ('payload', django_cryptography.fields.encrypt(models.BinaryField(verbose_name='Public key (PEM format)'))),
-                ('authenticator_user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='public_keys', to='wagateway.PublicAuthenticator')),
+                ("id", models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("active", models.BooleanField(default=True, verbose_name="active")),
+                ("keychain_uid", models.UUIDField(null=True, verbose_name="Keychain uid")),
+                ("key_algo", models.CharField(max_length=20, verbose_name="Key type")),
+                (
+                    "payload",
+                    django_cryptography.fields.encrypt(models.BinaryField(verbose_name="Public key (PEM format)")),
+                ),
+                (
+                    "authenticator_user",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="public_keys",
+                        to="wagateway.PublicAuthenticator",
+                    ),
+                ),
             ],
         ),
     ]
