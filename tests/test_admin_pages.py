@@ -1,6 +1,6 @@
 
 import pytest
-from waserver.apps.wagateway.models import PublicAuthenticator, PublicAuthenticatorKey, RevelationRequest, SymkeyDecryptionRequest
+from waserver.apps.wagateway.models import PublicAuthenticator, RevelationRequest
 from model_bakery import baker
 
 

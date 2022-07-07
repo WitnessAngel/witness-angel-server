@@ -485,7 +485,7 @@ def test_revelation_request_workflow(live_server):
            SymkeyDecryptionStatus.PENDING  # Symkey decryption request REMAINS in status PENDING
     assert revelation_request["symkey_decryption_requests"][1]["symkey_decryption_response_data"] == b""
 
-    # Ensure that revelation requests can't be accepted/rejected anymore when REJECTED
+    # Ensure that revelation requests can't be accepted/rejected anymore when already REJECTED
 
     with pytest.raises(ValidationError, match="revelation request in status"):
         gateway_proxy.accept_revelation_request(authenticator_keystore_secret=TEST_AUTHENTICATOR_SECRET,
@@ -519,6 +519,7 @@ def test_revelation_request_workflow(live_server):
             "symkey_decryption_status": SymkeyDecryptionStatus.PRIVATE_KEY_MISSING
         }
     ]
+    random.shuffle(symkey_decryption_results)
 
     # Accept a revelation request that does not exist
     with pytest.raises(ExistenceError):
@@ -537,6 +538,7 @@ def test_revelation_request_workflow(live_server):
 
     symkey_decryption_results_bad1 = copy.deepcopy(symkey_decryption_results)
     symkey_decryption_results_bad1.pop()
+    random.shuffle(symkey_decryption_results_bad1)
 
     symkey_decryption_results_bad2 = copy.deepcopy(symkey_decryption_results)
     symkey_decryption_results_bad2.append({
@@ -544,23 +546,27 @@ def test_revelation_request_workflow(live_server):
         "symkey_decryption_response_data": get_random_bytes(20),
         "symkey_decryption_status": SymkeyDecryptionStatus.DECRYPTED
     })
+    random.shuffle(symkey_decryption_results_bad2)
 
     symkey_decryption_results_bad3 = copy.deepcopy(symkey_decryption_results)
     symkey_decryption_results_bad3[-1].update({
         "symkey_decryption_response_data": get_random_bytes(20),
         "symkey_decryption_status": SymkeyDecryptionStatus.PRIVATE_KEY_MISSING  # Should NOT have response_data
     })
+    random.shuffle(symkey_decryption_results_bad2)
 
     symkey_decryption_results_bad4 = copy.deepcopy(symkey_decryption_results)
     symkey_decryption_results_bad4[-1].update({
         "symkey_decryption_response_data": b"",
         "symkey_decryption_status": SymkeyDecryptionStatus.DECRYPTED  # SHOULD have response_data
     })
+    random.shuffle(symkey_decryption_results_bad4)
 
     symkey_decryption_results_bad5 = copy.deepcopy(symkey_decryption_results)
     symkey_decryption_results_bad5[-1].update({
         "symkey_decryption_status": SymkeyDecryptionStatus.PENDING  # FORBIDDEN status
     })
+    random.shuffle(symkey_decryption_results_bad5)
 
     with pytest.raises(ValidationError, match="symkey_decryption_results"):
         gateway_proxy.accept_revelation_request(
@@ -615,7 +621,7 @@ def test_revelation_request_workflow(live_server):
     assert revelation_request["symkey_decryption_requests"][1]["symkey_decryption_response_data"] == \
            symkey_decryption_results[1]["symkey_decryption_response_data"]
 
-    # Ensure that revelation requests can't be accepted/rejected anymore when ACCEPTED
+    # Ensure that revelation requests can't be accepted/rejected anymore when already ACCEPTED
 
     with pytest.raises(ValidationError, match="revelation request in status"):
         gateway_proxy.accept_revelation_request(authenticator_keystore_secret=TEST_AUTHENTICATOR_SECRET,
