@@ -263,11 +263,12 @@ def accept_revelation_request(
         symkey_decryption_requests = revelation_request.symkey_decryption_requests.all()
 
         expected_request_data = set(
-            symkey_decryption_request.symkey_decryption_request_data
+            (symkey_decryption_request.symkey_decryption_request_data, symkey_decryption_request.target_public_authenticator_key_id)
             for symkey_decryption_request in symkey_decryption_requests
         )
 
         received_request_data = set(
+            (symkey_decryption_request.symkey_decryption_request_data, symkey_decryption_request.target_public_authenticator_key_id)
             symkey_decryption_result["symkey_decryption_request_data"]
             for symkey_decryption_result in symkey_decryption_results
         )
