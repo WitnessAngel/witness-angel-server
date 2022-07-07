@@ -168,7 +168,8 @@ def list_requestor_revelation_requests(revelation_requestor_uid: uuid.UUID):
 
     revelation_requests_for_requestor_uid = RevelationRequest.objects.filter(
         revelation_requestor_uid=revelation_requestor_uid
-    )
+    ).prefetch_related("symkey_decryption_requests")
+
     return RevelationRequestSerializer(revelation_requests_for_requestor_uid, many=True).data
 
 
@@ -188,7 +189,7 @@ def list_authenticator_revelation_requests(authenticator_keystore_uid: uuid.UUID
 
     revelation_requests_for_keystore_uid = RevelationRequest.objects.filter(
         target_public_authenticator__keystore_uid=authenticator_keystore_uid
-    )
+    ).prefetch_related("symkey_decryption_requests")
 
     return RevelationRequestSerializer(revelation_requests_for_keystore_uid, many=True).data
 
