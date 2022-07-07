@@ -108,7 +108,6 @@ def submit_revelation_request(
     revelation_response_key_algo: str,
     symkey_decryption_requests: list,
 ):
-    # TODO Ensure that the different symkey "request_data" are unique for the same revelation request
     with transaction.atomic():
 
         revelation_request_tree = {
@@ -124,6 +123,14 @@ def submit_revelation_request(
         validate_data_tree_with_pythonschema(
             data_tree=revelation_request_tree, valid_schema=REVELATION_REQUEST_INPUT_PARAMETERS_SCHEMA
         )
+
+        # FIXME - we should allow that, by matching "Accept" results with target_public_authenticator_key too!
+        symkey_decryption_request_data_list = [
+            symkey_decryption_request["symkey_decryption_request_data"]
+            for symkey_decryption_request in revelation_request_tree["symkey_decryption_requests"]
+        ]
+        if len(symkey_decryption_request_data_list) != len(set(symkey_decryption_request_data_list)):
+            raise ValidationError("Duplicate symkey_decryption_request_data values found in symkey_decryption_requests")
 
         target_public_authenticator = _get_public_authenticator_by_keystore_uid(authenticator_keystore_uid)
 

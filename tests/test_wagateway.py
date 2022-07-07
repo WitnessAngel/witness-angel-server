@@ -386,6 +386,13 @@ def test_revelation_request_workflow(live_server):
         with pytest.raises(KeyDoesNotExist):  # Target public authenticator key not found
             gateway_proxy.submit_revelation_request(**revelation_request_parameters_broken)
 
+        # Check that duplicated symkey_decryption_request_data for the same revelation request give an error
+        revelation_request_parameters_broken = copy.deepcopy(revelation_request_parameters)
+        revelation_request_parameters_broken["symkey_decryption_requests"][0]["symkey_decryption_request_data"] = \
+            revelation_request_parameters_broken["symkey_decryption_requests"][1]["symkey_decryption_request_data"]
+        with pytest.raises(ValidationError):
+            gateway_proxy.submit_revelation_request(**revelation_request_parameters_broken)
+
         all_revelation_request_parameters.append(revelation_request_parameters)
 
     revelation_request_parameters1, revelation_request_parameters2 = all_revelation_request_parameters

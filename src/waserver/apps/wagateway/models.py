@@ -99,7 +99,7 @@ class SymkeyDecryptionStatus(models.TextChoices):
 
 class SymkeyDecryptionRequest(CreatedModifiedByMixin):
     class Meta:
-        unique_together = [("revelation_request", "symkey_decryption_request_data")]
+        unique_together = [("revelation_request", "symkey_decryption_request_data")]  # Fernet encryption makes this little useful
 
     revelation_request = models.ForeignKey(
         RevelationRequest, related_name="symkey_decryption_requests", on_delete=models.CASCADE
