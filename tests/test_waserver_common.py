@@ -23,6 +23,16 @@ def test_robots_txt(client):
     assert "User-agent" in response.content.decode("utf8")
 
 
+def test_jsonrpc_invalid_method(live_server):
+    jsonrpc_url = live_server.url + random.choice(["/gateway/jsonrpc/", "/trustee/jsonrpc/"])
+
+    gateway_proxy = JsonRpcProxy(
+        url=jsonrpc_url, response_error_handler=status_slugs_response_error_handler)
+
+    with pytest.raises(TransportError, match="Got non-200 response from server, status code: 404"):
+        gateway_proxy.unexistingmethod()
+
+
 def test_jsonrpc_invalid_http_get_request(live_server):
     jsonrpc_url = live_server.url + random.choice(["/gateway/jsonrpc/", "/trustee/jsonrpc/"])
 
