@@ -506,7 +506,7 @@ def test_revelation_request_workflow(live_server):
     revelation_request_for_requestor_uid2 = gateway_proxy.list_requestor_revelation_requests(
         revelation_requestor_uid=revelation_request_parameters2["revelation_requestor_uid"])[0]
 
-    symkey_decryption_results = [{
+    symkey_decryption_results_ordered = [{
         "symkey_decryption_request_data": revelation_request_for_requestor_uid2["symkey_decryption_requests"][0][
             "symkey_decryption_request_data"],
         "symkey_decryption_response_data": get_random_bytes(20),
@@ -519,28 +519,29 @@ def test_revelation_request_workflow(live_server):
             "symkey_decryption_status": SymkeyDecryptionStatus.PRIVATE_KEY_MISSING
         }
     ]
-    random.shuffle(symkey_decryption_results)
+    symkey_decryption_results_shuffled = copy.deepcopy(symkey_decryption_results_ordered)
+    random.shuffle(symkey_decryption_results_shuffled)
 
     # Accept a revelation request that does not exist
     with pytest.raises(ExistenceError):
         gateway_proxy.accept_revelation_request(authenticator_keystore_secret=TEST_AUTHENTICATOR_SECRET,
                                   revelation_request_uid=generate_uuid0(),
-                                  symkey_decryption_results=symkey_decryption_results)
+                                  symkey_decryption_results=symkey_decryption_results_shuffled)
 
     # Accept a revelation request having the keystore_secret not matching
     with pytest.raises(AuthenticationError):
         gateway_proxy.accept_revelation_request(
             authenticator_keystore_secret="",
             revelation_request_uid=revelation_request_for_requestor_uid2["revelation_request_uid"],
-            symkey_decryption_results=symkey_decryption_results)
+            symkey_decryption_results=symkey_decryption_results_shuffled)
 
     # Trigger errors on mismatch between expected and received symkey data, or regarding symkey decryption status
 
-    symkey_decryption_results_bad1 = copy.deepcopy(symkey_decryption_results)
+    symkey_decryption_results_bad1 = copy.deepcopy(symkey_decryption_results_shuffled)
     symkey_decryption_results_bad1.pop()
     random.shuffle(symkey_decryption_results_bad1)
 
-    symkey_decryption_results_bad2 = copy.deepcopy(symkey_decryption_results)
+    symkey_decryption_results_bad2 = copy.deepcopy(symkey_decryption_results_shuffled)
     symkey_decryption_results_bad2.append({
         "symkey_decryption_request_data": get_random_bytes(20),
         "symkey_decryption_response_data": get_random_bytes(20),
@@ -548,21 +549,21 @@ def test_revelation_request_workflow(live_server):
     })
     random.shuffle(symkey_decryption_results_bad2)
 
-    symkey_decryption_results_bad3 = copy.deepcopy(symkey_decryption_results)
+    symkey_decryption_results_bad3 = copy.deepcopy(symkey_decryption_results_shuffled)
     symkey_decryption_results_bad3[-1].update({
         "symkey_decryption_response_data": get_random_bytes(20),
         "symkey_decryption_status": SymkeyDecryptionStatus.PRIVATE_KEY_MISSING  # Should NOT have response_data
     })
     random.shuffle(symkey_decryption_results_bad2)
 
-    symkey_decryption_results_bad4 = copy.deepcopy(symkey_decryption_results)
+    symkey_decryption_results_bad4 = copy.deepcopy(symkey_decryption_results_shuffled)
     symkey_decryption_results_bad4[-1].update({
         "symkey_decryption_response_data": b"",
         "symkey_decryption_status": SymkeyDecryptionStatus.DECRYPTED  # SHOULD have response_data
     })
     random.shuffle(symkey_decryption_results_bad4)
 
-    symkey_decryption_results_bad5 = copy.deepcopy(symkey_decryption_results)
+    symkey_decryption_results_bad5 = copy.deepcopy(symkey_decryption_results_shuffled)
     symkey_decryption_results_bad5[-1].update({
         "symkey_decryption_status": SymkeyDecryptionStatus.PENDING  # FORBIDDEN status
     })
@@ -602,7 +603,7 @@ def test_revelation_request_workflow(live_server):
 
     gateway_proxy.accept_revelation_request(authenticator_keystore_secret=TEST_AUTHENTICATOR_SECRET,
                               revelation_request_uid=revelation_request_for_requestor_uid2["revelation_request_uid"],
-                              symkey_decryption_results=symkey_decryption_results)
+                              symkey_decryption_results=symkey_decryption_results_shuffled)
 
     revelation_requests_for_requestor_uid2 = gateway_proxy.list_requestor_revelation_requests(  # Reload
         revelation_requestor_uid=revelation_request_parameters2["revelation_requestor_uid"])
@@ -612,21 +613,21 @@ def test_revelation_request_workflow(live_server):
     assert revelation_request["revelation_request_status"] == RevelationRequestStatus.ACCEPTED
     assert revelation_request["symkey_decryption_requests"][0]["symkey_decryption_status"] == SymkeyDecryptionStatus.DECRYPTED
     assert revelation_request["symkey_decryption_requests"][0]["symkey_decryption_request_data"] == \
-           symkey_decryption_results[0]["symkey_decryption_request_data"]
+           symkey_decryption_results_ordered[0]["symkey_decryption_request_data"]
     assert revelation_request["symkey_decryption_requests"][0]["symkey_decryption_response_data"] == \
-           symkey_decryption_results[0]["symkey_decryption_response_data"]
+           symkey_decryption_results_ordered[0]["symkey_decryption_response_data"]
     assert revelation_request["symkey_decryption_requests"][1]["symkey_decryption_status"] == SymkeyDecryptionStatus.PRIVATE_KEY_MISSING
     assert revelation_request["symkey_decryption_requests"][1]["symkey_decryption_request_data"] == \
-           symkey_decryption_results[1]["symkey_decryption_request_data"]
+           symkey_decryption_results_ordered[1]["symkey_decryption_request_data"]
     assert revelation_request["symkey_decryption_requests"][1]["symkey_decryption_response_data"] == \
-           symkey_decryption_results[1]["symkey_decryption_response_data"]
+           symkey_decryption_results_ordered[1]["symkey_decryption_response_data"]
 
     # Ensure that revelation requests can't be accepted/rejected anymore when already ACCEPTED
 
     with pytest.raises(ValidationError, match="revelation request in status"):
         gateway_proxy.accept_revelation_request(authenticator_keystore_secret=TEST_AUTHENTICATOR_SECRET,
                                   revelation_request_uid=revelation_request_for_requestor_uid2["revelation_request_uid"],
-                                  symkey_decryption_results=symkey_decryption_results)
+                                  symkey_decryption_results=symkey_decryption_results_shuffled)
 
     with pytest.raises(ValidationError, match="revelation request in status"):
         gateway_proxy.reject_revelation_request(
