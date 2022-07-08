@@ -19,6 +19,8 @@ Use `pip install poetry` to install poetry (or follow its official docs to insta
 
 Use `poetry install` to install python dependencies (poetry will create its own virtualenv if you don't have one activated).
 
+Use `settings.ini.template` as a basis to create your own `settings.ini` at repository root.
+
 Use `pytest` to launch unit-tests (its default arguments are in `setup.cfg`). If poetry created its own virtualenv, use `poetry run pytest` instead.
 
 Use `bash ci.sh` to do a full checkup before committing or pushing your changes.
