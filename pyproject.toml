@@ -2,7 +2,6 @@
 requires = ["poetry_core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
-
 [tool.poetry]
 name = "waserver"
 description = "Witness Angel Webservices"

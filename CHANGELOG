@@ -1,3 +1,10 @@
+Version 0.3
+==================
+
+* Disable rest interface for now
+* Extend wagateway API with methods to submit, list, accept and reject Revelation Requests
+* Improve django-admin integration
+
 
 Version 0.2
 ==================

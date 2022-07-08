@@ -15,7 +15,6 @@ run_ci () {
   export PYTHONPATH=$PWD  # necessary for pytest presetup plugin launch
   export PYTHONDONTWRITEBYTECODE=true  # else troubles with virtualbox shares...
 
-
   set +o errexit  # THESE LINTS MUST NOT STOP CHECKS
 
       # Running linting for all python files in the project:
