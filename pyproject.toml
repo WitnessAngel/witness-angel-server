@@ -33,7 +33,7 @@ python = ">=3.7, <3.10"
 wacryptolib = { git = "https://github.com/WitnessAngel/witness-angel-cryptolib.git", branch = "waserver_stable" }
 
 # Django & Bson
-Django = "^3.1"
+Django = "^3.2"
 json-rpc-django = "^1.0"
 schema = "^0.7.0"
 django_cryptography = "^1.0"
