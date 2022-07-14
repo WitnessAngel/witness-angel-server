@@ -302,6 +302,7 @@ def test_revelation_request_validation_errors(live_server):
 
 
 def test_revelation_request_workflow(live_server):
+
     jsonrpc_url = live_server.url + "/gateway/jsonrpc/"
 
     gateway_proxy = JsonRpcProxy(url=jsonrpc_url, response_error_handler=status_slugs_response_error_handler)
@@ -354,6 +355,7 @@ def test_revelation_request_workflow(live_server):
             "revelation_response_key_algo": key_algo,
             "symkey_decryption_requests": [
                 {
+                    "cryptainer_name": "my_cryptainer_name_1.crypt",
                     "cryptainer_uid": generate_uuid0(),
                     "cryptainer_metadata": {},
                     "symkey_decryption_request_data": symkey_dict1["key"],
@@ -361,6 +363,7 @@ def test_revelation_request_workflow(live_server):
                     "key_algo": public_authenticator["public_keys"][1]["key_algo"],
                 },
                 {
+                    "cryptainer_name": "my_cryptainer_name_2.crypt",
                     "cryptainer_uid": generate_uuid0(),
                     "cryptainer_metadata": {},
                     "symkey_decryption_request_data": symkey_dict2["key"],
@@ -376,6 +379,7 @@ def test_revelation_request_workflow(live_server):
         revelation_request_parameters_broken = copy.deepcopy(revelation_request_parameters)
         revelation_request_parameters_broken["symkey_decryption_requests"].append(
             {
+                "cryptainer_name": "my_cryptainer_name_3.crypt",
                 "cryptainer_uid": generate_uuid0(),
                 "cryptainer_metadata": {},
                 "symkey_decryption_request_data": b"whatever",
@@ -426,25 +430,29 @@ def test_revelation_request_workflow(live_server):
 
     symkey_decryption_request1 = revelation_request["symkey_decryption_requests"][0]
     assert symkey_decryption_request1["symkey_decryption_status"] == SymkeyDecryptionStatus.PENDING
-    assert (
-        symkey_decryption_request1["target_public_authenticator_key"]["keychain_uid"]
-        == revelation_request_parameters1["symkey_decryption_requests"][0]["keychain_uid"]
-    )
-    assert (
-        symkey_decryption_request1["target_public_authenticator_key"]["key_algo"]
-        == revelation_request_parameters1["symkey_decryption_requests"][0]["key_algo"]
-    )
+
+    def check_symkey_parameters_propagation(input_symkey_parameters, echoed_symkey_decryption_request):
+        REPLICATED_SYMKEY_PARAMS = ["cryptainer_name", "cryptainer_uid",
+                                    "cryptainer_metadata", "symkey_decryption_request_data"]
+        for parameter_name in REPLICATED_SYMKEY_PARAMS:
+            assert input_symkey_parameters[parameter_name] == echoed_symkey_decryption_request[parameter_name]
+
+        assert (
+            echoed_symkey_decryption_request["target_public_authenticator_key"]["keychain_uid"]
+            == input_symkey_parameters["keychain_uid"]
+        )
+        assert (
+            echoed_symkey_decryption_request["target_public_authenticator_key"]["key_algo"]
+            == input_symkey_parameters["key_algo"]
+        )
+
+    check_symkey_parameters_propagation(revelation_request_parameters1["symkey_decryption_requests"][0],
+                                        echoed_symkey_decryption_request=symkey_decryption_request1)
 
     symkey_decryption_request2 = revelation_request["symkey_decryption_requests"][1]
-    assert symkey_decryption_request2["symkey_decryption_status"] == SymkeyDecryptionStatus.PENDING
-    assert (
-        symkey_decryption_request2["target_public_authenticator_key"]["keychain_uid"]
-        == revelation_request_parameters1["symkey_decryption_requests"][1]["keychain_uid"]
-    )
-    assert (
-        symkey_decryption_request1["target_public_authenticator_key"]["key_algo"]
-        == revelation_request_parameters1["symkey_decryption_requests"][1]["key_algo"]
-    )
+
+    check_symkey_parameters_propagation(revelation_request_parameters1["symkey_decryption_requests"][1],
+                                        echoed_symkey_decryption_request=symkey_decryption_request2)
 
     # List of revelation requests for an authenticator that does not exist
     with pytest.raises(AuthenticatorDoesNotExist):
@@ -487,22 +495,15 @@ def test_revelation_request_workflow(live_server):
 
     symkey_decryption_request1 = revelation_request["symkey_decryption_requests"][0]
     assert symkey_decryption_request1["symkey_decryption_status"] == SymkeyDecryptionStatus.PENDING
-    assert (
-        symkey_decryption_request1["target_public_authenticator_key"]["keychain_uid"]
-        == revelation_request_parameters2["symkey_decryption_requests"][0]["keychain_uid"]
-    )
-    assert revelation_request_parameters2["symkey_decryption_requests"][0]["key_algo"]
+
+    check_symkey_parameters_propagation(revelation_request_parameters2["symkey_decryption_requests"][0],
+                                        echoed_symkey_decryption_request=symkey_decryption_request1)
 
     symkey_decryption_request2 = revelation_request["symkey_decryption_requests"][1]
     assert symkey_decryption_request2["symkey_decryption_status"] == SymkeyDecryptionStatus.PENDING
-    assert (
-        symkey_decryption_request2["target_public_authenticator_key"]["keychain_uid"]
-        == revelation_request_parameters2["symkey_decryption_requests"][1]["keychain_uid"]
-    )
-    assert (
-        symkey_decryption_request2["target_public_authenticator_key"]["key_algo"]
-        == revelation_request_parameters2["symkey_decryption_requests"][1]["key_algo"]
-    )
+
+    check_symkey_parameters_propagation(revelation_request_parameters2["symkey_decryption_requests"][1],
+                                        echoed_symkey_decryption_request=symkey_decryption_request2)
 
     # API to reject revelation requests (considering FIRST revelation request)
 
