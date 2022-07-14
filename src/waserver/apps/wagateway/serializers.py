@@ -60,6 +60,7 @@ class SymkeyDecryptionRequestSerializer(serializers.ModelSerializer):
         model = SymkeyDecryptionRequest
         fields = [
             "target_public_authenticator_key",
+            "cryptainer_name",
             "cryptainer_uid",
             "cryptainer_metadata",
             "symkey_decryption_request_data",

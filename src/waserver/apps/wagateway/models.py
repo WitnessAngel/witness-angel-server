@@ -24,7 +24,7 @@ class PublicAuthenticator(CreatedModifiedByMixin):
 
     keystore_owner = models.CharField(_("Keystore owner"), max_length=100)
 
-    keystore_secret_hash = models.CharField(_("Keystore secret hash"), max_length=128)
+    keystore_secret_hash = models.CharField(_("Keystore secret hash"), max_length=100)
 
     def __str__(self):
         return self.keystore_owner or str(self.pk)
@@ -74,7 +74,7 @@ class RevelationRequest(CreatedModifiedByMixin):
     )
 
     revelation_request_status = models.CharField(
-        max_length=128, choices=RevelationRequestStatus.choices, default=RevelationRequestStatus.PENDING
+        max_length=20, choices=RevelationRequestStatus.choices, default=RevelationRequestStatus.PENDING
     )
     revelation_request_uid = models.UUIDField(_("Revelation request uid"), default=generate_uuid0, unique=True)
     revelation_requestor_uid = models.UUIDField(_("Revelation requestor uid"), db_index=True)
@@ -107,6 +107,9 @@ class SymkeyDecryptionRequest(CreatedModifiedByMixin):
     target_public_authenticator_key = models.ForeignKey(
         PublicAuthenticatorKey, related_name="symkey_decryption_requests", on_delete=models.CASCADE
     )
+    cryptainer_name = models.CharField(
+        _("Cryptainer name"), max_length=100, choices=SymkeyDecryptionStatus.choices, default=SymkeyDecryptionStatus.PENDING
+        )
     cryptainer_uid = models.UUIDField(_("Cryptainer uid"), null=True)
     cryptainer_metadata = models.JSONField(_("Cryptainer metadata)"), default=dict, null=True, blank=True)
     symkey_decryption_request_data = encrypt(
@@ -116,7 +119,7 @@ class SymkeyDecryptionRequest(CreatedModifiedByMixin):
         models.BinaryField(_("Symkey Response data (symkey/shard encrypted by response public key)"), default=b"")
     )
     symkey_decryption_status = models.CharField(
-        max_length=128, choices=SymkeyDecryptionStatus.choices, default=SymkeyDecryptionStatus.PENDING
+        max_length=20, choices=SymkeyDecryptionStatus.choices, default=SymkeyDecryptionStatus.PENDING
     )
 
     def save(self, *args, **kwargs):

@@ -158,6 +158,7 @@ def submit_revelation_request(
 
             SymkeyDecryptionRequest.objects.create(
                 revelation_request=revelation_request,
+                cryptainer_name=symkey_decryption_request["cryptainer_name"],
                 cryptainer_uid=symkey_decryption_request["cryptainer_uid"],
                 cryptainer_metadata=symkey_decryption_request["cryptainer_metadata"],
                 target_public_authenticator_key=target_public_authenticator_key,
@@ -343,6 +344,7 @@ REVELATION_REQUEST_INPUT_PARAMETERS_SCHEMA = Schema(
         "symkey_decryption_requests": [
             {
                 "cryptainer_uid": micro_schemas.schema_uid,
+                "cryptainer_name": str,  # FIXME SET MAX LENGTH?
                 "cryptainer_metadata": Or(dict, None),
                 "symkey_decryption_request_data": micro_schemas.schema_binary,
                 "keychain_uid": micro_schemas.schema_uid,
@@ -354,7 +356,7 @@ REVELATION_REQUEST_INPUT_PARAMETERS_SCHEMA = Schema(
 
 PUBLIC_AUTHENTICATOR_SCHEMA = Schema(
     {
-        "keystore_owner": And(str, len),
+        "keystore_owner": And(str, len),  # FIXME SET MAX LENGTH?
         Optional("keystore_secret"): And(str, len),
         "keystore_uid": micro_schemas.schema_uid,
         "public_keys": And(
