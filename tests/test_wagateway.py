@@ -18,7 +18,7 @@ from waserver.apps.wagateway.core import (
     validate_data_tree_with_pythonschema,
     PUBLIC_AUTHENTICATOR_SCHEMA,
     AuthenticationError,
-    AuthenticatorDoesNotExist,
+    KeystoreDoesNotExist,
 )
 from waserver.apps.wagateway.models import PublicAuthenticator, RevelationRequestStatus, SymkeyDecryptionStatus
 from waserver.apps.wagateway.views import set_public_authenticator_view
@@ -86,7 +86,7 @@ def test_jsonrpc_set_and_get_public_authenticator_workflow(live_server):
 
     parameters = _generate_authenticator_parameter_tree(2)
 
-    with pytest.raises(AuthenticatorDoesNotExist):
+    with pytest.raises(KeystoreDoesNotExist):
         gateway_proxy.get_public_authenticator(keystore_uid=parameters["keystore_uid"])
 
     gateway_proxy.set_public_authenticator(**parameters)
@@ -313,10 +313,10 @@ def test_revelation_request_workflow(live_server):
     key_algo = "RSA_OAEP"
 
     # Check that the public authenticator does not exist on the server
-    with pytest.raises(AuthenticatorDoesNotExist):
+    with pytest.raises(KeystoreDoesNotExist):
         gateway_proxy.get_public_authenticator(keystore_uid=parameters1["keystore_uid"])
 
-    with pytest.raises(AuthenticatorDoesNotExist):
+    with pytest.raises(KeystoreDoesNotExist):
         gateway_proxy.get_public_authenticator(keystore_uid=parameters2["keystore_uid"])
 
     # Publish the two authenticators on the server
@@ -455,7 +455,7 @@ def test_revelation_request_workflow(live_server):
                                         echoed_symkey_decryption_request=symkey_decryption_request2)
 
     # List of revelation requests for an authenticator that does not exist
-    with pytest.raises(AuthenticatorDoesNotExist):
+    with pytest.raises(KeystoreDoesNotExist):
         gateway_proxy.list_authenticator_revelation_requests(
             authenticator_keystore_uid=generate_uuid0(), authenticator_keystore_secret=TEST_AUTHENTICATOR_SECRET
         )

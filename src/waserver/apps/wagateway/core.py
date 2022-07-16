@@ -10,7 +10,7 @@ from wacryptolib.exceptions import (
     KeyDoesNotExist,
     ExistenceError,
     AuthenticationError,
-    AuthenticatorDoesNotExist,
+    KeystoreDoesNotExist,
     ValidationError,
 )
 from wacryptolib.utilities import get_validation_micro_schemas
@@ -35,7 +35,7 @@ def _get_public_authenticator_by_keystore_uid(keystore_uid):
     try:
         public_authenticator = PublicAuthenticator.objects.get(keystore_uid=keystore_uid)
     except PublicAuthenticator.DoesNotExist:
-        raise AuthenticatorDoesNotExist("Authenticator %s does not exist in database" % keystore_uid) from None
+        raise KeystoreDoesNotExist("Authenticator %s does not exist in database" % keystore_uid) from None
     return public_authenticator
 
 

@@ -404,11 +404,13 @@ def test_jsonrpc_trustee_encrypt_decrypt_cryptainer(live_server):
         )
         print(">>>>> request_decryption_authorizations is", decryption_authorization_requests_result)
 
-        decrypted_data = decrypt_payload_from_cryptainer(cryptainer=cryptainer, keystore_pool=None)
+        decrypted_data, errors = decrypt_payload_from_cryptainer(cryptainer=cryptainer, keystore_pool=None)
+        assert not errors
         assert decrypted_data == payload
 
         frozen_datetime.tick(delta=timedelta(hours=23))  # Once authorization is granted, it stays so for a long time
-        decrypted_data = decrypt_payload_from_cryptainer(cryptainer=cryptainer, keystore_pool=None)
+        decrypted_data, errors = decrypt_payload_from_cryptainer(cryptainer=cryptainer, keystore_pool=None)
+        assert not errors
         assert decrypted_data == payload
 
         frozen_datetime.tick(
