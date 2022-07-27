@@ -33,12 +33,14 @@ def get_public_authenticator_view(request, keystore_uid, keystore_secret=None):
 @jsonrpc_method("set_public_authenticator", site=wagateway_extended_jsonrpc_site)
 @convert_exceptions_to_jsonrpc_status_slugs
 @validate_input_parameters
-def set_public_authenticator_view(request, keystore_uid, keystore_owner, public_keys, keystore_secret):
+def set_public_authenticator_view(request, keystore_uid, keystore_owner, public_keys, keystore_secret,
+                                  keystore_creation_datetime):
     return set_public_authenticator(
         keystore_uid=keystore_uid,
         keystore_owner=keystore_owner,
         public_keys=public_keys,
         keystore_secret=keystore_secret,
+        keystore_creation_datetime=keystore_creation_datetime
     )
 
 

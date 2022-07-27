@@ -1,10 +1,12 @@
 from django.contrib.auth.hashers import make_password, check_password, is_password_usable
 from django.db import models
+from django.utils import timezone
 from django.utils.translation import ugettext_lazy as _
 from django_changeset.models import CreatedModifiedByMixin
 from django_cryptography.fields import encrypt
 
 from wacryptolib.utilities import generate_uuid0
+from datetime import datetime
 
 
 class PublicAuthenticator(CreatedModifiedByMixin):
@@ -26,8 +28,18 @@ class PublicAuthenticator(CreatedModifiedByMixin):
 
     keystore_secret_hash = models.CharField(_("Keystore secret hash"), max_length=100)
 
+    retrieval_count = models.IntegerField(_("Retrieval count"), default=0)
+
+    last_retrieval_datetime = models.DateTimeField(_("Last retrieval date"), null=True)
+
+    keystore_creation_datetime = models.DateTimeField(_("Keystore creation datetime"), null=True)
+
     def __str__(self):
         return self.keystore_owner or str(self.pk)
+
+    def update_retrieval_statistics(self):
+        self.retrieval_count += 1
+        self.last_retrieval_datetime = datetime.now()
 
     # API mimicking AbstractBaseUser password management
 
@@ -53,7 +65,6 @@ class PublicAuthenticator(CreatedModifiedByMixin):
 
 
 class PublicAuthenticatorKey(CreatedModifiedByMixin):
-
     public_authenticator = models.ForeignKey(PublicAuthenticator, related_name="public_keys", on_delete=models.CASCADE)
 
     keychain_uid = models.UUIDField(_("Keychain uid"), null=True)
@@ -68,7 +79,6 @@ class RevelationRequestStatus(models.TextChoices):
 
 
 class RevelationRequest(CreatedModifiedByMixin):
-
     target_public_authenticator = models.ForeignKey(
         PublicAuthenticator, related_name="revelation_request", on_delete=models.CASCADE
     )
@@ -99,7 +109,8 @@ class SymkeyDecryptionStatus(models.TextChoices):
 
 class SymkeyDecryptionRequest(CreatedModifiedByMixin):
     class Meta:
-        unique_together = [("revelation_request", "symkey_decryption_request_data")]  # Fernet encryption makes this little useful
+        unique_together = [
+            ("revelation_request", "symkey_decryption_request_data")]  # Fernet encryption makes this little useful
 
     revelation_request = models.ForeignKey(
         RevelationRequest, related_name="symkey_decryption_requests", on_delete=models.CASCADE
@@ -108,8 +119,9 @@ class SymkeyDecryptionRequest(CreatedModifiedByMixin):
         PublicAuthenticatorKey, related_name="symkey_decryption_requests", on_delete=models.CASCADE
     )
     cryptainer_name = models.CharField(
-        _("Cryptainer name"), max_length=100, choices=SymkeyDecryptionStatus.choices, default=SymkeyDecryptionStatus.PENDING
-        )
+        _("Cryptainer name"), max_length=100, choices=SymkeyDecryptionStatus.choices,
+        default=SymkeyDecryptionStatus.PENDING
+    )
     cryptainer_uid = models.UUIDField(_("Cryptainer uid"), null=True)
     cryptainer_metadata = models.JSONField(_("Cryptainer metadata)"), default=dict, null=True, blank=True)
     symkey_decryption_request_data = encrypt(
@@ -125,7 +137,7 @@ class SymkeyDecryptionRequest(CreatedModifiedByMixin):
     def save(self, *args, **kwargs):
         # Check coherence of data tree
         assert (
-            self.target_public_authenticator_key.public_authenticator
-            == self.revelation_request.target_public_authenticator
+                self.target_public_authenticator_key.public_authenticator
+                == self.revelation_request.target_public_authenticator
         ), self.revelation_request
         return super().save()

@@ -1,5 +1,7 @@
+import datetime
+
 from rest_framework import serializers
-from rest_framework.fields import UUIDField, Field
+from rest_framework.fields import UUIDField, Field, DateTimeField
 
 from waserver.apps.wagateway.models import (
     PublicAuthenticator,
@@ -23,12 +25,31 @@ class BinaryField(Field):
 
 
 class TransparentRepresentationMixin:
+
     def to_representation(self, value):
         return value
 
 
 class TransparentRepresentationUUIDField(TransparentRepresentationMixin, UUIDField):
     pass
+
+
+class TransparentRepresentationDatetimeField(DateTimeField):
+    def enforce_timezone(self, value):
+        return value
+
+    def default_timezone(self):
+        pass
+
+    def to_internal_value(self, value):
+        if isinstance(value, datetime.date) and not isinstance(value, datetime.datetime):
+            self.fail('date')
+
+        if isinstance(value, datetime.datetime):
+            return value
+
+    def to_representation(self, value):
+        return value
 
 
 class PublicAuthenticatorKeySerializer(serializers.ModelSerializer):
@@ -43,11 +64,12 @@ class PublicAuthenticatorKeySerializer(serializers.ModelSerializer):
 class PublicAuthenticatorSerializer(serializers.ModelSerializer):
     keystore_uid = TransparentRepresentationUUIDField()
     public_keys = PublicAuthenticatorKeySerializer(many=True, read_only=True)
+    keystore_creation_datetime = TransparentRepresentationDatetimeField()
     # decryption_request = DecryptionRequestSerializer(many=True, read_only=True)
 
     class Meta:
         model = PublicAuthenticator
-        fields = ["keystore_owner", "keystore_uid", "public_keys"]
+        fields = ["keystore_owner", "keystore_uid", "public_keys", "keystore_creation_datetime"]
 
 
 class SymkeyDecryptionRequestSerializer(serializers.ModelSerializer):

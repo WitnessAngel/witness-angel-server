@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime
 
 from django.db import transaction
 from schema import And, Or, Optional, Schema, SchemaError
@@ -50,11 +51,11 @@ def _get_authorized_revelation_request_by_request_uid(revelation_request_uid, au
     _validate_public_authenticator_secret(
         revelation_request.target_public_authenticator, keystore_secret=authenticator_keystore_secret
     )
+
     return revelation_request
 
 
 def get_public_authenticator(keystore_uid, keystore_secret=None):
-
     validate_data_tree_with_pythonschema(
         dict(keystore_uid=keystore_uid, keystore_secret=keystore_secret),
         Schema({"keystore_uid": micro_schemas.schema_uid, "keystore_secret": Or(None, str)}),
@@ -65,11 +66,14 @@ def get_public_authenticator(keystore_uid, keystore_secret=None):
     if keystore_secret:  # Optional, only provided to check if owned keystore_secret is still OK
         _validate_public_authenticator_secret(public_authenticator, keystore_secret=keystore_secret)
 
+    public_authenticator.update_retrieval_statistics()
+    public_authenticator.save()
+
     return PublicAuthenticatorSerializer(public_authenticator).data
 
 
-def set_public_authenticator(keystore_uid: uuid.UUID, keystore_owner: str, public_keys: list, keystore_secret: str):
-
+def set_public_authenticator(keystore_uid: uuid.UUID, keystore_owner: str, public_keys: list, keystore_secret: str,
+                             keystore_creation_datetime: datetime):
     with transaction.atomic():
 
         public_authenticator_tree = {
@@ -77,6 +81,7 @@ def set_public_authenticator(keystore_uid: uuid.UUID, keystore_owner: str, publi
             "keystore_owner": keystore_owner,
             "public_keys": public_keys,
             "keystore_secret": keystore_secret,
+            "keystore_creation_datetime": keystore_creation_datetime
         }
 
         validate_data_tree_with_pythonschema(
@@ -87,7 +92,8 @@ def set_public_authenticator(keystore_uid: uuid.UUID, keystore_owner: str, publi
             PublicAuthenticator.objects.get(keystore_uid=keystore_uid)
             raise KeystoreAlreadyExists("Authenticator %s already exists in database" % keystore_uid)
         except PublicAuthenticator.DoesNotExist:
-            public_authenticator = PublicAuthenticator(keystore_owner=keystore_owner, keystore_uid=keystore_uid)
+            public_authenticator = PublicAuthenticator(keystore_owner=keystore_owner, keystore_uid=keystore_uid,
+                                                       keystore_creation_datetime=keystore_creation_datetime)
             public_authenticator.set_keystore_secret(keystore_secret)
             public_authenticator.save()
             for public_key in public_keys:
@@ -100,13 +106,13 @@ def set_public_authenticator(keystore_uid: uuid.UUID, keystore_owner: str, publi
 
 
 def submit_revelation_request(
-    authenticator_keystore_uid: uuid.UUID,
-    revelation_requestor_uid: uuid.UUID,
-    revelation_request_description: str,
-    revelation_response_public_key: bytes,
-    revelation_response_keychain_uid: uuid.UUID,
-    revelation_response_key_algo: str,
-    symkey_decryption_requests: list,
+        authenticator_keystore_uid: uuid.UUID,
+        revelation_requestor_uid: uuid.UUID,
+        revelation_request_description: str,
+        revelation_response_public_key: bytes,
+        revelation_response_keychain_uid: uuid.UUID,
+        revelation_response_key_algo: str,
+        symkey_decryption_requests: list,
 ):
     with transaction.atomic():
 
@@ -227,7 +233,7 @@ def reject_revelation_request(revelation_request_uid: uuid.UUID, authenticator_k
 
 
 def accept_revelation_request(
-    revelation_request_uid: uuid.UUID, authenticator_keystore_secret: str, symkey_decryption_results: list
+        revelation_request_uid: uuid.UUID, authenticator_keystore_secret: str, symkey_decryption_results: list
 ):
     """Called by authenticator, and authenticated with keystore secret"""
 
@@ -293,16 +299,16 @@ def accept_revelation_request(
         # Ensure it's "all or nothing" for response data
         for symkey_decryption_result in symkey_decryption_results:
             assert (
-                symkey_decryption_result["symkey_decryption_status"] != SymkeyDecryptionStatus.PENDING
+                    symkey_decryption_result["symkey_decryption_status"] != SymkeyDecryptionStatus.PENDING
             )  # Schema must ensure that above
             if (
-                symkey_decryption_result["symkey_decryption_status"] == SymkeyDecryptionStatus.DECRYPTED
-                and symkey_decryption_result["symkey_decryption_response_data"]
+                    symkey_decryption_result["symkey_decryption_status"] == SymkeyDecryptionStatus.DECRYPTED
+                    and symkey_decryption_result["symkey_decryption_response_data"]
             ):
                 pass
             elif (
-                symkey_decryption_result["symkey_decryption_status"] != SymkeyDecryptionStatus.DECRYPTED
-                and not symkey_decryption_result["symkey_decryption_response_data"]
+                    symkey_decryption_result["symkey_decryption_status"] != SymkeyDecryptionStatus.DECRYPTED
+                    and not symkey_decryption_result["symkey_decryption_response_data"]
             ):
                 pass
             else:
@@ -316,8 +322,8 @@ def accept_revelation_request(
             for symkey_decryption_result in symkey_decryption_results:
 
                 if (
-                    symkey_decryption_request.symkey_decryption_request_data
-                    == symkey_decryption_result["symkey_decryption_request_data"]
+                        symkey_decryption_request.symkey_decryption_request_data
+                        == symkey_decryption_result["symkey_decryption_request_data"]
                 ):
                     symkey_decryption_request.symkey_decryption_response_data = symkey_decryption_result[
                         "symkey_decryption_response_data"
@@ -369,6 +375,7 @@ PUBLIC_AUTHENTICATOR_SCHEMA = Schema(
             ],
             len,
         ),
+        "keystore_creation_datetime": datetime
     }
 )
 
