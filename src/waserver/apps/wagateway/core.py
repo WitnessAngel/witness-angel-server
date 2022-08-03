@@ -1,8 +1,9 @@
 import uuid
 from datetime import datetime
+from typing import Optional
 
 from django.db import transaction
-from schema import And, Or, Optional, Schema, SchemaError
+from schema import And, Or, Optional as OptionalKey, Schema, SchemaError
 
 from wacryptolib.cipher import SUPPORTED_CIPHER_ALGOS
 from wacryptolib.exceptions import (
@@ -73,7 +74,7 @@ def get_public_authenticator(keystore_uid, keystore_secret=None):
 
 
 def set_public_authenticator(keystore_uid: uuid.UUID, keystore_owner: str, public_keys: list, keystore_secret: str,
-                             keystore_creation_datetime: datetime):
+                             keystore_creation_datetime: Optional[datetime] = None):
     with transaction.atomic():
 
         public_authenticator_tree = {
@@ -363,7 +364,7 @@ REVELATION_REQUEST_INPUT_PARAMETERS_SCHEMA = Schema(
 PUBLIC_AUTHENTICATOR_SCHEMA = Schema(
     {
         "keystore_owner": And(str, len),  # FIXME SET MAX LENGTH?
-        Optional("keystore_secret"): And(str, len),
+        OptionalKey("keystore_secret"): And(str, len),
         "keystore_uid": micro_schemas.schema_uid,
         "public_keys": And(
             [
@@ -375,7 +376,7 @@ PUBLIC_AUTHENTICATOR_SCHEMA = Schema(
             ],
             len,
         ),
-        "keystore_creation_datetime": datetime
+        "keystore_creation_datetime": Or(datetime, None)
     }
 )
 
