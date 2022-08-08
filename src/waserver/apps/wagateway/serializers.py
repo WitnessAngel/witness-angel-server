@@ -98,6 +98,7 @@ class RevelationRequestSerializer(serializers.ModelSerializer):
     revelation_response_public_key = BinaryField()
     symkey_decryption_requests = SymkeyDecryptionRequestSerializer(many=True, read_only=True)
     target_public_authenticator = PublicAuthenticatorSerializer(read_only=True)
+    created_at = TransparentRepresentationDatetimeField()
 
     class Meta:
         model = RevelationRequest
@@ -111,4 +112,5 @@ class RevelationRequestSerializer(serializers.ModelSerializer):
             "revelation_response_key_algo",
             "revelation_request_status",
             "symkey_decryption_requests",
+            "created_at",
         ]
