@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import Optional
 
 from django.db import transaction
+from django.utils.timezone import is_aware
 from schema import And, Or, Optional as OptionalKey, Schema, SchemaError
 
 from wacryptolib.cipher import SUPPORTED_CIPHER_ALGOS
@@ -376,7 +377,7 @@ PUBLIC_AUTHENTICATOR_SCHEMA = Schema(
             ],
             len,
         ),
-        "keystore_creation_datetime": Or(datetime, None)
+        "keystore_creation_datetime": And(Or(datetime, None), is_aware)
     }
 )
 

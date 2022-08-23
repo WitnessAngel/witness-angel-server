@@ -127,7 +127,7 @@ def test_jsonrpc_set_and_get_public_authenticator_workflow(live_server):
             keystore_secret="whatever",
             public_keys=parameters["public_keys"],
             keystore_creation_datetime="04-12-1898"
-        )  # Date format is not correct
+        )  # Date type is not correct
 
     # Check handling of secret hash, similar to a password!
     public_authenticator_obj: PublicAuthenticator = PublicAuthenticator.objects.get(
