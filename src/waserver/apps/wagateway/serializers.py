@@ -39,7 +39,7 @@ class TransparentRepresentationDatetimeField(DateTimeField):
         return value
 
     def default_timezone(self):
-        pass
+        return None
 
     def to_internal_value(self, value):
         if isinstance(value, datetime.date) and not isinstance(value, datetime.datetime):
@@ -47,6 +47,8 @@ class TransparentRepresentationDatetimeField(DateTimeField):
 
         if isinstance(value, datetime.datetime):
             return value
+
+        self.fail('invalid')
 
     def to_representation(self, value):
         return value

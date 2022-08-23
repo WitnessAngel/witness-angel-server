@@ -153,16 +153,25 @@ def test_jsonrpc_set_and_get_public_authenticator_workflow(live_server):
         keystore_uid=parameters["keystore_uid"], keystore_secret=TEST_AUTHENTICATOR_SECRET
     )
 
-    # No authentication if no keystore_secret is given
-    public_authenticator2 = gateway_proxy.get_public_authenticator(keystore_uid=parameters["keystore_uid"])
-
-    # check retrieval statistics
+    # Check retrieval statistics
     public_authenticator_obj: PublicAuthenticator = PublicAuthenticator.objects.get(
         keystore_uid=parameters["keystore_uid"]
     )
-    retrieval_count = public_authenticator_obj.retrieval_count
-    assert retrieval_count == 2
-    # print(public_authenticator_obj.last_retrieval_datetime)
+    assert public_authenticator_obj.retrieval_count == 1
+    last_retrieval_datetime = public_authenticator_obj.last_retrieval_datetime
+    assert isinstance(last_retrieval_datetime, datetime)
+    assert last_retrieval_datetime.utcoffset().total_seconds() == 0  # UTC timezone
+
+    # No authentication if no keystore_secret is given
+    public_authenticator2 = gateway_proxy.get_public_authenticator(keystore_uid=parameters["keystore_uid"])
+
+    # Check retrieval statistics
+    public_authenticator_obj: PublicAuthenticator = PublicAuthenticator.objects.get(
+        keystore_uid=parameters["keystore_uid"]
+    )
+    assert public_authenticator_obj.retrieval_count == 2
+    last_retrieval_datetime2  = public_authenticator_obj.last_retrieval_datetime
+    assert last_retrieval_datetime2 > last_retrieval_datetime
 
     expected_authenticator_dict = parameters.copy()
     del expected_authenticator_dict["keystore_secret"]

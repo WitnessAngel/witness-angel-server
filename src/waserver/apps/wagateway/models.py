@@ -1,12 +1,10 @@
 from django.contrib.auth.hashers import make_password, check_password, is_password_usable
 from django.db import models
-from django.utils import timezone
 from django.utils.translation import ugettext_lazy as _
 from django_changeset.models import CreatedModifiedByMixin
 from django_cryptography.fields import encrypt
 
-from wacryptolib.utilities import generate_uuid0
-from datetime import datetime
+from wacryptolib.utilities import generate_uuid0, get_utc_now_date
 
 
 class PublicAuthenticator(CreatedModifiedByMixin):
@@ -39,7 +37,7 @@ class PublicAuthenticator(CreatedModifiedByMixin):
 
     def update_retrieval_statistics(self):
         self.retrieval_count += 1
-        self.last_retrieval_datetime = datetime.now()
+        self.last_retrieval_datetime = get_utc_now_date()
 
     # API mimicking AbstractBaseUser password management
 
