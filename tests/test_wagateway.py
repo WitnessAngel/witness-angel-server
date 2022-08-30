@@ -37,9 +37,11 @@ def _generate_authenticator_parameter_tree(key_count, key_value=None):
         public_keys.append(
             {"keychain_uid": generate_uuid0(), "key_algo": "RSA_OAEP", "key_value": key_value or get_random_bytes(20)}
         )
-    keystore_creation_datetime = datetime.now(pytz.utc)
 
-    keystore_creation_datetime = keystore_creation_datetime.replace(microsecond=0)
+    keystore_creation_datetime = None  # MUST be supported for retrocompatibility
+    if random.randint(0, 1):
+        keystore_creation_datetime = datetime.now(pytz.utc)
+        keystore_creation_datetime = keystore_creation_datetime.replace(microsecond=0)
 
     parameters = dict(
         keystore_owner="keystore_owner" + str(random.randint(1, 9)),

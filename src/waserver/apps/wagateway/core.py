@@ -377,7 +377,7 @@ PUBLIC_AUTHENTICATOR_SCHEMA = Schema(
             ],
             len,
         ),
-        "keystore_creation_datetime": And(Or(datetime, None), is_aware)
+        "keystore_creation_datetime": Or(And(datetime, is_aware), None)
     }
 )
 
