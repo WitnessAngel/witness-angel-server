@@ -3,7 +3,7 @@ import inspect
 import base64
 import functools
 import jsonrpc
-from decorator import decorator
+from decorator import decoratorx
 from django.core.serializers.json import DjangoJSONEncoder
 from django.views.decorators.csrf import csrf_exempt
 from jsonrpc.site import JsonRpcSite
@@ -75,7 +75,7 @@ _exception_classes = StatusSlugsMapper.gather_exception_subclasses(
 exception_mapper = StatusSlugsMapper(_exception_classes, fallback_exception_class=Exception)
 
 
-@decorator
+@decoratorx  # IMPORTANT, because standard "@decorator" changes the argument dispatch!
 def convert_exceptions_to_jsonrpc_status_slugs(f, *args, **kwargs):
     try:
         return f(*args, **kwargs)
