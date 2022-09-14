@@ -71,7 +71,7 @@ class PublicAuthenticatorSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = PublicAuthenticator
-        fields = ["keystore_owner", "keystore_uid", "public_keys", "keystore_creation_datetime"]
+        fields = ["keystore_uid", "keystore_owner", "keystore_creation_datetime", "public_keys"]
 
 
 class SymkeyDecryptionRequestSerializer(serializers.ModelSerializer):

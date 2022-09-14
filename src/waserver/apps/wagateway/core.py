@@ -81,9 +81,9 @@ def set_public_authenticator(keystore_uid: uuid.UUID, keystore_owner: str, publi
         public_authenticator_tree = {
             "keystore_uid": keystore_uid,
             "keystore_owner": keystore_owner,
+            "keystore_secret": keystore_secret,  # Will be hashed!
+            "keystore_creation_datetime": keystore_creation_datetime,
             "public_keys": public_keys,
-            "keystore_secret": keystore_secret,
-            "keystore_creation_datetime": keystore_creation_datetime
         }
 
         validate_data_tree_with_pythonschema(
@@ -94,7 +94,7 @@ def set_public_authenticator(keystore_uid: uuid.UUID, keystore_owner: str, publi
             PublicAuthenticator.objects.get(keystore_uid=keystore_uid)
             raise KeystoreAlreadyExists("Authenticator %s already exists in database" % keystore_uid)
         except PublicAuthenticator.DoesNotExist:
-            public_authenticator = PublicAuthenticator(keystore_owner=keystore_owner, keystore_uid=keystore_uid,
+            public_authenticator = PublicAuthenticator(keystore_uid=keystore_uid, keystore_owner=keystore_owner,
                                                        keystore_creation_datetime=keystore_creation_datetime)
             public_authenticator.set_keystore_secret(keystore_secret)
             public_authenticator.save()
@@ -377,7 +377,7 @@ PUBLIC_AUTHENTICATOR_SCHEMA = Schema(
             ],
             len,
         ),
-        "keystore_creation_datetime": Or(And(datetime, is_aware), None)
+        "keystore_creation_datetime": Or(And(datetime, is_aware), None)  # We avoid depending on private is_datetime_tz_aware() of wacryptolib
     }
 )
 
