@@ -117,8 +117,7 @@ class SymkeyDecryptionRequest(CreatedModifiedByMixin):
         PublicAuthenticatorKey, related_name="symkey_decryption_requests", on_delete=models.CASCADE
     )
     cryptainer_name = models.CharField(
-        _("Cryptainer name"), max_length=100, choices=SymkeyDecryptionStatus.choices,
-        default=SymkeyDecryptionStatus.PENDING
+        _("Cryptainer name"), max_length=100
     )
     cryptainer_uid = models.UUIDField(_("Cryptainer uid"), null=True)
     cryptainer_metadata = models.JSONField(_("Cryptainer metadata)"), default=dict, null=True, blank=True)
