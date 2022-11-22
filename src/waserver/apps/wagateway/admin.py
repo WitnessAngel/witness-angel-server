@@ -64,7 +64,7 @@ class RevelationRequestAdmin(admin.ModelAdmin):
     ordering = ["-pk"]
 
     def symkey_decryption_request_count(self, obj):
-        return obj.symkey_decryption_requests
+        return obj.symkey_decryption_requests.count()
 
     def get_queryset(self, request):
         queryset = super().get_queryset(request)
