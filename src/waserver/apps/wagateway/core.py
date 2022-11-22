@@ -60,7 +60,7 @@ def _get_authorized_revelation_request_by_request_uid(revelation_request_uid, au
 def get_public_authenticator(keystore_uid, keystore_secret=None):
     validate_data_against_schema(
         dict(keystore_uid=keystore_uid, keystore_secret=keystore_secret),
-        Schema({"keystore_uid": micro_schemas.schema_uid, "keystore_secret": Or(None, str)}),
+        schema=Schema({"keystore_uid": micro_schemas.schema_uid, "keystore_secret": Or(None, str)}),
     )
 
     public_authenticator = _get_public_authenticator_by_keystore_uid(keystore_uid)
@@ -87,7 +87,7 @@ def set_public_authenticator(keystore_uid: uuid.UUID, keystore_owner: str, publi
         }
 
         validate_data_against_schema(
-            data_tree=public_authenticator_tree, valid_schema=PUBLIC_AUTHENTICATOR_SCHEMA
+            public_authenticator_tree, schema=PUBLIC_AUTHENTICATOR_SCHEMA
         )
 
         try:
@@ -129,7 +129,7 @@ def submit_revelation_request(
         }
 
         validate_data_against_schema(
-            data_tree=revelation_request_tree, valid_schema=REVELATION_REQUEST_INPUT_PARAMETERS_SCHEMA
+            revelation_request_tree, schema=REVELATION_REQUEST_INPUT_PARAMETERS_SCHEMA
         )
 
         # FIXME - we should allow that, by matching "Accept" results with target_public_authenticator_key too!
@@ -179,7 +179,7 @@ def list_requestor_revelation_requests(revelation_requestor_uid: uuid.UUID):
 
     validate_data_against_schema(
         dict(revelation_requestor_uid=revelation_requestor_uid),
-        Schema({"revelation_requestor_uid": micro_schemas.schema_uid}),
+        schema=Schema({"revelation_requestor_uid": micro_schemas.schema_uid}),
     )
 
     revelation_requests_for_requestor_uid = RevelationRequest.objects.filter(
@@ -197,7 +197,7 @@ def list_authenticator_revelation_requests(authenticator_keystore_uid: uuid.UUID
             authenticator_keystore_uid=authenticator_keystore_uid,
             authenticator_keystore_secret=authenticator_keystore_secret,
         ),
-        Schema({"authenticator_keystore_uid": micro_schemas.schema_uid, "authenticator_keystore_secret": str}),
+        schema=Schema({"authenticator_keystore_uid": micro_schemas.schema_uid, "authenticator_keystore_secret": str}),
     )
 
     target_public_authenticator = _get_public_authenticator_by_keystore_uid(authenticator_keystore_uid)
@@ -217,7 +217,7 @@ def reject_revelation_request(revelation_request_uid: uuid.UUID, authenticator_k
         dict(
             revelation_request_uid=revelation_request_uid, authenticator_keystore_secret=authenticator_keystore_secret
         ),
-        Schema({"revelation_request_uid": micro_schemas.schema_uid, "authenticator_keystore_secret": str}),
+        schema=Schema({"revelation_request_uid": micro_schemas.schema_uid, "authenticator_keystore_secret": str}),
     )
 
     with transaction.atomic():
@@ -245,7 +245,7 @@ def accept_revelation_request(
             authenticator_keystore_secret=authenticator_keystore_secret,
             symkey_decryption_results=symkey_decryption_results,
         ),
-        Schema(
+        schema=Schema(
             {
                 "revelation_request_uid": micro_schemas.schema_uid,
                 "authenticator_keystore_secret": str,
