@@ -16,7 +16,7 @@ from wacryptolib.exceptions import (
     KeystoreDoesNotExist,
     ValidationError,
 )
-from wacryptolib.utilities import get_validation_micro_schemas
+from wacryptolib.utilities import get_validation_micro_schemas, validate_data_against_schema
 from waserver.apps.wagateway.models import (
     PublicAuthenticator,
     PublicAuthenticatorKey,
@@ -58,7 +58,7 @@ def _get_authorized_revelation_request_by_request_uid(revelation_request_uid, au
 
 
 def get_public_authenticator(keystore_uid, keystore_secret=None):
-    validate_data_tree_with_pythonschema(
+    validate_data_against_schema(
         dict(keystore_uid=keystore_uid, keystore_secret=keystore_secret),
         Schema({"keystore_uid": micro_schemas.schema_uid, "keystore_secret": Or(None, str)}),
     )
@@ -86,7 +86,7 @@ def set_public_authenticator(keystore_uid: uuid.UUID, keystore_owner: str, publi
             "public_keys": public_keys,
         }
 
-        validate_data_tree_with_pythonschema(
+        validate_data_against_schema(
             data_tree=public_authenticator_tree, valid_schema=PUBLIC_AUTHENTICATOR_SCHEMA
         )
 
@@ -128,7 +128,7 @@ def submit_revelation_request(
             "symkey_decryption_requests": symkey_decryption_requests,
         }
 
-        validate_data_tree_with_pythonschema(
+        validate_data_against_schema(
             data_tree=revelation_request_tree, valid_schema=REVELATION_REQUEST_INPUT_PARAMETERS_SCHEMA
         )
 
@@ -177,7 +177,7 @@ def submit_revelation_request(
 def list_requestor_revelation_requests(revelation_requestor_uid: uuid.UUID):
     # Called by NVR and other WA revelation-station software
 
-    validate_data_tree_with_pythonschema(
+    validate_data_against_schema(
         dict(revelation_requestor_uid=revelation_requestor_uid),
         Schema({"revelation_requestor_uid": micro_schemas.schema_uid}),
     )
@@ -192,7 +192,7 @@ def list_requestor_revelation_requests(revelation_requestor_uid: uuid.UUID):
 def list_authenticator_revelation_requests(authenticator_keystore_uid: uuid.UUID, authenticator_keystore_secret: str):
     # Called by authenticator, authenticated with keystore secret
 
-    validate_data_tree_with_pythonschema(
+    validate_data_against_schema(
         dict(
             authenticator_keystore_uid=authenticator_keystore_uid,
             authenticator_keystore_secret=authenticator_keystore_secret,
@@ -213,7 +213,7 @@ def list_authenticator_revelation_requests(authenticator_keystore_uid: uuid.UUID
 def reject_revelation_request(revelation_request_uid: uuid.UUID, authenticator_keystore_secret: str):
     """Called by authenticator, and authenticated with keystore secret"""
 
-    validate_data_tree_with_pythonschema(
+    validate_data_against_schema(
         dict(
             revelation_request_uid=revelation_request_uid, authenticator_keystore_secret=authenticator_keystore_secret
         ),
@@ -239,7 +239,7 @@ def accept_revelation_request(
 ):
     """Called by authenticator, and authenticated with keystore secret"""
 
-    validate_data_tree_with_pythonschema(
+    validate_data_against_schema(
         dict(
             revelation_request_uid=revelation_request_uid,
             authenticator_keystore_secret=authenticator_keystore_secret,
@@ -380,19 +380,3 @@ PUBLIC_AUTHENTICATOR_SCHEMA = Schema(
         "keystore_creation_datetime": Or(And(datetime, is_aware), None)  # We avoid depending on private is_datetime_tz_aware() of wacryptolib
     }
 )
-
-
-def validate_data_tree_with_pythonschema(data_tree: dict, valid_schema: Schema):  # TODO Add to wacryptolib
-    """Allows the validation of a data_tree with a pythonschema
-
-    :param data_tree: data to validate
-    :param valid_schema: validation scheme
-    """
-    # we use the python schema module
-
-    assert isinstance(data_tree, dict), data_tree
-
-    try:
-        valid_schema.validate(data_tree)
-    except SchemaError as exc:
-        raise SchemaValidationError("Error validating data tree with python-schema: {}".format(exc)) from exc

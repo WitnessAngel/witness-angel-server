@@ -17,9 +17,8 @@ from wacryptolib.exceptions import (
 )
 from wacryptolib.jsonrpc_client import JsonRpcProxy, status_slugs_response_error_handler
 from wacryptolib.keygen import generate_symkey, generate_keypair
-from wacryptolib.utilities import generate_uuid0
+from wacryptolib.utilities import generate_uuid0, validate_data_against_schema
 from waserver.apps.wagateway.core import (
-    validate_data_tree_with_pythonschema,
     PUBLIC_AUTHENTICATOR_SCHEMA,
     AuthenticationError,
     KeystoreDoesNotExist,
@@ -181,7 +180,7 @@ def test_jsonrpc_set_and_get_public_authenticator_workflow(live_server):
     assert public_authenticator1 == expected_authenticator_dict
     assert public_authenticator2 == expected_authenticator_dict
 
-    validate_data_tree_with_pythonschema(public_authenticator1, PUBLIC_AUTHENTICATOR_SCHEMA)
+    validate_data_against_schema(public_authenticator1, schema=PUBLIC_AUTHENTICATOR_SCHEMA)
 
 
 def __NOPE_DISABLED_NOW_test_rest_api_get_public_authenticator(live_server):
