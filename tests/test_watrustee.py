@@ -100,13 +100,13 @@ def test_jsonrpc_trustee_signature(live_server):
         )
 
     verify_message_signature(
-        message=secret, signature=signature, key=public_key_signature, signature_algo=payload_signature_algo
+        message=secret, signature=signature, public_key=public_key_signature, signature_algo=payload_signature_algo
     )
 
     signature["signature_value"] += b"xyz"
     with pytest.raises(SignatureVerificationError, match="not authentic|Incorrect signature"):
         verify_message_signature(
-            message=secret, signature=signature, key=public_key_signature, signature_algo=payload_signature_algo
+            message=secret, signature=signature, public_key=public_key_signature, signature_algo=payload_signature_algo
         )
 
 
