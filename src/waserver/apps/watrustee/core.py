@@ -17,7 +17,7 @@ def _fetch_key_object_or_none(keychain_uid: uuid.UUID, key_algo: str) -> Trustee
 def _fetch_key_object_or_raise(keychain_uid: uuid.UUID, key_algo: str) -> TrusteeKeypair:
     keypair_obj = _fetch_key_object_or_none(keychain_uid=keychain_uid, key_algo=key_algo)
     if not keypair_obj:
-        raise KeyDoesNotExist("Keypair %s/%s not found in database" % (keychain_uid, key_algo))
+        raise KeyDoesNotExist("Keypair %s/%s not found in database" % (key_algo, keychain_uid))
     return keypair_obj
 
 
