@@ -14,7 +14,14 @@ if not executable_is_frozen:
 
 
 def main():
+
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "waserver.settings")
+
+    import django_compat_patcher
+    django_compat_patcher.patch(settings=dict(
+        DCP_INCLUDE_FIXER_IDS=[],
+        DCP_INCLUDE_FIXER_FAMILIES=["django4.1", "django4.0"]))
+
     try:
         from django.core.management import execute_from_command_line
     except ImportError as exc:
