@@ -16,10 +16,10 @@ classifiers = [
     "Intended Audience :: Information Technology",
     "License :: OSI Approved :: MIT License",
     "Natural Language :: English",
-    "Programming Language :: Python :: 3.7",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Operating System :: Microsoft :: Windows",
     "Operating System :: Unix",
@@ -29,7 +29,7 @@ include = ["CHANGELOG", "tox.ini", "settings.ini", "docs/*", "docs/api/*", "test
 exclude = ["_build"]
 
 [tool.poetry.dependencies]
-python = ">=3.7, <3.10"
+python = ">=3.8, <3.13"
 
 # Witness Angel system
 wacryptolib = { git = "https://github.com/WitnessAngel/witness-angel-cryptolib.git", branch = "waserver_stable" }
