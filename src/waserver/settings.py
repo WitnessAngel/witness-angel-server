@@ -160,6 +160,8 @@ SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 
 
+DATA_UPLOAD_MAX_NUMBER_FIELDS = 10000
+
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
