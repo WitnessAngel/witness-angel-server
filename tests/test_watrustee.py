@@ -14,7 +14,7 @@ from wacryptolib.cryptainer import (
     decrypt_payload_from_cryptainer,
     gather_trustee_dependencies,
     request_decryption_authorizations,
-    CRYPTAINER_TRUSTEE_TYPES,
+    CRYPTAINER_TRUSTEE_TYPES, OperationReport,
 )
 from wacryptolib.exceptions import (
     KeyDoesNotExist,
@@ -381,14 +381,12 @@ def test_jsonrpc_trustee_encrypt_decrypt_cryptainer(live_server):
 
     # CASE 1: authorization request well sent a short time after creation of "keychain_uid" keypair, so decryption is accepted
     with freeze_time() as frozen_datetime:
-        keychain_uid = generate_uuid0()
         payload = get_random_bytes(101)
 
         cryptainer = encrypt_payload_into_cryptainer(
             payload=payload,
             cryptoconf=cryptoconf,
             cryptainer_metadata=None,
-            keychain_uid=keychain_uid,
             keystore_pool=None,  # Unused by this config actually
         )
 
@@ -404,13 +402,14 @@ def test_jsonrpc_trustee_encrypt_decrypt_cryptainer(live_server):
         )
         print(">>>>> request_decryption_authorizations is", decryption_authorization_requests_result)
 
-        decrypted_data, errors = decrypt_payload_from_cryptainer(cryptainer=cryptainer, keystore_pool=None)
-        assert not errors
+        decrypted_data, report = decrypt_payload_from_cryptainer(cryptainer=cryptainer, keystore_pool=None)
+        print(">>>>>>get_error_entries>>>>", report.get_error_count(), report.get_error_entries())
+        assert not report.has_errors()
         assert decrypted_data == payload
 
         frozen_datetime.tick(delta=timedelta(hours=23))  # Once authorization is granted, it stays so for a long time
-        decrypted_data, errors = decrypt_payload_from_cryptainer(cryptainer=cryptainer, keystore_pool=None)
-        assert not errors
+        decrypted_data, report = decrypt_payload_from_cryptainer(cryptainer=cryptainer, keystore_pool=None)
+        assert not report.has_errors()
         assert decrypted_data == payload
 
         frozen_datetime.tick(
@@ -422,15 +421,11 @@ def test_jsonrpc_trustee_encrypt_decrypt_cryptainer(live_server):
     # CASE 2: authorization request sent too late after creation of "keychain_uid" keypair, so decryption is rejected
 
     with freeze_time() as frozen_datetime:
-        keychain_uid = generate_uuid0()
-        data = get_random_bytes(101)
-        local_keystore = InMemoryKeystore()
 
         cryptainer = encrypt_payload_into_cryptainer(
             payload=payload,
             cryptoconf=cryptoconf,
             cryptainer_metadata=None,
-            keychain_uid=keychain_uid,
             keystore_pool=None,  # Unused by this config actually
         )
 
