@@ -6,7 +6,7 @@ build-backend = "poetry.core.masonry.api"
 name = "waserver"
 description = "Witness Angel Webservices"
 version = "0.3"
-license = "MIT"
+license = { file = "LICENSE.txt" }
 readme = "Readme.rst"
 authors = ["Pascal Chambon", "Manon Michelet", "Francinette Atchade"]
 homepage = "https://github.com/WitnessAngel/witness-angel-server"
@@ -14,13 +14,11 @@ classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "Intended Audience :: Information Technology",
-    "License :: OSI Approved :: MIT License",
     "Natural Language :: English",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
-    "Topic :: Software Development :: Libraries :: Python Modules",
     "Operating System :: Microsoft :: Windows",
     "Operating System :: Unix",
     "Operating System :: MacOS :: MacOS X",

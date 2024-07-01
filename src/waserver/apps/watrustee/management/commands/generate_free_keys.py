@@ -1,3 +1,7 @@
+# This file is part of Witness Angel Server
+# SPDX-FileCopyrightText: Copyright Prolifik SARL
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 from django.core.management.base import BaseCommand
 
 from wacryptolib.keystore import generate_free_keypair_for_least_provisioned_key_algo

@@ -1,3 +1,7 @@
+# This file is part of Witness Angel Server
+# SPDX-FileCopyrightText: Copyright Prolifik SARL
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 from django.contrib import admin
 
 from .models import TrusteeKeypair

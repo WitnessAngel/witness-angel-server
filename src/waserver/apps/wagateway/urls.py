@@ -1,3 +1,7 @@
+# This file is part of Witness Angel Server
+# SPDX-FileCopyrightText: Copyright Prolifik SARL
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 from django.conf.urls import url
 
 from waserver.apps.wagateway.views import wagateway_extended_jsonrpc_site

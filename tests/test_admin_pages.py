@@ -1,3 +1,7 @@
+# This file is part of Witness Angel Server
+# SPDX-FileCopyrightText: Copyright Prolifik SARL
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 import pytest
 from waserver.apps.wagateway.models import PublicAuthenticator, RevelationRequest
 from model_bakery import baker
