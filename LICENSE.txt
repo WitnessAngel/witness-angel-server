@@ -10,3 +10,5 @@ This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
+
+Note that due to dependencies released under Apache License V2 (Requests, PyMongo...), the whole program may only be used in a GPL version 3 codebase.
