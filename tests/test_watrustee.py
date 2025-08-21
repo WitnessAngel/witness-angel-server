@@ -370,7 +370,7 @@ def test_jsonrpc_trustee_encrypt_decrypt_cryptainer(live_server):
                         ),
                     )
                 ],
-                payload_signatures=[
+                payload_ciphertext_signatures=[
                     dict(
                         payload_digest_algo="SHA512",
                         payload_signature_algo="DSA_DSS",
